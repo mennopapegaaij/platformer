@@ -4,6 +4,7 @@
 
 import arcade
 import levels as levels_module
+import achtergrond as achtergrond_module
 from instellingen import (SCHERM_BREEDTE, SCHERM_HOOGTE, SCHERM_TITEL,
                            SPRING_KRACHT, LUCHT_KLEUR, VLAG_KLEUR,
                            VLAG_DOEK_KLEUR, LEVEL_NAMEN, AANTAL_LEVELS)
@@ -48,6 +49,9 @@ class PlatformerSpel(arcade.Window):
     def on_draw(self):
         """Teken alles op het scherm."""
         self.clear()
+
+        # --- Teken eerst de achtergrond (altijd op vaste plek, schuift niet mee) ---
+        achtergrond_module.teken_achtergrond(self.huidig_level, SCHERM_BREEDTE, SCHERM_HOOGTE)
 
         # --- Teken de spelwereld met de camera ---
         # Alles binnen dit blok beweegt mee met de camera
