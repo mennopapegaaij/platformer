@@ -131,6 +131,17 @@ class Vijand:
                 py < self.y + self.hoogte and
                 py + ph > self.y)
 
+    def speler_springt_erop(self, px, py, pw, ph):
+        """Controleer of de speler van bovenaf op de vijand springt."""
+        speler_onder = py
+        vijand_boven = self.y + self.hoogte
+        # De speler springt erop als zijn voeten de bovenkant van de vijand raken
+        # en hij van boven komt (niet van de zijkant)
+        return (px + pw > self.x + 4 and          # Niet helemaal langs de linkerkant
+                px < self.x + self.breedte - 4 and # Niet helemaal langs de rechterkant
+                speler_onder <= vijand_boven and
+                speler_onder >= vijand_boven - 12)  # Komt van bovenaf
+
 
 class PlatformerSpel(arcade.Window):
     """Het hoofdspel — alles zit hierin."""
@@ -314,11 +325,25 @@ class PlatformerSpel(arcade.Window):
                     self.dood = True
 
         # --- Vijanden bijwerken en controleren ---
+        vijanden_weg = []  # Lijst van vijanden die dood zijn
         for vijand in self.vijanden:
             vijand.bijwerken()
-            if vijand.raakt_speler(self.speler_x, self.speler_y,
-                                   self.speler_breedte, self.speler_hoogte):
-                self.dood = True  # Vijand geraakt — spel voorbij!
+
+            # Springt de speler van bovenaf op de vijand? Dan gaat de vijand dood!
+            if (self.speler_snelheid_y < 0 and
+                    vijand.speler_springt_erop(self.speler_x, self.speler_y,
+                                               self.speler_breedte, self.speler_hoogte)):
+                vijanden_weg.append(vijand)          # Markeer vijand als dood
+                self.speler_snelheid_y = SPRING_KRACHT / 2  # Kleine stuiterpons omhoog
+
+            # Raakt de speler de vijand van de zijkant of van onder? Dan is de speler dood!
+            elif vijand.raakt_speler(self.speler_x, self.speler_y,
+                                     self.speler_breedte, self.speler_hoogte):
+                self.dood = True
+
+        # Verwijder de dode vijanden uit de lijst
+        for vijand in vijanden_weg:
+            self.vijanden.remove(vijand)
 
         # --- Heeft de speler de vlag bereikt? ---
         if (self.speler_x + self.speler_breedte > self.vlag_x and
