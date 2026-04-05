@@ -18,7 +18,6 @@ class GeluidManager:
         """Laad alle geluidsbestanden. Als een bestand ontbreekt, gaat het spel gewoon door."""
         map_naam = "geluiden"
 
-        # Probeer elk geluidsbestand te laden
         try:
             self.sprong = arcade.load_sound(f"{map_naam}/sprong.wav")
             self.vijand_dood = arcade.load_sound(f"{map_naam}/vijand_dood.wav")
@@ -26,9 +25,11 @@ class GeluidManager:
             self.geraakt = arcade.load_sound(f"{map_naam}/geraakt.wav")
             self.level_gehaald = arcade.load_sound(f"{map_naam}/level_gehaald.wav")
             self.game_over = arcade.load_sound(f"{map_naam}/game_over.wav")
-            self.muziek_vrolijk = arcade.load_sound(f"{map_naam}/muziek_vrolijk.wav")
-            self.muziek_spannend = arcade.load_sound(f"{map_naam}/muziek_spannend.wav")
-            self.muziek_episch = arcade.load_sound(f"{map_naam}/muziek_episch.wav")
+            # Elk level heeft zijn eigen muziek!
+            self.muziek_levels = [
+                arcade.load_sound(f"{map_naam}/muziek_level{i}.wav")
+                for i in range(1, 6)
+            ]
             self._geladen = True
             print("Geluiden geladen!")
         except Exception as fout:
@@ -75,29 +76,20 @@ class GeluidManager:
 
     def speel_muziek(self, niveau):
         """
-        Speel de passende muziek voor het gegeven level.
-        - Levels 1-2: vrolijke muziek
-        - Levels 3-4: spannende muziek
-        - Level 5: epische muziek
+        Speel de muziek die bij dit level hoort.
+        Elk level heeft zijn eigen uniek deuntje!
         """
         if not self._geladen:
             return
 
-        # Welk muzieknummer hoort bij dit level?
-        if niveau <= 2:
-            nieuw_nummer = "vrolijk"
-            muziek = self.muziek_vrolijk
-        elif niveau <= 4:
-            nieuw_nummer = "spannend"
-            muziek = self.muziek_spannend
-        else:
-            nieuw_nummer = "episch"
-            muziek = self.muziek_episch
+        # Bepaal het level-nummer (1 t/m 5, of begrens als het buiten bereik is)
+        idx = max(0, min(niveau - 1, len(self.muziek_levels) - 1))
+        nieuw_nummer = f"level{niveau}"
 
-        # Wissel alleen als het een ander nummer is
+        # Wissel alleen als het een ander level-nummer is
         if nieuw_nummer != self._huidig_muziek_nummer:
             self.stop_muziek()
-            self._muziek_speler = arcade.play_sound(muziek, volume=0.3, loop=True)
+            self._muziek_speler = arcade.play_sound(self.muziek_levels[idx], volume=0.3, loop=True)
             self._huidig_muziek_nummer = nieuw_nummer
 
     def stop_muziek(self):
