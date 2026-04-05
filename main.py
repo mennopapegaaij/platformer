@@ -448,8 +448,8 @@ class PlatformerSpel(arcade.Window):
             arcade.draw_lrbt_rectangle_filled(100, 700, 160, 340, arcade.color.DARK_RED)
             arcade.draw_text("Oeps! Probeer het opnieuw.",
                              195, 270, arcade.color.WHITE, 26, bold=True)
-            arcade.draw_text("Druk op R om opnieuw te spelen",
-                             220, 210, arcade.color.WHITE, 18)
+            arcade.draw_text("Druk op R om dit level opnieuw te spelen",
+                             190, 210, arcade.color.WHITE, 18)
 
     def teken_speler(self):
         """Teken het speler-vierkantje met een gezichtje."""
@@ -579,8 +579,11 @@ class PlatformerSpel(arcade.Window):
                 self.huidig_level += 1
                 self.maak_level(self.huidig_level)
         elif toets == arcade.key.R:
-            # R = helemaal opnieuw beginnen vanaf level 1
-            self.setup()
+            # R = huidig level opnieuw beginnen (of heel het spel als je gewonnen hebt)
+            if self.gewonnen:
+                self.setup()                       # Na de eindoverwinning: terug naar level 1
+            else:
+                self.maak_level(self.huidig_level) # Bij dood: zelfde level opnieuw
 
     def on_key_release(self, toets, modifiers):
         """Wordt aangeroepen als je een toets loslaat."""
