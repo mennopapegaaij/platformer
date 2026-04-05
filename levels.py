@@ -3,7 +3,7 @@
 # Wil je een nieuw level toevoegen? Voeg hier een nieuw blok toe!
 
 from platforms import Platform
-from vijand import Vijand
+from vijand import Vijand, VliegendVijand, SpringendVijand, GroteVijand, GeestVijand, JagerVijand
 from powerup import SterPowerUp, SnelheidPowerUp, DubbelSprongPowerUp, ExtraLevenPowerUp
 
 
@@ -43,6 +43,9 @@ def maak_level(nummer):
             Vijand(500, 40, 430, 700, 2),
             Vijand(870, 40, 800, 1100, 2),
             Vijand(1400, 40, 1220, 1900, 2),
+            # Nieuwe vijanden: vliegend en springend als kennismaking
+            VliegendVijand(600, 120, 430, 800, 2.5),    # 🐝 Vliegt boven het gat
+            SpringendVijand(1300, 40, 1220, 1500, 1.5), # 🐸 Springende kikker
         ]
         vlag_x = 1950
         vlag_y = 40
@@ -84,6 +87,9 @@ def maak_level(nummer):
             Vijand(850, 40, 800, 1080, 2.5),
             Vijand(1280, 40, 1220, 1480, 2.5),
             Vijand(1700, 40, 1620, 2300, 2.5),
+            # Nieuwe vijanden: geest zweeft door het bos, grote vijand verspert de weg
+            GeestVijand(700, 160, 580, 1000, 2),     # 👻 Geest zweeft door het bos
+            GroteVijand(1500, 40, 1400, 1700, 1.5),  # 💜 Grote vijand midden in het bos
         ]
         vlag_x = 2350
         vlag_y = 40
@@ -134,6 +140,10 @@ def maak_level(nummer):
             Vijand(1340, 40, 1300, 1550, 3),
             Vijand(1760, 40, 1720, 1980, 3),
             Vijand(2200, 40, 2160, 2700, 3),
+            # Nieuwe vijanden: vos jaagt, bij vliegt over de bergen
+            JagerVijand(600, 40, 440, 870, 3),          # 🦊 Jager in het bergdal
+            VliegendVijand(1200, 150, 1000, 1600, 3),   # 🐝 Bij vliegt over bergtop
+            SpringendVijand(2000, 40, 1720, 2160, 2.5), # 🐸 Kikker op breed plateau
         ]
         vlag_x = 2750
         vlag_y = 40
@@ -187,6 +197,11 @@ def maak_level(nummer):
             Vijand(1850, 360, 1840, 1920, 3.5),
             Vijand(2170, 40, 2140, 2370, 3.5),
             Vijand(2600, 40, 2560, 3100, 3.5),
+            # Nieuwe vijanden: grote schildwacht, jager en geest
+            GroteVijand(500, 40, 440, 800, 2),           # 💜 Grote schildwacht bij ingang
+            JagerVijand(1200, 40, 1000, 1400, 4),        # 🦊 Snelle jager in kasteel
+            GeestVijand(2000, 200, 1840, 2400, 3),       # 👻 Geest zweeft door kasteel
+            VliegendVijand(2700, 160, 2560, 3000, 3.5),  # 🐝 Bij bewaakt de doorgang
         ]
         vlag_x = 3150
         vlag_y = 40
@@ -248,6 +263,13 @@ def maak_level(nummer):
             Vijand(2650, 40, 2620, 2830, 4),
             Vijand(2770, 380, 2760, 2830, 4),
             Vijand(3070, 40, 3040, 3500, 4),
+            # Eindbaas heeft ALLE nieuwe vijandtypen!
+            GroteVijand(300, 40, 0, 450, 2.5),           # 💜 Grote schildwacht
+            VliegendVijand(750, 180, 450, 1000, 4),      # 🐝 Snelle bij
+            SpringendVijand(1200, 40, 1100, 1400, 3),    # 🐸 Springkikker
+            GeestVijand(1700, 220, 1460, 2000, 3.5),     # 👻 Zweefgeest
+            JagerVijand(2500, 40, 2400, 2700, 5),        # 🦊 Razendsnelle jager
+            GroteVijand(3200, 40, 3040, 3500, 3),        # 💜 Grote eindbaas!
         ]
         vlag_x = 3560
         vlag_y = 40

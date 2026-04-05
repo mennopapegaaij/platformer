@@ -184,14 +184,21 @@ class PlatformerSpel(arcade.Window):
 
         # --- Vijanden bijwerken en controleren ---
         vijanden_weg = []
+        speler_cx = self.speler.x + self.speler.breedte / 2  # Middenpunt speler
         for vijand in self.vijanden:
-            vijand.bijwerken()
+            vijand.bijwerken(speler_cx)  # Geef speler-positie mee (voor JagerVijand)
 
-            # Springt de speler van bovenaf op de vijand? Dan gaat de vijand dood!
+            # Springt de speler van bovenaf op de vijand?
             if (self.speler.snelheid_y < 0 and
                     vijand.speler_springt_erop(self.speler.x, self.speler.y,
                                                self.speler.breedte, self.speler.hoogte)):
-                vijanden_weg.append(vijand)
+                # GroteVijand heeft een eigen word_gestompt() methode
+                if hasattr(vijand, 'word_gestompt'):
+                    vijand.word_gestompt()
+                    if vijand.levens <= 0:
+                        vijanden_weg.append(vijand)
+                else:
+                    vijanden_weg.append(vijand)
                 self.speler.snelheid_y = SPRING_KRACHT / 2  # Kleine stuiterpons omhoog
 
             # Raakt de vijand de speler? Alleen gevaarlijk als de speler NIET onkwetsbaar is!
