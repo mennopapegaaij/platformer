@@ -90,12 +90,12 @@ class Platform:
 class Vijand:
     """Een vijand die heen en weer loopt."""
 
-    def __init__(self, x, y, links_grens, rechts_grens):
+    def __init__(self, x, y, links_grens, rechts_grens, snelheid=VIJAND_SNELHEID):
         self.x = x            # Huidige x-positie
         self.y = y            # Huidige y-positie
         self.breedte = 30     # Breedte van de vijand
         self.hoogte = 30      # Hoogte van de vijand
-        self.snelheid = VIJAND_SNELHEID
+        self.snelheid = snelheid
         self.links_grens = links_grens    # Tot hier beweegt hij naar links
         self.rechts_grens = rechts_grens  # Tot hier beweegt hij naar rechts
 
@@ -155,80 +155,249 @@ class PlatformerSpel(arcade.Window):
         self.camera = arcade.camera.Camera2D()
 
     def setup(self):
-        """Zet het spel klaar (wordt ook gebruikt om opnieuw te starten)."""
+        """Herstart het spel helemaal vanaf level 1."""
+        self.huidig_level = 1
+        self.maak_level(1)
 
-        # --- Speler ---
-        self.speler_x = 50       # Startpositie links
-        self.speler_y = 100      # Startpositie hoogte
+    def maak_level(self, nummer):
+        """Laad een level op basis van het nummer (1 t/m 5)."""
+
+        # --- Speler terug naar beginpositie ---
+        self.speler_x = 50
+        self.speler_y = 100
         self.speler_breedte = 32
         self.speler_hoogte = 32
-        self.speler_snelheid_x = 0    # Beweegt hij nu links of rechts?
-        self.speler_snelheid_y = 0    # Beweegt hij nu omhoog of omlaag?
-        self.staat_op_grond = False   # Staat de speler op een platform?
-
-        # Bijhouden welke toetsen ingedrukt zijn
+        self.speler_snelheid_x = 0
+        self.speler_snelheid_y = 0
+        self.staat_op_grond = False
         self.links_ingedrukt = False
         self.rechts_ingedrukt = False
 
-        # --- Platforms ---
-        # De vloer heeft gaten (kuilen) — de speler kan erin vallen!
-        # Daarna komen zwevende platforms om over te springen.
-        self.platforms = [
-            # === Vloer met gaten ===
-            Platform(0, 0, 300, 40),       # Startstuk
-            Platform(380, 0, 220, 40),     # Na gat 1
-            Platform(700, 0, 260, 40),     # Na gat 2
-            Platform(1060, 0, 280, 40),    # Na gat 3
-            Platform(1440, 0, 260, 40),    # Na gat 4
-            Platform(1800, 0, 280, 40),    # Na gat 5
-            Platform(2180, 0, 260, 40),    # Na gat 6
-            Platform(2540, 0, 660, 40),    # Lang eindstuk (tot x=3200)
-
-            # === Zwevende platforms ===
-            Platform(150, 130, 120, 20),   # Section 1
-            Platform(310, 170, 90, 20),    # Brug over gat 1
-            Platform(500, 140, 120, 20),   # Section 2
-            Platform(630, 200, 110, 20),   # Hoog platform section 2
-            Platform(810, 160, 120, 20),   # Section 3
-            Platform(970, 250, 100, 20),   # Hoog platform section 3
-            Platform(1090, 180, 100, 20),  # Section 4
-            Platform(1260, 290, 120, 20),  # Hoog platform section 4
-            Platform(1350, 190, 90, 20),   # Brug over gat 4
-            Platform(1460, 200, 120, 20),  # Section 5
-            Platform(1610, 310, 100, 20),  # Heel hoog platform
-            Platform(1710, 200, 90, 20),   # Brug over gat 5
-            Platform(1820, 160, 120, 20),  # Section 6
-            Platform(1980, 290, 100, 20),  # Hoog platform section 6
-            Platform(2090, 200, 100, 20),  # Brug over gat 6
-            Platform(2260, 310, 120, 20),  # Hoog platform section 7
-            Platform(2600, 200, 120, 20),  # Eindstuk platform 1
-            Platform(2810, 310, 120, 20),  # Eindstuk platform 2 (hoog)
-            Platform(3010, 200, 120, 20),  # Eindstuk platform 3
-        ]
-
-        # --- Vijanden ---
-        self.vijanden = [
-            Vijand(100, 40, 0, 300),          # Section 1 (vloer)
-            Vijand(420, 40, 380, 600),         # Section 2 (vloer)
-            Vijand(640, 220, 630, 740),        # Hoog platform section 2
-            Vijand(830, 40, 700, 960),         # Section 3 (vloer)
-            Vijand(1100, 40, 1060, 1340),      # Section 4 (vloer)
-            Vijand(1270, 310, 1260, 1380),     # Hoog platform section 4
-            Vijand(1500, 40, 1440, 1700),      # Section 5 (vloer)
-            Vijand(1840, 40, 1800, 2080),      # Section 6 (vloer)
-            Vijand(2300, 40, 2180, 2540),      # Section 7 (vloer)
-            Vijand(2620, 220, 2600, 2720),     # Eindstuk platform 1
-            Vijand(2700, 40, 2540, 2900),      # Eindstuk (vloer)
-            Vijand(3030, 220, 3010, 3130),     # Eindstuk platform 3
-        ]
-
-        # --- Vlag (eindpunt) ---
-        self.vlag_x = 3150   # Ver aan het einde van het level
-        self.vlag_y = 40
-
         # --- Spelstatus ---
-        self.gewonnen = False   # Heeft de speler gewonnen?
-        self.dood = False       # Is de speler dood?
+        self.gewonnen = False
+        self.dood = False
+        self.level_gehaald = False   # Wordt True als de speler de vlag raakt
+
+        # =============================================
+        # LEVEL 1: De Beginners Wereld
+        # Makkelijk — kleine gaten, trage vijanden
+        # =============================================
+        if nummer == 1:
+            self.level_breedte = 2000
+            self.platforms = [
+                Platform(0, 0, 350, 40),
+                Platform(430, 0, 270, 40),
+                Platform(800, 0, 300, 40),
+                Platform(1220, 0, 780, 40),
+                Platform(150, 130, 120, 20),
+                Platform(350, 160, 100, 20),
+                Platform(470, 150, 120, 20),
+                Platform(630, 200, 100, 20),
+                Platform(710, 160, 100, 20),
+                Platform(840, 150, 120, 20),
+                Platform(1000, 220, 100, 20),
+                Platform(1110, 170, 100, 20),
+                Platform(1280, 180, 120, 20),
+                Platform(1550, 200, 120, 20),
+                Platform(1800, 180, 120, 20),
+            ]
+            self.vijanden = [
+                Vijand(100, 40, 0, 350, 2),
+                Vijand(500, 40, 430, 700, 2),
+                Vijand(870, 40, 800, 1100, 2),
+                Vijand(1400, 40, 1220, 1900, 2),
+            ]
+            self.vlag_x = 1950
+            self.vlag_y = 40
+
+        # =============================================
+        # LEVEL 2: Het Bos
+        # Iets moeilijker — bredere gaten, meer vijanden
+        # =============================================
+        elif nummer == 2:
+            self.level_breedte = 2400
+            self.platforms = [
+                Platform(0, 0, 300, 40),
+                Platform(420, 0, 260, 40),
+                Platform(800, 0, 280, 40),
+                Platform(1220, 0, 260, 40),
+                Platform(1620, 0, 780, 40),
+                Platform(130, 150, 100, 20),
+                Platform(310, 190, 100, 20),
+                Platform(450, 160, 110, 20),
+                Platform(580, 280, 90, 20),
+                Platform(700, 200, 100, 20),
+                Platform(830, 170, 100, 20),
+                Platform(970, 300, 90, 20),
+                Platform(1100, 200, 100, 20),
+                Platform(1250, 180, 100, 20),
+                Platform(1390, 300, 90, 20),
+                Platform(1500, 200, 100, 20),
+                Platform(1680, 200, 100, 20),
+                Platform(1900, 280, 100, 20),
+                Platform(2200, 200, 100, 20),
+            ]
+            self.vijanden = [
+                Vijand(100, 40, 0, 300, 2.5),
+                Vijand(460, 40, 420, 680, 2.5),
+                Vijand(590, 300, 580, 660, 2.5),
+                Vijand(850, 40, 800, 1080, 2.5),
+                Vijand(1280, 40, 1220, 1480, 2.5),
+                Vijand(1700, 40, 1620, 2300, 2.5),
+            ]
+            self.vlag_x = 2350
+            self.vlag_y = 40
+
+        # =============================================
+        # LEVEL 3: De Bergen
+        # Middel — hogere platforms, snellere vijanden
+        # =============================================
+        elif nummer == 3:
+            self.level_breedte = 2800
+            self.platforms = [
+                Platform(0, 0, 280, 40),
+                Platform(440, 0, 260, 40),
+                Platform(870, 0, 260, 40),
+                Platform(1300, 0, 250, 40),
+                Platform(1720, 0, 260, 40),
+                Platform(2160, 0, 640, 40),
+                Platform(100, 160, 90, 20),
+                Platform(290, 210, 90, 20),
+                Platform(460, 170, 90, 20),
+                Platform(580, 300, 80, 20),
+                Platform(710, 220, 90, 20),
+                Platform(890, 170, 90, 20),
+                Platform(1010, 310, 80, 20),
+                Platform(1140, 220, 90, 20),
+                Platform(1320, 190, 90, 20),
+                Platform(1430, 320, 80, 20),
+                Platform(1560, 220, 90, 20),
+                Platform(1740, 190, 90, 20),
+                Platform(1860, 330, 80, 20),
+                Platform(1990, 220, 90, 20),
+                Platform(2200, 220, 90, 20),
+                Platform(2450, 300, 90, 20),
+                Platform(2650, 220, 90, 20),
+            ]
+            self.vijanden = [
+                Vijand(100, 40, 0, 280, 3),
+                Vijand(470, 40, 440, 700, 3),
+                Vijand(590, 320, 580, 660, 3),
+                Vijand(910, 40, 870, 1130, 3),
+                Vijand(1020, 330, 1010, 1090, 3),
+                Vijand(1340, 40, 1300, 1550, 3),
+                Vijand(1760, 40, 1720, 1980, 3),
+                Vijand(2200, 40, 2160, 2700, 3),
+            ]
+            self.vlag_x = 2750
+            self.vlag_y = 40
+
+        # =============================================
+        # LEVEL 4: Het Kasteel
+        # Moeilijk — smalle platforms, veel vijanden
+        # =============================================
+        elif nummer == 4:
+            self.level_breedte = 3200
+            self.platforms = [
+                Platform(0, 0, 260, 40),
+                Platform(440, 0, 240, 40),
+                Platform(870, 0, 240, 40),
+                Platform(1300, 0, 230, 40),
+                Platform(1720, 0, 230, 40),
+                Platform(2140, 0, 230, 40),
+                Platform(2560, 0, 640, 40),
+                Platform(80, 170, 80, 20),
+                Platform(270, 220, 80, 20),
+                Platform(460, 180, 80, 20),
+                Platform(560, 330, 80, 20),
+                Platform(700, 230, 80, 20),
+                Platform(890, 180, 80, 20),
+                Platform(1000, 340, 80, 20),
+                Platform(1120, 230, 80, 20),
+                Platform(1320, 200, 80, 20),
+                Platform(1420, 340, 80, 20),
+                Platform(1540, 230, 80, 20),
+                Platform(1740, 200, 80, 20),
+                Platform(1840, 340, 80, 20),
+                Platform(1960, 230, 80, 20),
+                Platform(2160, 200, 80, 20),
+                Platform(2270, 340, 80, 20),
+                Platform(2380, 230, 80, 20),
+                Platform(2590, 210, 80, 20),
+                Platform(2800, 320, 80, 20),
+                Platform(3050, 220, 80, 20),
+            ]
+            self.vijanden = [
+                Vijand(80, 40, 0, 260, 3.5),
+                Vijand(470, 40, 440, 680, 3.5),
+                Vijand(570, 350, 560, 630, 3.5),
+                Vijand(900, 40, 870, 1110, 3.5),
+                Vijand(1010, 360, 1000, 1080, 3.5),
+                Vijand(1330, 40, 1300, 1530, 3.5),
+                Vijand(1750, 40, 1720, 1950, 3.5),
+                Vijand(1850, 360, 1840, 1920, 3.5),
+                Vijand(2170, 40, 2140, 2370, 3.5),
+                Vijand(2600, 40, 2560, 3100, 3.5),
+            ]
+            self.vlag_x = 3150
+            self.vlag_y = 40
+
+        # =============================================
+        # LEVEL 5: De Eindbaas
+        # Heel moeilijk — grote gaten, razendsnelle vijanden
+        # =============================================
+        elif nummer == 5:
+            self.level_breedte = 3600
+            self.platforms = [
+                Platform(0, 0, 240, 40),
+                Platform(450, 0, 220, 40),
+                Platform(890, 0, 220, 40),
+                Platform(1330, 0, 210, 40),
+                Platform(1760, 0, 210, 40),
+                Platform(2190, 0, 210, 40),
+                Platform(2620, 0, 210, 40),
+                Platform(3040, 0, 560, 40),
+                Platform(70, 180, 70, 20),
+                Platform(260, 230, 70, 20),
+                Platform(470, 190, 70, 20),
+                Platform(590, 350, 70, 20),
+                Platform(710, 250, 70, 20),
+                Platform(910, 190, 70, 20),
+                Platform(1030, 360, 70, 20),
+                Platform(1140, 250, 70, 20),
+                Platform(1350, 210, 70, 20),
+                Platform(1460, 360, 70, 20),
+                Platform(1560, 250, 70, 20),
+                Platform(1780, 210, 70, 20),
+                Platform(1890, 360, 70, 20),
+                Platform(1980, 250, 70, 20),
+                Platform(2210, 210, 70, 20),
+                Platform(2320, 360, 70, 20),
+                Platform(2410, 250, 70, 20),
+                Platform(2640, 210, 70, 20),
+                Platform(2760, 360, 70, 20),
+                Platform(2840, 250, 70, 20),
+                Platform(3060, 230, 70, 20),
+                Platform(3300, 340, 70, 20),
+                Platform(3530, 230, 70, 20),
+            ]
+            self.vijanden = [
+                Vijand(70, 40, 0, 240, 4),
+                Vijand(480, 40, 450, 670, 4),
+                Vijand(600, 370, 590, 660, 4),
+                Vijand(920, 40, 890, 1110, 4),
+                Vijand(1040, 380, 1030, 1100, 4),
+                Vijand(1360, 40, 1330, 1540, 4),
+                Vijand(1470, 380, 1460, 1530, 4),
+                Vijand(1790, 40, 1760, 1970, 4),
+                Vijand(1900, 380, 1890, 1960, 4),
+                Vijand(2220, 40, 2190, 2400, 4),
+                Vijand(2650, 40, 2620, 2830, 4),
+                Vijand(2770, 380, 2760, 2830, 4),
+                Vijand(3070, 40, 3040, 3500, 4),
+            ]
+            self.vlag_x = 3560
+            self.vlag_y = 40
 
     def on_draw(self):
         """Teken alles op het scherm."""
@@ -253,14 +422,34 @@ class PlatformerSpel(arcade.Window):
             self.teken_speler()
 
         # --- Teken de berichten buiten de camera (altijd midden op het scherm) ---
+
+        # Levelnummer altijd bovenin
+        level_namen = {
+            1: "De Beginners Wereld", 2: "Het Bos",
+            3: "De Bergen", 4: "Het Kasteel", 5: "De Eindbaas"
+        }
+        naam = level_namen.get(self.huidig_level, "")
+        arcade.draw_text(f"Level {self.huidig_level}: {naam}",
+                         10, SCHERM_HOOGTE - 30, arcade.color.WHITE, 16, bold=True)
+
         if self.gewonnen:
-            arcade.draw_lrbt_rectangle_filled(150, 650, 180, 320, arcade.color.DARK_GREEN)
-            arcade.draw_text("Je hebt gewonnen! 🎉", 250, 270, arcade.color.WHITE, 28, bold=True)
-            arcade.draw_text("Druk op R om opnieuw te spelen", 220, 220, arcade.color.WHITE, 18)
+            arcade.draw_lrbt_rectangle_filled(100, 700, 160, 340, arcade.color.DARK_GREEN)
+            arcade.draw_text("🎉 Je hebt het hele spel uitgespeeld! 🎉",
+                             130, 270, arcade.color.WHITE, 22, bold=True)
+            arcade.draw_text("Druk op R om opnieuw te beginnen",
+                             220, 210, arcade.color.WHITE, 18)
+        elif self.level_gehaald:
+            arcade.draw_lrbt_rectangle_filled(100, 700, 160, 340, arcade.color.DARK_BLUE)
+            arcade.draw_text(f"Level {self.huidig_level} gehaald! 🎉",
+                             240, 270, arcade.color.WHITE, 26, bold=True)
+            arcade.draw_text(f"Druk op ENTER voor level {self.huidig_level + 1}",
+                             220, 210, arcade.color.WHITE, 18)
         elif self.dood:
-            arcade.draw_lrbt_rectangle_filled(150, 650, 180, 320, arcade.color.DARK_RED)
-            arcade.draw_text("Oeps! Probeer het opnieuw.", 195, 270, arcade.color.WHITE, 26, bold=True)
-            arcade.draw_text("Druk op R om opnieuw te spelen", 220, 220, arcade.color.WHITE, 18)
+            arcade.draw_lrbt_rectangle_filled(100, 700, 160, 340, arcade.color.DARK_RED)
+            arcade.draw_text("Oeps! Probeer het opnieuw.",
+                             195, 270, arcade.color.WHITE, 26, bold=True)
+            arcade.draw_text("Druk op R om opnieuw te spelen",
+                             220, 210, arcade.color.WHITE, 18)
 
     def teken_speler(self):
         """Teken het speler-vierkantje met een gezichtje."""
@@ -291,7 +480,7 @@ class PlatformerSpel(arcade.Window):
         """Werk het spel bij — dit wordt heel snel herhaald."""
 
         # Als het spel voorbij is, doe niets
-        if self.gewonnen or self.dood:
+        if self.gewonnen or self.dood or self.level_gehaald:
             return
 
         # --- Beweeg de speler horizontaal ---
@@ -308,8 +497,8 @@ class PlatformerSpel(arcade.Window):
         if self.speler_x < 0:
             self.speler_x = 0
         # En niet rechts voorbij het einde van het level
-        if self.speler_x + self.speler_breedte > LEVEL_BREEDTE:
-            self.speler_x = LEVEL_BREEDTE - self.speler_breedte
+        if self.speler_x + self.speler_breedte > self.level_breedte:
+            self.speler_x = self.level_breedte - self.speler_breedte
 
         # --- Zwaartekracht ---
         self.speler_snelheid_y -= ZWAARTEKRACHT  # Trek de speler omlaag
@@ -340,7 +529,7 @@ class PlatformerSpel(arcade.Window):
         # --- Camera laten meebewegen met de speler ---
         # Zorg dat de camera niet buiten het level kijkt
         cam_x = self.speler_x + self.speler_breedte / 2
-        cam_x = max(SCHERM_BREEDTE / 2, min(cam_x, LEVEL_BREEDTE - SCHERM_BREEDTE / 2))
+        cam_x = max(SCHERM_BREEDTE / 2, min(cam_x, self.level_breedte - SCHERM_BREEDTE / 2))
         cam_y = SCHERM_HOOGTE / 2  # Verticaal blijft de camera op dezelfde hoogte
         self.camera.position = cam_x, cam_y
 
@@ -369,7 +558,10 @@ class PlatformerSpel(arcade.Window):
         if (self.speler_x + self.speler_breedte > self.vlag_x and
                 self.speler_x < self.vlag_x + 10 and
                 self.speler_y < self.vlag_y + 60):
-            self.gewonnen = True  # Vlag bereikt — gewonnen!
+            if self.huidig_level < 5:
+                self.level_gehaald = True   # Naar het volgende level!
+            else:
+                self.gewonnen = True        # Laatste level gehaald — gewonnen!
 
     def on_key_press(self, toets, modifiers):
         """Wordt aangeroepen als je een toets indrukt."""
@@ -381,8 +573,13 @@ class PlatformerSpel(arcade.Window):
             # Springen mag alleen als de speler op de grond staat
             if self.staat_op_grond:
                 self.speler_snelheid_y = SPRING_KRACHT
+        elif toets == arcade.key.ENTER or toets == arcade.key.NUM_ENTER:
+            # ENTER = ga naar het volgende level (als je het huidige level gehaald hebt)
+            if self.level_gehaald:
+                self.huidig_level += 1
+                self.maak_level(self.huidig_level)
         elif toets == arcade.key.R:
-            # R = opnieuw beginnen
+            # R = helemaal opnieuw beginnen vanaf level 1
             self.setup()
 
     def on_key_release(self, toets, modifiers):
