@@ -7,6 +7,7 @@ import arcade
 SCHERM_BREEDTE = 800       # Hoe breed het venster is (in pixels)
 SCHERM_HOOGTE = 500        # Hoe hoog het venster is (in pixels)
 SCHERM_TITEL = "De Platformer"
+LEVEL_BREEDTE = 3200       # Hoe breed het hele level is
 
 # --- Instellingen van de speler ---
 SPELER_SNELHEID = 4        # Hoe snel de speler beweegt
@@ -150,6 +151,8 @@ class PlatformerSpel(arcade.Window):
         # Maak het venster aan
         super().__init__(SCHERM_BREEDTE, SCHERM_HOOGTE, SCHERM_TITEL)
         arcade.set_background_color(LUCHT_KLEUR)
+        # Maak een camera aan die de speler volgt
+        self.camera = arcade.camera.Camera2D()
 
     def setup(self):
         """Zet het spel klaar (wordt ook gebruikt om opnieuw te starten)."""
@@ -168,45 +171,60 @@ class PlatformerSpel(arcade.Window):
         self.rechts_ingedrukt = False
 
         # --- Platforms ---
-        # (x, y, breedte, hoogte) — de vloer en zwevende platforms
+        # De vloer heeft gaten (kuilen) — de speler kan erin vallen!
+        # Daarna komen zwevende platforms om over te springen.
         self.platforms = [
-            Platform(0, 0, 800, 40),       # De vloer van het level
-            Platform(150, 120, 120, 20),   # Een platform links
-            Platform(330, 200, 120, 20),   # Een platform in het midden
-            Platform(520, 140, 120, 20),   # Een platform rechts
-            Platform(680, 260, 120, 20),   # Een hoog platform rechts
-        ]
+            # === Vloer met gaten ===
+            Platform(0, 0, 300, 40),       # Startstuk
+            Platform(380, 0, 220, 40),     # Na gat 1
+            Platform(700, 0, 260, 40),     # Na gat 2
+            Platform(1060, 0, 280, 40),    # Na gat 3
+            Platform(1440, 0, 260, 40),    # Na gat 4
+            Platform(1800, 0, 280, 40),    # Na gat 5
+            Platform(2180, 0, 260, 40),    # Na gat 6
+            Platform(2540, 0, 660, 40),    # Lang eindstuk (tot x=3200)
 
-        # --- Kuilen ---
-        # Dit zijn gaten in de vloer. We verwijderen een deel van de vloer
-        # en slagen de kuilen op als gevaarlijke zones.
-        # Een speler die hieronder komt, begint opnieuw.
-        self.kuilen = [
-            (260, 360),   # Gat van x=260 tot x=360
-            (460, 530),   # Gat van x=460 tot x=530
-        ]
-
-        # Verwijder stukken van de vloer voor de kuilen
-        self.platforms = [
-            Platform(0, 0, 255, 40),       # Vloer voor gat 1
-            Platform(365, 0, 90, 40),      # Vloer tussen gat 1 en 2
-            Platform(535, 0, 265, 40),     # Vloer na gat 2
-            Platform(150, 120, 120, 20),   # Platform 1
-            Platform(330, 200, 120, 20),   # Platform 2
-            Platform(520, 140, 120, 20),   # Platform 3
-            Platform(680, 260, 120, 20),   # Platform 4
+            # === Zwevende platforms ===
+            Platform(150, 130, 120, 20),   # Section 1
+            Platform(310, 170, 90, 20),    # Brug over gat 1
+            Platform(500, 140, 120, 20),   # Section 2
+            Platform(630, 200, 110, 20),   # Hoog platform section 2
+            Platform(810, 160, 120, 20),   # Section 3
+            Platform(970, 250, 100, 20),   # Hoog platform section 3
+            Platform(1090, 180, 100, 20),  # Section 4
+            Platform(1260, 290, 120, 20),  # Hoog platform section 4
+            Platform(1350, 190, 90, 20),   # Brug over gat 4
+            Platform(1460, 200, 120, 20),  # Section 5
+            Platform(1610, 310, 100, 20),  # Heel hoog platform
+            Platform(1710, 200, 90, 20),   # Brug over gat 5
+            Platform(1820, 160, 120, 20),  # Section 6
+            Platform(1980, 290, 100, 20),  # Hoog platform section 6
+            Platform(2090, 200, 100, 20),  # Brug over gat 6
+            Platform(2260, 310, 120, 20),  # Hoog platform section 7
+            Platform(2600, 200, 120, 20),  # Eindstuk platform 1
+            Platform(2810, 310, 120, 20),  # Eindstuk platform 2 (hoog)
+            Platform(3010, 200, 120, 20),  # Eindstuk platform 3
         ]
 
         # --- Vijanden ---
         self.vijanden = [
-            Vijand(160, 40, 150, 270),    # Vijand op eerste stuk vloer
-            Vijand(370, 40, 365, 455),    # Vijand op middelste stuk vloer
-            Vijand(340, 220, 330, 450),   # Vijand op platform 2
+            Vijand(100, 40, 0, 300),          # Section 1 (vloer)
+            Vijand(420, 40, 380, 600),         # Section 2 (vloer)
+            Vijand(640, 220, 630, 740),        # Hoog platform section 2
+            Vijand(830, 40, 700, 960),         # Section 3 (vloer)
+            Vijand(1100, 40, 1060, 1340),      # Section 4 (vloer)
+            Vijand(1270, 310, 1260, 1380),     # Hoog platform section 4
+            Vijand(1500, 40, 1440, 1700),      # Section 5 (vloer)
+            Vijand(1840, 40, 1800, 2080),      # Section 6 (vloer)
+            Vijand(2300, 40, 2180, 2540),      # Section 7 (vloer)
+            Vijand(2620, 220, 2600, 2720),     # Eindstuk platform 1
+            Vijand(2700, 40, 2540, 2900),      # Eindstuk (vloer)
+            Vijand(3030, 220, 3010, 3130),     # Eindstuk platform 3
         ]
 
         # --- Vlag (eindpunt) ---
-        self.vlag_x = 750    # Positie van de vlag
-        self.vlag_y = 40     # Op de vloer (na gat 2)
+        self.vlag_x = 3150   # Ver aan het einde van het level
+        self.vlag_y = 40
 
         # --- Spelstatus ---
         self.gewonnen = False   # Heeft de speler gewonnen?
@@ -216,25 +234,25 @@ class PlatformerSpel(arcade.Window):
         """Teken alles op het scherm."""
         self.clear()
 
-        # Teken alle platforms
-        for platform in self.platforms:
-            platform.teken()
+        # --- Teken de spelwereld met de camera ---
+        # Alles binnen dit blok beweegt mee met de camera
+        with self.camera.activate():
 
-        # Teken de kuilen (donkerblauwe gaten)
-        for (links, rechts) in self.kuilen:
-            arcade.draw_lrbt_rectangle_filled(links, rechts, 0, 40, arcade.color.DARK_BLUE)
+            # Teken alle platforms
+            for platform in self.platforms:
+                platform.teken()
 
-        # Teken alle vijanden
-        for vijand in self.vijanden:
-            vijand.teken()
+            # Teken alle vijanden
+            for vijand in self.vijanden:
+                vijand.teken()
 
-        # Teken de vlag
-        self.teken_vlag(self.vlag_x, self.vlag_y)
+            # Teken de vlag
+            self.teken_vlag(self.vlag_x, self.vlag_y)
 
-        # Teken de speler (een geel vierkantje met een gezichtje)
-        self.teken_speler()
+            # Teken de speler (een geel vierkantje met een gezichtje)
+            self.teken_speler()
 
-        # Toon een bericht als de speler heeft gewonnen of verloren
+        # --- Teken de berichten buiten de camera (altijd midden op het scherm) ---
         if self.gewonnen:
             arcade.draw_lrbt_rectangle_filled(150, 650, 180, 320, arcade.color.DARK_GREEN)
             arcade.draw_text("Je hebt gewonnen! 🎉", 250, 270, arcade.color.WHITE, 28, bold=True)
@@ -286,11 +304,12 @@ class PlatformerSpel(arcade.Window):
 
         self.speler_x += self.speler_snelheid_x
 
-        # Zorg dat de speler niet uit het scherm loopt
+        # Zorg dat de speler niet links uit het level loopt
         if self.speler_x < 0:
             self.speler_x = 0
-        if self.speler_x + self.speler_breedte > SCHERM_BREEDTE:
-            self.speler_x = SCHERM_BREEDTE - self.speler_breedte
+        # En niet rechts voorbij het einde van het level
+        if self.speler_x + self.speler_breedte > LEVEL_BREEDTE:
+            self.speler_x = LEVEL_BREEDTE - self.speler_breedte
 
         # --- Zwaartekracht ---
         self.speler_snelheid_y -= ZWAARTEKRACHT  # Trek de speler omlaag
@@ -315,14 +334,15 @@ class PlatformerSpel(arcade.Window):
                 self.speler_snelheid_y = 0
 
         # --- Valt de speler in een kuil? ---
-        midden_x = self.speler_x + self.speler_breedte / 2
         if self.speler_y < -50:
             self.dood = True  # Gevallen — spel voorbij!
-        else:
-            # Controleer ook of de speler boven een kuil staat zonder platform
-            for (links, rechts) in self.kuilen:
-                if links < midden_x < rechts and self.speler_y < 5:
-                    self.dood = True
+
+        # --- Camera laten meebewegen met de speler ---
+        # Zorg dat de camera niet buiten het level kijkt
+        cam_x = self.speler_x + self.speler_breedte / 2
+        cam_x = max(SCHERM_BREEDTE / 2, min(cam_x, LEVEL_BREEDTE - SCHERM_BREEDTE / 2))
+        cam_y = SCHERM_HOOGTE / 2  # Verticaal blijft de camera op dezelfde hoogte
+        self.camera.position = cam_x, cam_y
 
         # --- Vijanden bijwerken en controleren ---
         vijanden_weg = []  # Lijst van vijanden die dood zijn
