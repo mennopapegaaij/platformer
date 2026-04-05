@@ -5,6 +5,8 @@ import arcade
 from instellingen import (SPELER_SNELHEID, SPRING_KRACHT, ZWAARTEKRACHT,
                            SPELER_KLEUR, OOG_KLEUR)
 
+LEVENS_BEGIN = 3  # Hoeveel levens de speler krijgt bij het begin
+
 
 class Speler:
     """Het poppetje dat de speler bestuurt: een geel vierkantje met een gezichtje."""
@@ -27,8 +29,22 @@ class Speler:
         self.links_ingedrukt = False
         self.rechts_ingedrukt = False
 
+        # --- Levens ---
+        self.levens = LEVENS_BEGIN
+
+        # --- Power-up timers (tellen af per frame) ---
+        self.onkwetsbaar_timer = 0      # ⭐ Ster: niet geraakt kunnen worden
+        self.snelheid_boost_timer = 0   # 💨 Snelheid: dubbel zo snel
+        self.dubbel_sprong_timer = 0    # 🦘 Dubbel springen: nog een keer springen
+
+        # Heeft de speler zijn extra sprong al gebruikt?
+        self.heeft_dubbel_gesprongen = False
+
+        # Knippercyclus voor als de speler onkwetsbaar is
+        self._knippering = 0
+
     def reset(self):
-        """Zet de speler terug naar de beginpositie."""
+        """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
         self.x = 50
         self.y = 100
         self.snelheid_x = 0
@@ -36,15 +52,39 @@ class Speler:
         self.staat_op_grond = False
         self.links_ingedrukt = False
         self.rechts_ingedrukt = False
+        # Power-up effecten stoppen bij het herstarten
+        self.onkwetsbaar_timer = 0
+        self.snelheid_boost_timer = 0
+        self.dubbel_sprong_timer = 0
+        self.heeft_dubbel_gesprongen = False
+
+    def volledig_reset(self):
+        """Reset alles inclusief levens (voor een nieuw spel)."""
+        self.reset()
+        self.levens = LEVENS_BEGIN
 
     def bijwerken(self, level_breedte, platforms):
         """Beweeg de speler en controleer botsingen met platforms."""
 
+        # Timers aftikken
+        if self.onkwetsbaar_timer > 0:
+            self.onkwetsbaar_timer -= 1
+            self._knippering = (self._knippering + 1) % 6  # Knippert snel
+        if self.snelheid_boost_timer > 0:
+            self.snelheid_boost_timer -= 1
+        if self.dubbel_sprong_timer > 0:
+            self.dubbel_sprong_timer -= 1
+            if self.dubbel_sprong_timer == 0:
+                self.heeft_dubbel_gesprongen = False  # Effect voorbij: reset
+
+        # Bepaal de snelheid (dubbel als snelheidsboost actief is)
+        snelheid = SPELER_SNELHEID * 2 if self.snelheid_boost_timer > 0 else SPELER_SNELHEID
+
         # Horizontale beweging
         if self.links_ingedrukt:
-            self.snelheid_x = -SPELER_SNELHEID
+            self.snelheid_x = -snelheid
         elif self.rechts_ingedrukt:
-            self.snelheid_x = SPELER_SNELHEID
+            self.snelheid_x = snelheid
         else:
             self.snelheid_x = 0
 
@@ -68,6 +108,7 @@ class Speler:
                 self.y = platform.y + platform.hoogte
                 self.snelheid_y = 0
                 self.staat_op_grond = True
+                self.heeft_dubbel_gesprongen = False  # Op de grond: extra sprong herlaadbaar
             # Hoofd stoot tegen onderkant platform
             elif (self.snelheid_y > 0 and
                   platform.raakt_van_onder(self.x, self.y, self.breedte, self.hoogte)):
@@ -75,25 +116,47 @@ class Speler:
                 self.snelheid_y = 0
 
     def spring(self):
-        """Laat de speler springen (alleen als hij op de grond staat)."""
+        """Laat de speler springen — of een tweede keer als de power-up actief is."""
         if self.staat_op_grond:
+            # Gewone sprong
             self.snelheid_y = SPRING_KRACHT
+        elif (self.dubbel_sprong_timer > 0 and not self.heeft_dubbel_gesprongen):
+            # Extra sprong in de lucht! (alleen als power-up actief en nog niet gebruikt)
+            self.snelheid_y = SPRING_KRACHT
+            self.heeft_dubbel_gesprongen = True
 
     def is_gevallen(self):
         """Geeft True terug als de speler te ver naar beneden is gevallen."""
         return self.y < -50
 
+    def is_onkwetsbaar(self):
+        """Geeft True terug als de speler nu onkwetsbaar is (ster-effect)."""
+        return self.onkwetsbaar_timer > 0
+
     def teken(self):
         """Teken het speler-vierkantje met een gezichtje."""
+        # Knipperen als de speler onkwetsbaar is
+        if self.onkwetsbaar_timer > 0 and self._knippering < 3:
+            return  # Niet tekenen = onzichtbaar in de knippercyclus
+
         x = self.x
         y = self.y
         w = self.breedte
         h = self.hoogte
 
-        # Lijf (geel vierkantje)
-        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, SPELER_KLEUR)
-        # Oranje rand
-        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, arcade.color.ORANGE, 2)
+        # Lijf (geel, of goudgeel bij snelheidsboost)
+        lijf_kleur = (255, 220, 0) if self.snelheid_boost_timer > 0 else SPELER_KLEUR
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, lijf_kleur)
+
+        # Rand: oranje normaal, rood bij dubbel-sprong, lichtblauw bij onkwetsbaar
+        if self.onkwetsbaar_timer > 0:
+            rand_kleur = arcade.color.YELLOW
+        elif self.dubbel_sprong_timer > 0:
+            rand_kleur = arcade.color.CYAN
+        else:
+            rand_kleur = arcade.color.ORANGE
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, rand_kleur, 3)
+
         # Linker oog
         arcade.draw_circle_filled(x + 9, y + h - 10, 4, OOG_KLEUR)
         # Rechter oog

@@ -1,8 +1,12 @@
 # powerup.py
 # Power-ups voor de speler.
-# Dit bestand is alvast klaargezet voor de toekomst!
+# Elke power-up heeft een eigen kleur, vorm en effect!
 
 import arcade
+import math
+
+# Hoelang een power-up effect duurt (in frames, bij 60fps = 5 seconden)
+EFFECT_DUUR = 300
 
 
 class PowerUp:
@@ -11,9 +15,14 @@ class PowerUp:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.breedte = 24
-        self.hoogte = 24
+        self.breedte = 28
+        self.hoogte = 28
         self.opgepakt = False   # Is de power-up al opgepakt?
+        self._teller = 0        # Telt op voor het wiebel-animatietje
+
+    def bijwerken(self):
+        """Laat de power-up een beetje op en neer wiebelen."""
+        self._teller += 0.1
 
     def raakt_speler(self, px, py, pw, ph):
         """Controleer of de speler de power-up aanraakt."""
@@ -24,34 +33,119 @@ class PowerUp:
 
     def toepassen(self, speler):
         """Pas het effect van de power-up toe op de speler."""
-        pass  # Dit vullen we in bij elke specifieke power-up
+        pass
 
     def teken(self):
         """Teken de power-up."""
-        pass  # Dit vullen we in bij elke specifieke power-up
+        pass
+
+    def _wiebel_y(self):
+        """Geeft een kleine op-en-neer beweging terug voor het zweven."""
+        return math.sin(self._teller) * 4
 
 
-# =============================================================
-# Hier kun je later power-ups toevoegen! Bijvoorbeeld:
-#
-# class ExtraLevenPowerUp(PowerUp):
-#     """Geeft de speler een extra leven."""
-#
-#     def teken(self):
-#         # Teken een roze hartje
-#         arcade.draw_circle_filled(self.x + 12, self.y + 12, 12, arcade.color.PINK)
-#
-#     def toepassen(self, speler):
-#         speler.levens += 1
-#
-#
-# class SnelheidPowerUp(PowerUp):
-#     """Maakt de speler tijdelijk sneller."""
-#
-#     def teken(self):
-#         # Teken een geel bliksemschichtje
-#         arcade.draw_circle_filled(self.x + 12, self.y + 12, 12, arcade.color.YELLOW)
-#
-#     def toepassen(self, speler):
-#         speler.snelheid_boost = True
-# =============================================================
+class SterPowerUp(PowerUp):
+    """⭐ Ster — tijdelijk onkwetsbaar! Vijanden kunnen je niet pakken."""
+
+    def toepassen(self, speler):
+        speler.onkwetsbaar_timer = EFFECT_DUUR
+
+    def teken(self):
+        y_extra = self._wiebel_y()
+        cx = self.x + self.breedte // 2
+        cy = self.y + self.hoogte // 2 + y_extra
+
+        # Teken een ster als 10 punten (5 punten, afwisselend buiten/binnen)
+        punten = []
+        for i in range(10):
+            hoek = math.radians(i * 36 - 90)
+            straal = 14 if i % 2 == 0 else 6
+            punten.append(cx + straal * math.cos(hoek))
+            punten.append(cy + straal * math.sin(hoek))
+        arcade.draw_polygon_filled(
+            [(punten[i], punten[i+1]) for i in range(0, len(punten), 2)],
+            arcade.color.YELLOW
+        )
+        arcade.draw_polygon_outline(
+            [(punten[i], punten[i+1]) for i in range(0, len(punten), 2)],
+            arcade.color.ORANGE, 2
+        )
+
+
+class SnelheidPowerUp(PowerUp):
+    """💨 Snelheid — je rent tijdelijk dubbel zo snel!"""
+
+    def toepassen(self, speler):
+        speler.snelheid_boost_timer = EFFECT_DUUR
+
+    def teken(self):
+        y_extra = self._wiebel_y()
+        x = self.x
+        y = self.y + y_extra
+
+        # Teken een bliksemschicht (geel/oranje)
+        arcade.draw_polygon_filled([
+            (x + 18, y + 28),
+            (x + 10, y + 16),
+            (x + 16, y + 16),
+            (x + 8,  y + 0),
+            (x + 22, y + 13),
+            (x + 15, y + 13),
+        ], arcade.color.YELLOW)
+        arcade.draw_polygon_outline([
+            (x + 18, y + 28),
+            (x + 10, y + 16),
+            (x + 16, y + 16),
+            (x + 8,  y + 0),
+            (x + 22, y + 13),
+            (x + 15, y + 13),
+        ], arcade.color.ORANGE, 2)
+
+
+class DubbelSprongPowerUp(PowerUp):
+    """🦘 Dubbel springen — je kunt nog een keer springen in de lucht!"""
+
+    def toepassen(self, speler):
+        speler.dubbel_sprong_timer = EFFECT_DUUR
+        speler.heeft_dubbel_gesprongen = False  # Reset zodat hij meteen mag springen
+
+    def teken(self):
+        y_extra = self._wiebel_y()
+        cx = self.x + self.breedte // 2
+        cy = self.y + self.hoogte // 2 + y_extra
+
+        # Teken twee pijlen omhoog (blauw)
+        for dx in [-6, 6]:
+            arcade.draw_triangle_filled(
+                cx + dx - 6, cy + 2,
+                cx + dx + 6, cy + 2,
+                cx + dx, cy + 14,
+                arcade.color.CYAN
+            )
+            arcade.draw_lrbt_rectangle_filled(
+                cx + dx - 3, cx + dx + 3, cy - 10, cy + 2,
+                arcade.color.CYAN
+            )
+        arcade.draw_text("2x", cx - 8, cy - 12, arcade.color.BLUE, 9, bold=True)
+
+
+class ExtraLevenPowerUp(PowerUp):
+    """❤️ Extra leven — je krijgt een extra kans!"""
+
+    def toepassen(self, speler):
+        speler.levens += 1
+
+    def teken(self):
+        y_extra = self._wiebel_y()
+        cx = self.x + self.breedte // 2
+        cy = self.y + self.hoogte // 2 + y_extra
+
+        # Teken een hartje (twee cirkels + driehoek)
+        arcade.draw_circle_filled(cx - 5, cy + 4, 8, arcade.color.RED)
+        arcade.draw_circle_filled(cx + 5, cy + 4, 8, arcade.color.RED)
+        arcade.draw_triangle_filled(
+            cx - 12, cy + 2,
+            cx + 12, cy + 2,
+            cx, cy - 10,
+            arcade.color.RED
+        )

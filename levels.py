@@ -4,6 +4,7 @@
 
 from platforms import Platform
 from vijand import Vijand
+from powerup import SterPowerUp, SnelheidPowerUp, DubbelSprongPowerUp, ExtraLevenPowerUp
 
 
 def maak_level(nummer):
@@ -11,7 +12,7 @@ def maak_level(nummer):
     Geeft de gegevens voor een level terug.
     nummer = 1 t/m 5
 
-    Geeft terug: (platforms, vijanden, vlag_x, vlag_y, level_breedte)
+    Geeft terug: (platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte)
     """
 
     # =============================================
@@ -45,9 +46,12 @@ def maak_level(nummer):
         ]
         vlag_x = 1950
         vlag_y = 40
-
-    # =============================================
-    # LEVEL 2: Het Bos
+        powerups = [
+            ExtraLevenPowerUp(200, 152),        # Op het eerste hoge platform
+            SterPowerUp(660, 222),              # Op het platform op hoogte 200
+            SnelheidPowerUp(1030, 242),         # Op een hoog platform halverwege
+            DubbelSprongPowerUp(1580, 222),     # Bijna aan het einde
+        ]
     # Iets moeilijker — bredere gaten, meer vijanden
     # =============================================
     elif nummer == 2:
@@ -83,6 +87,12 @@ def maak_level(nummer):
         ]
         vlag_x = 2350
         vlag_y = 40
+        powerups = [
+            SnelheidPowerUp(160, 172),          # Op hoog platform in het bos
+            DubbelSprongPowerUp(600, 302),      # Op een hoog platform midden
+            SterPowerUp(1130, 222),             # Halverwege het level
+            ExtraLevenPowerUp(1920, 302),       # Bijna aan het einde, hoog
+        ]
 
     # =============================================
     # LEVEL 3: De Bergen
@@ -127,9 +137,12 @@ def maak_level(nummer):
         ]
         vlag_x = 2750
         vlag_y = 40
-
-    # =============================================
-    # LEVEL 4: Het Kasteel
+        powerups = [
+            DubbelSprongPowerUp(120, 182),      # Op eerste hoge platform
+            ExtraLevenPowerUp(1040, 332),       # Op hoog platform midden-links
+            SterPowerUp(1580, 242),             # Gevaarlijk punt: ster helpt!
+            SnelheidPowerUp(2470, 322),         # Bijna aan het einde
+        ]
     # Moeilijk — smalle platforms, veel vijanden
     # =============================================
     elif nummer == 4:
@@ -177,9 +190,13 @@ def maak_level(nummer):
         ]
         vlag_x = 3150
         vlag_y = 40
-
-    # =============================================
-    # LEVEL 5: De Eindbaas
+        powerups = [
+            SterPowerUp(100, 192),              # Direct aan het begin — nodig!
+            DubbelSprongPowerUp(580, 352),      # Op een hoog platform
+            ExtraLevenPowerUp(1450, 362),       # Halverwege, beloont moed
+            SnelheidPowerUp(2300, 362),         # In het moeilijke stuk
+            SterPowerUp(2830, 342),             # Laatste stuk: extra ster
+        ]
     # Heel moeilijk — grote gaten, razendsnelle vijanden
     # =============================================
     elif nummer == 5:
@@ -234,13 +251,22 @@ def maak_level(nummer):
         ]
         vlag_x = 3560
         vlag_y = 40
+        powerups = [
+            ExtraLevenPowerUp(100, 202),        # Eerste platform — extra leven!
+            SterPowerUp(620, 372),              # Gevaarlijk stuk, ster helpt
+            DubbelSprongPowerUp(1170, 272),     # Halverwege
+            SnelheidPowerUp(1810, 232),         # Hoog platform
+            ExtraLevenPowerUp(2340, 382),       # Bijna eindbaas
+            SterPowerUp(2870, 382),             # Laatste kans voor de vlag!
+        ]
 
     else:
         # Onbekend levelnummer — geef lege data terug
         level_breedte = 800
         platforms = []
         vijanden = []
+        powerups = []
         vlag_x = 700
         vlag_y = 40
 
-    return platforms, vijanden, vlag_x, vlag_y, level_breedte
+    return platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte
