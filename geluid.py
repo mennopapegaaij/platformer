@@ -48,27 +48,27 @@ class GeluidManager:
 
     def speel_sprong(self):
         """Sprong-geluid: snel oplopend piepje."""
-        self._speel(self.sprong, volume=0.5)
+        self._speel(self.sprong, volume=1.0)
 
     def speel_vijand_dood(self):
         """Boing-geluid als je op een vijand springt."""
-        self._speel(self.vijand_dood, volume=0.7)
+        self._speel(self.vijand_dood, volume=1.0)
 
     def speel_powerup(self):
         """Glinsterende toon als je een power-up pakt."""
-        self._speel(self.powerup, volume=0.6)
+        self._speel(self.powerup, volume=1.0)
 
     def speel_geraakt(self):
         """Bonk-geluid als je geraakt wordt."""
-        self._speel(self.geraakt, volume=0.8)
+        self._speel(self.geraakt, volume=1.0)
 
     def speel_level_gehaald(self):
         """Vrolijke fanfare als je het level haalt."""
-        self._speel(self.level_gehaald, volume=0.7)
+        self._speel(self.level_gehaald, volume=1.0)
 
     def speel_game_over(self):
         """Droevige tonen als je geen levens meer hebt."""
-        self._speel(self.game_over, volume=0.7)
+        self._speel(self.game_over, volume=1.0)
 
     # =============================================
     # Muziek
@@ -89,7 +89,7 @@ class GeluidManager:
         # Wissel alleen als het een ander level-nummer is
         if nieuw_nummer != self._huidig_muziek_nummer:
             self.stop_muziek()
-            self._muziek_speler = arcade.play_sound(self.muziek_levels[idx], volume=0.3, loop=True)
+            self._muziek_speler = arcade.play_sound(self.muziek_levels[idx], volume=0.9, loop=True)
             self._huidig_muziek_nummer = nieuw_nummer
 
     def stop_muziek(self):

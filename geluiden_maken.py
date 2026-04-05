@@ -98,43 +98,43 @@ print("Geluidseffecten maken...")
 
 # Sprong: snel oplopend piepje
 schrijf_wav("sprong.wav",
-    toon(330, 0.04, 0.4) +
-    toon(440, 0.04, 0.4) +
-    toon(550, 0.06, 0.35))
+    toon(330, 0.04, 0.8) +
+    toon(440, 0.04, 0.8) +
+    toon(550, 0.06, 0.75))
 
 # Vijand dood: vrolijk "boing"
 schrijf_wav("vijand_dood.wav",
-    toon(300, 0.05, 0.5) +
-    toon(400, 0.05, 0.5) +
-    toon(500, 0.08, 0.45) +
-    toon(600, 0.08, 0.4))
+    toon(300, 0.05, 0.9) +
+    toon(400, 0.05, 0.9) +
+    toon(500, 0.08, 0.85) +
+    toon(600, 0.08, 0.8))
 
 # Power-up: glinsterende arpeggio omhoog
 schrijf_wav("powerup.wav",
-    arpeggio([E4, G4, B4, E5, G5], 0.06, 0.45))
+    arpeggio([E4, G4, B4, E5, G5], 0.06, 0.85))
 
 # Geraakt: laag bonk + daling
 schrijf_wav("geraakt.wav",
-    toon(150, 0.05, 0.7) +
-    toon(110, 0.08, 0.6) +
-    toon(80, 0.12, 0.5))
+    toon(150, 0.05, 0.95) +
+    toon(110, 0.08, 0.9) +
+    toon(80, 0.12, 0.85))
 
 # Level gehaald: kleine fanfare omhoog
 schrijf_wav("level_gehaald.wav",
-    toon(C4, 0.1, 0.5) +
-    toon(E4, 0.1, 0.5) +
-    toon(G4, 0.1, 0.5) +
-    toon(C5, 0.25, 0.55) +
+    toon(C4, 0.1, 0.85) +
+    toon(E4, 0.1, 0.85) +
+    toon(G4, 0.1, 0.85) +
+    toon(C5, 0.25, 0.9) +
     rust(0.05) +
-    toon(C5, 0.3, 0.55))
+    toon(C5, 0.3, 0.9))
 
 # Game over: droevige dalende tonen
 schrijf_wav("game_over.wav",
-    toon(G4, 0.18, 0.5) +
-    toon(E4, 0.18, 0.5) +
-    toon(C4, 0.18, 0.5) +
-    toon(A3, 0.3, 0.5) +
-    toon(G3, 0.4, 0.45))
+    toon(G4, 0.18, 0.85) +
+    toon(E4, 0.18, 0.85) +
+    toon(C4, 0.18, 0.85) +
+    toon(A3, 0.3, 0.85) +
+    toon(G3, 0.4, 0.8))
 
 print("  Geluidseffecten klaar!")
 
@@ -286,14 +286,14 @@ muz1_m = melodie([
     (D5, .5), (F5, .5), (D5, .5), (B4, .5),
     (C5, .5), (E5, .5), (G5, .5), (E5, .5),
     (C5, 2),
-], bpm=150, volume=0.30)
+], bpm=150, volume=0.75)
 
 muz1_b = baslijn([
     (C3, 2), (G3, 2), (F3, 2), (G3, 2),
     (C3, 2), (G3, 2), (A3, 2), (C3, 2),
     (C3, 2), (G3, 2), (C3, 2), (G3, 2),
     (C3, 2), (G3, 2), (F3, 2), (C3, 2),
-], bpm=150, volume=0.20)
+], bpm=150, volume=0.55)
 
 schrijf_wav("muziek_level1.wav", meng(muz1_m, muz1_b) * 2)
 print("  muziek_level1.wav klaar! (De Groene Vlakte - vrolijk)")
@@ -325,14 +325,14 @@ muz2_m = melodie([
     (B4, .5), (A4, .5), (G4, .5), (E4, .5),
     (F4, .5), (G4, .5), (A4, .5), (G4, .5),
     (A4, 2),
-], bpm=118, volume=0.30)
+], bpm=118, volume=0.75)
 
 muz2_b = baslijn([
     (A3, 2), (E3, 2), (A3, 2), (E3, 2),
     (A3, 2), (E3, 2), (F3, 2), (C3, 2),
     (A3, 2), (E3, 2), (A3, 2), (G3, 2),
     (A3, 2), (E3, 2), (F3, 2), (A3, 2),
-], bpm=118, volume=0.18)
+], bpm=118, volume=0.50)
 
 schrijf_wav("muziek_level2.wav", meng(muz2_m, muz2_b) * 2)
 print("  muziek_level2.wav klaar! (Het Bos - mysterieus)")
@@ -364,14 +364,14 @@ muz3_m = melodie([
     (G5, 1.5), (E5, .5),
     (F5, .5), (E5, .5), (D5, .5), (C5, .5),
     (G4, 2),
-], bpm=162, volume=0.30)
+], bpm=162, volume=0.75)
 
 muz3_b = baslijn([
     (C3, 2), (C3, 2), (F3, 2), (G3, 2),
     (C3, 2), (G3, 2), (A3, 2), (D3, 2),
     (C3, 2), (C3, 2), (G3, 2), (G3, 2),
     (C3, 2), (C3, 2), (F3, 2), (C3, 2),
-], bpm=162, volume=0.20)
+], bpm=162, volume=0.55)
 
 schrijf_wav("muziek_level3.wav", meng(muz3_m, muz3_b) * 2)
 print("  muziek_level3.wav klaar! (De Bergen - heroïsch)")
@@ -403,14 +403,14 @@ muz4_m = melodie([
     (C5, 1), (B4, 1),
     (A4, .5), (G4, .5), (F4, .5), (E4, .5),
     (A3, 2),
-], bpm=88, volume=0.30)
+], bpm=88, volume=0.75)
 
 muz4_b = baslijn([
     (A3, 2), (E3, 2), (A3, 2), (G3, 2),
     (E3, 2), (A3, 2), (E3, 2), (A3, 2),
     (A3, 2), (G3, 2), (A3, 2), (A3, 2),
     (A3, 2), (E3, 2), (A3, 2), (A3, 2),
-], bpm=88, volume=0.18)
+], bpm=88, volume=0.50)
 
 schrijf_wav("muziek_level4.wav", meng(muz4_m, muz4_b) * 2)
 print("  muziek_level4.wav klaar! (De Nacht - spookachtig)")
@@ -446,14 +446,14 @@ muz5_m = melodie([
     # Finale
     (A5, .5), (G5, .5), (F5, .5), (E5, .5),
     (D5, 2),
-], bpm=185, volume=0.28)
+], bpm=185, volume=0.70)
 
 muz5_b = baslijn([
     (D3, 2), (D3, 2), (E3, 2), (G3, 2),
     (F3, 2), (D3, 2), (A3, 2), (A3, 2),
     (D3, 2), (A3, 2), (F3, 2), (G3, 2),
     (D3, 2), (E3, 2), (F3, 2), (D3, 2),
-], bpm=185, volume=0.18)
+], bpm=185, volume=0.50)
 
 # Drums voor level 5 (kick op 1&3, snare op 2&4)!
 muz5_drums = beat_patroon(32, bpm=185)
@@ -465,4 +465,5 @@ print("  muziek_level5.wav klaar! (De Eindstrijd - episch met drums)")
 
 print()
 print("Klaar! Alle geluiden staan in de map 'geluiden/'.")
+
 
