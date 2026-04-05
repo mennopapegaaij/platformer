@@ -5,6 +5,7 @@
 import arcade
 import levels as levels_module
 import achtergrond as achtergrond_module
+from geluid import geluid as geluid_manager
 from instellingen import (SCHERM_BREEDTE, SCHERM_HOOGTE, SCHERM_TITEL,
                            SPRING_KRACHT, LUCHT_KLEUR, VLAG_KLEUR,
                            VLAG_DOEK_KLEUR, LEVEL_NAMEN, AANTAL_LEVELS)
@@ -21,6 +22,8 @@ class PlatformerSpel(arcade.Window):
         # Maak een camera aan die de speler volgt
         self.camera = arcade.camera.Camera2D()
         self.speler = Speler()
+        # Laad alle geluiden
+        geluid_manager.laad_alles()
 
     def setup(self):
         """Herstart het spel helemaal vanaf level 1."""
@@ -48,6 +51,9 @@ class PlatformerSpel(arcade.Window):
         self.vlag_x = vlag_x
         self.vlag_y = vlag_y
         self.level_breedte = level_breedte
+
+        # Start de juiste muziek voor dit level
+        geluid_manager.speel_muziek(nummer)
 
     def on_draw(self):
         """Teken alles op het scherm."""
@@ -179,27 +185,28 @@ class PlatformerSpel(arcade.Window):
                 powerup.bijwerken()
                 if powerup.raakt_speler(self.speler.x, self.speler.y,
                                         self.speler.breedte, self.speler.hoogte):
-                    powerup.toepassen(self.speler)   # Effect op speler toepassen
-                    powerup.opgepakt = True          # Niet meer tekenen
+                    powerup.toepassen(self.speler)
+                    powerup.opgepakt = True
+                    geluid_manager.speel_powerup()  # 🎵 Power-up geluid!
 
         # --- Vijanden bijwerken en controleren ---
         vijanden_weg = []
-        speler_cx = self.speler.x + self.speler.breedte / 2  # Middenpunt speler
+        speler_cx = self.speler.x + self.speler.breedte / 2
         for vijand in self.vijanden:
-            vijand.bijwerken(speler_cx)  # Geef speler-positie mee (voor JagerVijand)
+            vijand.bijwerken(speler_cx)
 
             # Springt de speler van bovenaf op de vijand?
             if (self.speler.snelheid_y < 0 and
                     vijand.speler_springt_erop(self.speler.x, self.speler.y,
                                                self.speler.breedte, self.speler.hoogte)):
-                # GroteVijand heeft een eigen word_gestompt() methode
                 if hasattr(vijand, 'word_gestompt'):
                     vijand.word_gestompt()
                     if vijand.levens <= 0:
                         vijanden_weg.append(vijand)
                 else:
                     vijanden_weg.append(vijand)
-                self.speler.snelheid_y = SPRING_KRACHT / 2  # Kleine stuiterpons omhoog
+                self.speler.snelheid_y = SPRING_KRACHT / 2
+                geluid_manager.speel_vijand_dood()  # 🎵 Boing!
 
             # Raakt de vijand de speler? Alleen gevaarlijk als de speler NIET onkwetsbaar is!
             elif (not self.speler.is_onkwetsbaar() and
@@ -217,16 +224,21 @@ class PlatformerSpel(arcade.Window):
                 self.speler.y < self.vlag_y + 60):
             if self.huidig_level < AANTAL_LEVELS:
                 self.level_gehaald = True
+                geluid_manager.speel_level_gehaald()  # 🎵 Fanfare!
             else:
                 self.gewonnen = True
+                geluid_manager.speel_level_gehaald()
 
     def _speler_geraakt(self):
         """Verwerk dat de speler geraakt wordt: leven aftrekken of game over."""
         self.speler.levens -= 1
+        geluid_manager.speel_geraakt()  # 🎵 Bonk!
         if self.speler.levens <= 0:
-            self.game_over = True   # Geen levens meer — game over!
+            self.game_over = True
+            geluid_manager.stop_muziek()
+            geluid_manager.speel_game_over()  # 🎵 Game over melodie
         else:
-            self.dood = True        # Nog levens over — level opnieuw
+            self.dood = True
 
     def on_key_press(self, toets, modifiers):
         """Wordt aangeroepen als je een toets indrukt."""
@@ -235,7 +247,11 @@ class PlatformerSpel(arcade.Window):
         elif toets == arcade.key.RIGHT:
             self.speler.rechts_ingedrukt = True
         elif toets == arcade.key.UP or toets == arcade.key.SPACE:
+            voor_sprong = self.speler.staat_op_grond or (
+                self.speler.dubbel_sprong_timer > 0 and not self.speler.heeft_dubbel_gesprongen)
             self.speler.spring()
+            if voor_sprong:
+                geluid_manager.speel_sprong()  # 🎵 Sprong-piepje!
         elif toets == arcade.key.ENTER or toets == arcade.key.NUM_ENTER:
             # ENTER = ga naar het volgende level (als je het huidige level gehaald hebt)
             if self.level_gehaald:
