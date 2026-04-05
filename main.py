@@ -68,6 +68,23 @@ class Platform:
             return True
         return False
 
+    def raakt_van_onder(self, px, py, pw, ph):
+        """Controleer of de speler met zijn hoofd tegen de onderkant stoot."""
+        speler_links = px
+        speler_rechts = px + pw
+        speler_boven = py + ph
+        platform_links = self.x
+        platform_rechts = self.x + self.breedte
+        platform_onder = self.y  # Onderkant van het platform
+
+        # Hoofd van de speler raakt de onderkant van het platform
+        if (speler_rechts > platform_links and
+                speler_links < platform_rechts and
+                speler_boven >= platform_onder and
+                py < platform_onder):
+            return True
+        return False
+
 
 class Vijand:
     """Een vijand die heen en weer loopt."""
@@ -271,12 +288,20 @@ class PlatformerSpel(arcade.Window):
 
         # --- Botsing met platforms ---
         for platform in self.platforms:
+            # Landen op het platform (van bovenaf)
             if platform.raakt(self.speler_x, self.speler_y,
                               self.speler_breedte, self.speler_hoogte):
                 # Zet de speler precies op het platform
                 self.speler_y = platform.y + platform.hoogte
                 self.speler_snelheid_y = 0
                 self.staat_op_grond = True
+            # Hoofd stoot tegen de onderkant (van onderaf springen)
+            elif (self.speler_snelheid_y > 0 and
+                  platform.raakt_van_onder(self.speler_x, self.speler_y,
+                                           self.speler_breedte, self.speler_hoogte)):
+                # Stoot hoofd — zet de speler net onder het platform en laat vallen
+                self.speler_y = platform.y - self.speler_hoogte
+                self.speler_snelheid_y = 0
 
         # --- Valt de speler in een kuil? ---
         midden_x = self.speler_x + self.speler_breedte / 2
