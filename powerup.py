@@ -5,8 +5,9 @@
 import arcade
 import math
 
-# Hoelang een power-up effect duurt (in frames, bij 60fps = 5 seconden)
-EFFECT_DUUR = 300
+# Hoelang een power-up effect duurt (in frames, bij 60fps)
+# 1800 frames = 30 seconden
+EFFECT_DUUR = 1800
 
 
 class PowerUp:
