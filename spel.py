@@ -273,10 +273,11 @@ class PlatformerSpel(arcade.Window):
                 geluid_manager.speel_level_gehaald()
 
     def _voeg_punt_toe(self):
-        """Geef de speler 1 punt. Elke 10 punten gaat hij iets sneller!"""
+        """Geef de speler 1 punt. Elke 10 punten: sneller én hoger springen!"""
         self.punten += 1
-        # Elke 10 punten: snelheidsbonus verhogen
-        self.speler.snelheid_bonus = (self.punten // 10)
+        bonus = self.punten // 10
+        self.speler.snelheid_bonus = bonus
+        self.speler.sprong_bonus = bonus  # Elke 10 punten ook iets hoger springen
 
     def _speler_geraakt(self):
         """Verwerk dat de speler geraakt wordt: leven aftrekken of game over."""

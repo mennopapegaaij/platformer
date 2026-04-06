@@ -44,8 +44,9 @@ class Speler:
         # Richting waar de speler naar kijkt (True = rechts, False = links)
         self.kijkt_rechts = True
 
-        # Extra snelheid door punten (elke 10 punten = +1 snelheid)
+        # Extra snelheid en spronghoogte door punten (elke 10 punten = +1)
         self.snelheid_bonus = 0
+        self.sprong_bonus = 0
 
         # Knippercyclus voor als de speler onkwetsbaar is
         self._knippering = 0
@@ -130,13 +131,12 @@ class Speler:
                 self.snelheid_y = 0
 
     def spring(self):
-        """Laat de speler springen — of een tweede keer als de power-up actief is."""
+        """Laat de speler springen — hoger naarmate je meer punten hebt!"""
+        sprongkracht = SPRING_KRACHT + self.sprong_bonus
         if self.staat_op_grond:
-            # Gewone sprong
-            self.snelheid_y = SPRING_KRACHT
+            self.snelheid_y = sprongkracht
         elif (self.dubbel_sprong_timer > 0 and not self.heeft_dubbel_gesprongen):
-            # Extra sprong in de lucht! (alleen als power-up actief en nog niet gebruikt)
-            self.snelheid_y = SPRING_KRACHT
+            self.snelheid_y = sprongkracht
             self.heeft_dubbel_gesprongen = True
 
     def is_gevallen(self):
