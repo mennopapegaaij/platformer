@@ -183,6 +183,8 @@ class Kogel:
         arcade.draw_circle_filled(self.x, self.y, self.STRAAL, arcade.color.YELLOW)
         arcade.draw_circle_filled(self.x, self.y, self.STRAAL - 2, arcade.color.WHITE)
 
+
+class ExtraLevenPowerUp(PowerUp):
     """❤️ Extra leven — je krijgt een extra kans!"""
 
     def toepassen(self, speler):
