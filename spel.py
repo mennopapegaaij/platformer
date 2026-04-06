@@ -10,6 +10,7 @@ from instellingen import (SCHERM_BREEDTE, SCHERM_HOOGTE, SCHERM_TITEL,
                            SPRING_KRACHT, LUCHT_KLEUR, VLAG_KLEUR,
                            VLAG_DOEK_KLEUR, LEVEL_NAMEN, AANTAL_LEVELS)
 from speler import Speler
+from powerup import Kogel
 
 
 class PlatformerSpel(arcade.Window):
@@ -47,10 +48,11 @@ class PlatformerSpel(arcade.Window):
         platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte = levels_module.maak_level(nummer)
         self.platforms = platforms
         self.vijanden = vijanden
-        self.powerups = powerups    # Power-ups in dit level
+        self.powerups = powerups
         self.vlag_x = vlag_x
         self.vlag_y = vlag_y
         self.level_breedte = level_breedte
+        self.kogels = []   # Lijst van actieve kogels
 
         # Start de juiste muziek voor dit level
         geluid_manager.speel_muziek(nummer)
@@ -81,6 +83,10 @@ class PlatformerSpel(arcade.Window):
 
             # Teken de vlag
             self._teken_vlag(self.vlag_x, self.vlag_y)
+
+            # Teken de kogels
+            for kogel in self.kogels:
+                kogel.teken()
 
             # Teken de speler
             self.speler.teken()
@@ -153,6 +159,9 @@ class PlatformerSpel(arcade.Window):
             x += 30
         if self.speler.dubbel_sprong_timer > 0:
             arcade.draw_text("🦘", x, y, arcade.color.WHITE, 18)
+            x += 30
+        if self.speler.schiet_timer > 0:
+            arcade.draw_text("🔫", x, y, arcade.color.WHITE, 18)
 
     def on_update(self, delta_time):
         """Werk het spel bij — dit wordt heel snel herhaald."""
@@ -218,6 +227,23 @@ class PlatformerSpel(arcade.Window):
         for vijand in vijanden_weg:
             self.vijanden.remove(vijand)
 
+        # --- Kogels bijwerken en vijanden raken ---
+        for kogel in self.kogels:
+            kogel.bijwerken(self.level_breedte)
+            for vijand in self.vijanden[:]:   # kopie zodat we veilig kunnen verwijderen
+                if kogel.actief and kogel.raakt_vijand(vijand):
+                    kogel.actief = False
+                    if hasattr(vijand, 'word_gestompt'):
+                        vijand.word_gestompt()
+                        if vijand.levens <= 0:
+                            self.vijanden.remove(vijand)
+                    else:
+                        self.vijanden.remove(vijand)
+                    geluid_manager.speel_vijand_dood()
+
+        # Verwijder kogels die niet meer actief zijn
+        self.kogels = [k for k in self.kogels if k.actief]
+
         # --- Heeft de speler de vlag bereikt? ---
         if (self.speler.x + self.speler.breedte > self.vlag_x and
                 self.speler.x < self.vlag_x + 10 and
@@ -252,7 +278,15 @@ class PlatformerSpel(arcade.Window):
             self.speler.spring()
             if voor_sprong:
                 geluid_manager.speel_sprong()  # 🎵 Sprong-piepje!
-        elif toets == arcade.key.ENTER or toets == arcade.key.NUM_ENTER:
+        elif toets == arcade.key.Z:
+            # Z = schieten (alleen als schiet power-up actief is)
+            if self.speler.schiet_timer > 0 and not self.gewonnen and not self.game_over and not self.dood:
+                richting = 1 if self.speler.kijkt_rechts else -1
+                # Kogel begint aan de zijkant van de speler (neus-hoogte)
+                kogel_x = (self.speler.x + self.speler.breedte + 4 if richting == 1
+                           else self.speler.x - 4)
+                kogel_y = self.speler.y + self.speler.hoogte // 2
+                self.kogels.append(Kogel(kogel_x, kogel_y, richting))
             # ENTER = ga naar het volgende level (als je het huidige level gehaald hebt)
             if self.level_gehaald:
                 self.huidig_level += 1

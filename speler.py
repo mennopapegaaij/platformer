@@ -36,9 +36,13 @@ class Speler:
         self.onkwetsbaar_timer = 0      # ⭐ Ster: niet geraakt kunnen worden
         self.snelheid_boost_timer = 0   # 💨 Snelheid: dubbel zo snel
         self.dubbel_sprong_timer = 0    # 🦘 Dubbel springen: nog een keer springen
+        self.schiet_timer = 0           # 🔫 Schieten: kogels afschieten met Z
 
         # Heeft de speler zijn extra sprong al gebruikt?
         self.heeft_dubbel_gesprongen = False
+
+        # Richting waar de speler naar kijkt (True = rechts, False = links)
+        self.kijkt_rechts = True
 
         # Knippercyclus voor als de speler onkwetsbaar is
         self._knippering = 0
@@ -56,6 +60,7 @@ class Speler:
         self.onkwetsbaar_timer = 0
         self.snelheid_boost_timer = 0
         self.dubbel_sprong_timer = 0
+        self.schiet_timer = 0
         self.heeft_dubbel_gesprongen = False
 
     def volledig_reset(self):
@@ -69,13 +74,15 @@ class Speler:
         # Timers aftikken
         if self.onkwetsbaar_timer > 0:
             self.onkwetsbaar_timer -= 1
-            self._knippering = (self._knippering + 1) % 6  # Knippert snel
+            self._knippering = (self._knippering + 1) % 6
         if self.snelheid_boost_timer > 0:
             self.snelheid_boost_timer -= 1
         if self.dubbel_sprong_timer > 0:
             self.dubbel_sprong_timer -= 1
             if self.dubbel_sprong_timer == 0:
-                self.heeft_dubbel_gesprongen = False  # Effect voorbij: reset
+                self.heeft_dubbel_gesprongen = False
+        if self.schiet_timer > 0:
+            self.schiet_timer -= 1
 
         # Bepaal de snelheid (dubbel als snelheidsboost actief is)
         snelheid = SPELER_SNELHEID * 2 if self.snelheid_boost_timer > 0 else SPELER_SNELHEID
@@ -83,8 +90,10 @@ class Speler:
         # Horizontale beweging
         if self.links_ingedrukt:
             self.snelheid_x = -snelheid
+            self.kijkt_rechts = False   # Speler kijkt naar links
         elif self.rechts_ingedrukt:
             self.snelheid_x = snelheid
+            self.kijkt_rechts = True    # Speler kijkt naar rechts
         else:
             self.snelheid_x = 0
 

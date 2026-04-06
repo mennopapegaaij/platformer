@@ -129,7 +129,60 @@ class DubbelSprongPowerUp(PowerUp):
         arcade.draw_text("2x", cx - 8, cy - 12, arcade.color.BLUE, 9, bold=True)
 
 
-class ExtraLevenPowerUp(PowerUp):
+class SchietPowerUp(PowerUp):
+    """🔫 Schieten — druk op Z om kogels te schieten!"""
+
+    def toepassen(self, speler):
+        speler.schiet_timer = EFFECT_DUUR
+
+    def teken(self):
+        y_extra = self._wiebel_y()
+        x = self.x
+        y = self.y + y_extra
+
+        # Teken een simpel pistool-silhouet (oranje/rood)
+        # Loop (cilinder)
+        arcade.draw_lrbt_rectangle_filled(x + 2, x + 24, y + 12, y + 19, arcade.color.ORANGE)
+        # Handvat
+        arcade.draw_lrbt_rectangle_filled(x + 14, x + 22, y + 3, y + 13, arcade.color.ORANGE)
+        # Rand
+        arcade.draw_lrbt_rectangle_outline(x + 2, x + 24, y + 12, y + 19, arcade.color.RED, 2)
+        arcade.draw_lrbt_rectangle_outline(x + 14, x + 22, y + 3, y + 13, arcade.color.RED, 2)
+        # Klein bolletje als kogel voor het pistool
+        arcade.draw_circle_filled(x + 3, y + 15, 4, arcade.color.YELLOW)
+
+
+class Kogel:
+    """Een kogel die de speler schiet. Vliegt horizontaal en raakt vijanden."""
+
+    SNELHEID = 10   # Hoe snel de kogel vliegt (pixels per frame)
+    STRAAL = 5      # Grootte van de kogel
+
+    def __init__(self, x, y, richting):
+        # Richting: +1 = naar rechts, -1 = naar links
+        self.x = x
+        self.y = y
+        self.richting = richting
+        self.actief = True   # False = wegdoen
+
+    def bijwerken(self, level_breedte):
+        """Beweeg de kogel en check of hij buiten het scherm is."""
+        self.x += self.SNELHEID * self.richting
+        if self.x < 0 or self.x > level_breedte:
+            self.actief = False
+
+    def raakt_vijand(self, vijand):
+        """Controleer of de kogel een vijand raakt."""
+        return (self.x + self.STRAAL > vijand.x and
+                self.x - self.STRAAL < vijand.x + vijand.breedte and
+                self.y + self.STRAAL > vijand.y and
+                self.y - self.STRAAL < vijand.y + vijand.hoogte)
+
+    def teken(self):
+        """Teken de kogel als een glanzend bolletje."""
+        arcade.draw_circle_filled(self.x, self.y, self.STRAAL, arcade.color.YELLOW)
+        arcade.draw_circle_filled(self.x, self.y, self.STRAAL - 2, arcade.color.WHITE)
+
     """❤️ Extra leven — je krijgt een extra kans!"""
 
     def toepassen(self, speler):
