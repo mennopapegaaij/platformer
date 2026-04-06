@@ -282,11 +282,11 @@ class PlatformerSpel(arcade.Window):
             # Z = schieten (alleen als schiet power-up actief is)
             if self.speler.schiet_timer > 0 and not self.gewonnen and not self.game_over and not self.dood:
                 richting = 1 if self.speler.kijkt_rechts else -1
-                # Kogel begint aan de zijkant van de speler (neus-hoogte)
                 kogel_x = (self.speler.x + self.speler.breedte + 4 if richting == 1
                            else self.speler.x - 4)
                 kogel_y = self.speler.y + self.speler.hoogte // 2
                 self.kogels.append(Kogel(kogel_x, kogel_y, richting))
+        elif toets == arcade.key.ENTER or toets == arcade.key.NUM_ENTER:
             # ENTER = ga naar het volgende level (als je het huidige level gehaald hebt)
             if self.level_gehaald:
                 self.huidig_level += 1
