@@ -44,6 +44,9 @@ class Speler:
         # Richting waar de speler naar kijkt (True = rechts, False = links)
         self.kijkt_rechts = True
 
+        # Extra snelheid door punten (elke 10 punten = +1 snelheid)
+        self.snelheid_bonus = 0
+
         # Knippercyclus voor als de speler onkwetsbaar is
         self._knippering = 0
 
@@ -84,8 +87,10 @@ class Speler:
         if self.schiet_timer > 0:
             self.schiet_timer -= 1
 
-        # Bepaal de snelheid (dubbel als snelheidsboost actief is)
-        snelheid = SPELER_SNELHEID * 2 if self.snelheid_boost_timer > 0 else SPELER_SNELHEID
+        # Bepaal de snelheid: normaal + snelheidsboost power-up + punten-bonus
+        snelheid = SPELER_SNELHEID + self.snelheid_bonus
+        if self.snelheid_boost_timer > 0:
+            snelheid *= 2   # Dubbel bij snelheidsboost power-up
 
         # Horizontale beweging
         if self.links_ingedrukt:

@@ -29,7 +29,8 @@ class PlatformerSpel(arcade.Window):
     def setup(self):
         """Herstart het spel helemaal vanaf level 1."""
         self.huidig_level = 1
-        self.speler.volledig_reset()  # Ook levens resetten bij nieuw spel
+        self.punten = 0                  # Punten resetten bij nieuw spel
+        self.speler.volledig_reset()
         self.maak_level(1)
 
     def maak_level(self, nummer):
@@ -41,8 +42,12 @@ class PlatformerSpel(arcade.Window):
         # Spelstatus resetten
         self.gewonnen = False
         self.dood = False
-        self.level_gehaald = False  # Wordt True als de speler de vlag raakt
-        self.game_over = False       # Wordt True als de speler geen levens meer heeft
+        self.level_gehaald = False
+        self.game_over = False
+
+        # Punten worden NIET gereset bij level wisselen — alleen bij nieuw spel!
+        if not hasattr(self, 'punten'):
+            self.punten = 0
 
         # Haal de level-gegevens op uit levels.py
         platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte = levels_module.maak_level(nummer)
@@ -97,6 +102,14 @@ class PlatformerSpel(arcade.Window):
         naam = LEVEL_NAMEN.get(self.huidig_level, "")
         arcade.draw_text(f"Level {self.huidig_level}: {naam}",
                          10, SCHERM_HOOGTE - 30, arcade.color.WHITE, 16, bold=True)
+
+        # Punten rechtsboven
+        snelheid_extra = self.speler.snelheid_bonus
+        punten_tekst = f"⭐ {self.punten} punten"
+        if snelheid_extra > 0:
+            punten_tekst += f"  💨 +{snelheid_extra} snelheid"
+        arcade.draw_text(punten_tekst, SCHERM_BREEDTE - 280, SCHERM_HOOGTE - 30,
+                         arcade.color.YELLOW, 16, bold=True)
 
         # Levens weergeven (hartjes)
         self._teken_levens_hud()
@@ -212,8 +225,10 @@ class PlatformerSpel(arcade.Window):
                     vijand.word_gestompt()
                     if vijand.levens <= 0:
                         vijanden_weg.append(vijand)
+                        self._voeg_punt_toe()   # 🏆 Punt voor stompen!
                 else:
                     vijanden_weg.append(vijand)
+                    self._voeg_punt_toe()       # 🏆 Punt voor stompen!
                 self.speler.snelheid_y = SPRING_KRACHT / 2
                 geluid_manager.speel_vijand_dood()  # 🎵 Boing!
 
@@ -230,15 +245,17 @@ class PlatformerSpel(arcade.Window):
         # --- Kogels bijwerken en vijanden raken ---
         for kogel in self.kogels:
             kogel.bijwerken(self.level_breedte)
-            for vijand in self.vijanden[:]:   # kopie zodat we veilig kunnen verwijderen
+            for vijand in self.vijanden[:]:
                 if kogel.actief and kogel.raakt_vijand(vijand):
                     kogel.actief = False
                     if hasattr(vijand, 'word_gestompt'):
                         vijand.word_gestompt()
                         if vijand.levens <= 0:
                             self.vijanden.remove(vijand)
+                            self._voeg_punt_toe()   # 🏆 Punt voor kogel!
                     else:
                         self.vijanden.remove(vijand)
+                        self._voeg_punt_toe()       # 🏆 Punt voor kogel!
                     geluid_manager.speel_vijand_dood()
 
         # Verwijder kogels die niet meer actief zijn
@@ -254,6 +271,12 @@ class PlatformerSpel(arcade.Window):
             else:
                 self.gewonnen = True
                 geluid_manager.speel_level_gehaald()
+
+    def _voeg_punt_toe(self):
+        """Geef de speler 1 punt. Elke 10 punten gaat hij iets sneller!"""
+        self.punten += 1
+        # Elke 10 punten: snelheidsbonus verhogen
+        self.speler.snelheid_bonus = (self.punten // 10)
 
     def _speler_geraakt(self):
         """Verwerk dat de speler geraakt wordt: leven aftrekken of game over."""
