@@ -71,6 +71,9 @@ class Speler:
         """Reset alles inclusief levens (voor een nieuw spel)."""
         self.reset()
         self.levens = LEVENS_BEGIN
+        # Bonussen ook resetten — anders is de speler na game over nog steeds snel
+        self.snelheid_bonus = 0
+        self.sprong_bonus = 0
 
     def bijwerken(self, level_breedte, platforms):
         """Beweeg de speler en controleer botsingen met platforms."""
