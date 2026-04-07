@@ -387,3 +387,165 @@ class JagerVijand(Vijand):
         oog_kleur = arcade.color.RED if self._jaagt else OOG_KLEUR
         arcade.draw_circle_filled(cx - 8, y + h - 8, 4, oog_kleur)
         arcade.draw_circle_filled(cx + 8, y + h - 8, 4, oog_kleur)
+
+
+# =============================================
+# 👑 EINDBAAS
+# Een reusachtige baas die voor je WEGRENT als je dichtbij komt!
+# Je hebt minimaal 70 punten nodig om hem bij te houden.
+# Stomp hem 3 keer om te winnen!
+# =============================================
+class EindBaas(Vijand):
+    """
+    De grote eindbaas! Hij is enorm, heeft 3 levens,
+    en rent weg als de speler te dichtbij komt.
+    Met meer punten (hogere snelheid) kun je hem inhalen!
+    """
+
+    VLUCHT_AFSTAND = 350    # Binnen hoeveel pixels begint hij te vluchten?
+    VLUCHT_SNELHEID = 11    # Hoe snel hij wegrent (speler heeft 70+ punten nodig!)
+    WANDEL_SNELHEID = 1.5   # Hoe snel hij rondloopt als je ver weg bent
+
+    def __init__(self, x, y, links_grens, rechts_grens):
+        super().__init__(x, y, links_grens, rechts_grens, snelheid=self.WANDEL_SNELHEID)
+        self.breedte = 80       # Heel groot!
+        self.hoogte = 80
+        self.levens = 3         # Moet 3 keer gestompt worden
+        self._vlucht_modus = False      # Vlucht hij nu?
+        self._woede = 0                 # Knippert als hij geraakt is
+        self._adem_teller = 0           # Voor de animatie (hijgt/beweegt)
+        self._richting = 1              # 1 = rechts, -1 = links
+
+    def word_gestompt(self):
+        """Verliest een leven — wordt sneller en bozer na elke treffer!"""
+        self.levens -= 1
+        self._woede = 45   # Knippert 45 frames lang
+        # Na elk leven iets sneller wegrennen!
+        extra = (3 - self.levens) * 1.5
+        self.VLUCHT_SNELHEID = 11 + extra
+
+    def bijwerken(self, speler_x=None):
+        """
+        Wandelt rustig als de speler ver weg is.
+        Rent weg als de speler te dichtbij komt!
+        """
+        self._adem_teller += 0.08
+
+        if speler_x is not None:
+            midden_x = self.x + self.breedte / 2
+            afstand = speler_x - midden_x   # Positief = speler rechts van baas
+
+            if abs(afstand) < self.VLUCHT_AFSTAND:
+                # VLUCHTEN! Ren de andere kant op
+                self._vlucht_modus = True
+                if afstand > 0:
+                    # Speler rechts → baas rent naar links
+                    self._richting = -1
+                    self.x -= self.VLUCHT_SNELHEID
+                else:
+                    # Speler links → baas rent naar rechts
+                    self._richting = 1
+                    self.x += self.VLUCHT_SNELHEID
+            else:
+                # Wandel rustig heen en weer
+                self._vlucht_modus = False
+                self.x += self._richting * self.WANDEL_SNELHEID
+
+        # Omdraaien bij de grenzen
+        if self.x <= self.links_grens:
+            self.x = self.links_grens
+            self._richting = 1
+        if self.x + self.breedte >= self.rechts_grens:
+            self.x = self.rechts_grens - self.breedte
+            self._richting = -1
+
+        # Woede-timer aftikken
+        if self._woede > 0:
+            self._woede -= 1
+
+    def teken(self):
+        """Teken de grote eindbaas — donkerpaars met een kroon en een eng gezicht."""
+        x, y = self.x, self.y
+        w, h = self.breedte, self.hoogte
+        cx = x + w // 2
+
+        # Lichte ademhalingsanimatie (groter/kleiner)
+        adem = math.sin(self._adem_teller) * 2
+
+        # Gloeien als hij vlucht (rode gloed rondom hem)
+        if self._vlucht_modus:
+            arcade.draw_ellipse_filled(cx, y + h / 2, w + 20 + adem, h + 20 + adem,
+                                       (200, 0, 0, 60))
+
+        # Lijf — donkerpaars, knippert oranje als hij geraakt is
+        if self._woede > 0 and self._woede % 6 < 3:
+            kleur = (255, 100, 0)
+        else:
+            kleur = (100, 0, 160)
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, kleur)
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (60, 0, 100), 4)
+
+        # Poten (kleine blokjes onderaan)
+        poot_kleur = (80, 0, 130)
+        arcade.draw_lrbt_rectangle_filled(x + 8, x + 24, y - 10, y + 4, poot_kleur)
+        arcade.draw_lrbt_rectangle_filled(x + w - 24, x + w - 8, y - 10, y + 4, poot_kleur)
+
+        # Armen (steken opzij uit)
+        arcade.draw_lrbt_rectangle_filled(x - 14, x + 2, y + h - 30, y + h - 16, poot_kleur)
+        arcade.draw_lrbt_rectangle_filled(x + w - 2, x + w + 14, y + h - 30, y + h - 16, poot_kleur)
+
+        # Buik (lichte vlek in het midden)
+        arcade.draw_ellipse_filled(cx, y + h // 2 - 5, w * 0.5, h * 0.4, (130, 20, 200))
+
+        # Kroon boven op het hoofd 👑
+        kroon_y = y + h
+        arcade.draw_lrbt_rectangle_filled(x + 10, x + w - 10, kroon_y, kroon_y + 12,
+                                          (255, 215, 0))
+        # Punten van de kroon
+        for px_k in [x + 12, cx - 10, cx, cx + 10, x + w - 12]:
+            arcade.draw_triangle_filled(px_k - 6, kroon_y + 12,
+                                        px_k + 6, kroon_y + 12,
+                                        px_k, kroon_y + 24,
+                                        (255, 215, 0))
+        # Juwelen op de kroon
+        for px_k, kleur_j in [(cx - 18, arcade.color.RED),
+                               (cx, arcade.color.BLUE),
+                               (cx + 18, arcade.color.GREEN)]:
+            arcade.draw_circle_filled(px_k, kroon_y + 6, 4, kleur_j)
+
+        # Ogen (groot en eng — kijken altijd naar de speler via _richting)
+        oog_y = y + h - 18
+        oog_r = 10
+        arcade.draw_circle_filled(cx - 18, oog_y, oog_r, (255, 255, 200))
+        arcade.draw_circle_filled(cx + 18, oog_y, oog_r, (255, 255, 200))
+        # Pupillen kijken de speler aan
+        pupil_dx = 3 * (-self._richting)   # Kijkt altijd NAAR de speler
+        arcade.draw_circle_filled(cx - 18 + pupil_dx, oog_y, 5, (180, 0, 0))
+        arcade.draw_circle_filled(cx + 18 + pupil_dx, oog_y, 5, (180, 0, 0))
+        # Lichtpuntjes
+        arcade.draw_circle_filled(cx - 16 + pupil_dx, oog_y + 2, 1, arcade.color.WHITE)
+        arcade.draw_circle_filled(cx + 20 + pupil_dx, oog_y + 2, 1, arcade.color.WHITE)
+
+        # Wenkbrauwen — super boos!
+        dikte = 4
+        arcade.draw_line(cx - 28, oog_y + 14, cx - 8, oog_y + 8, OOG_KLEUR, dikte)
+        arcade.draw_line(cx + 8, oog_y + 8, cx + 28, oog_y + 14, OOG_KLEUR, dikte)
+
+        # Mond — grote grijnzende tanden
+        arcade.draw_arc_outline(cx, y + 14, 30, 16, OOG_KLEUR, 200, 340, 3)
+        # Tanden
+        for tx in [cx - 10, cx - 2, cx + 6]:
+            arcade.draw_lrbt_rectangle_filled(tx, tx + 6, y + 7, y + 16, arcade.color.WHITE)
+
+        # Levens-indicator boven de kroon (rode hartjes)
+        for i in range(self.levens):
+            hx = cx - (self.levens - 1) * 10 + i * 20
+            arcade.draw_circle_filled(hx - 4, y + h + 40, 5, arcade.color.RED)
+            arcade.draw_circle_filled(hx + 4, y + h + 40, 5, arcade.color.RED)
+            arcade.draw_triangle_filled(hx - 9, y + h + 40, hx + 9, y + h + 40,
+                                        hx, y + h + 32, arcade.color.RED)
+
+        # "VLUCHT!"-tekst als hij rent (erboven)
+        if self._vlucht_modus:
+            arcade.draw_text("VLUCHT!", cx - 28, y + h + 52,
+                             arcade.color.YELLOW, 12, bold=True)

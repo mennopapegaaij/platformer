@@ -3,7 +3,7 @@
 # Wil je een nieuw level toevoegen? Voeg hier een nieuw blok toe!
 
 from platforms import Platform
-from vijand import Vijand, VliegendVijand, SpringendVijand, GroteVijand, GeestVijand, JagerVijand
+from vijand import Vijand, VliegendVijand, SpringendVijand, GroteVijand, GeestVijand, JagerVijand, EindBaas
 from powerup import SterPowerUp, SnelheidPowerUp, DubbelSprongPowerUp, ExtraLevenPowerUp, SchietPowerUp
 
 
@@ -484,6 +484,46 @@ def maak_level(nummer):
             SterPowerUp(2590, 272),             # Bescherming bij eindbaas-aanloop
             SchietPowerUp(3165, 272),           # Laatste stuk: schiet je vrij baan!
             ExtraLevenPowerUp(3500, 62),        # Net voor de eindbaas-groep
+        ]
+
+    # =============================================
+    # LEVEL 9: De Grote Achtervolging
+    # Je hebt minimaal 70 punten nodig (snelheidsbonus +7, snelheid=11)!
+    # De eindbaas heeft snelheid 11 — je moet hem inhalen en 3x stompen!
+    # =============================================
+    elif nummer == 9:
+        level_breedte = 3000
+        platforms = [
+            # Lange doorlopende grond — de achtervolging speelt zich af op één vlak!
+            Platform(0, 0, 3000, 40),
+
+            # Wat verhoogde platforms om de baas te stoppen (hij rent er niet op!)
+            Platform(300, 130, 120, 20),
+            Platform(700, 160, 120, 20),
+            Platform(1100, 130, 120, 20),
+            Platform(1500, 160, 120, 20),
+            Platform(1900, 130, 120, 20),
+            Platform(2300, 160, 120, 20),
+
+            # Een paar hogere platforms voor gevorderde spelers
+            Platform(500, 260, 100, 20),
+            Platform(1300, 260, 100, 20),
+            Platform(2100, 260, 100, 20),
+        ]
+        # De eindbaas staat midden in het level — klaar om te vluchten!
+        vijanden = [
+            EindBaas(1400, 40, 100, 2900),
+        ]
+        vlag_x = 2960
+        vlag_y = 40
+        powerups = [
+            SchietPowerUp(80, 62),              # Begin: schiet voor punten!
+            SnelheidPowerUp(300, 152),          # Snelheid nodig voor de jacht
+            ExtraLevenPowerUp(700, 182),        # Extra kans
+            SchietPowerUp(1100, 152),           # Midden: meer punten
+            DubbelSprongPowerUp(1500, 182),     # Dubbele sprong voor platforms
+            ExtraLevenPowerUp(1900, 152),       # Bijna eindstreep
+            SterPowerUp(2300, 182),             # Bescherming aan het eind
         ]
 
     else:

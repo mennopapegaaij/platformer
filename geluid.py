@@ -28,7 +28,7 @@ class GeluidManager:
             # Elk level heeft zijn eigen muziek!
             self.muziek_levels = [
                 arcade.load_sound(f"{map_naam}/muziek_level{i}.wav")
-                for i in range(1, 9)
+                for i in range(1, 10)
             ]
             self._geladen = True
             print("Geluiden geladen!")

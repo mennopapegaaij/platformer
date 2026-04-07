@@ -26,8 +26,10 @@ def teken_achtergrond(niveau, breedte, hoogte):
         _level6_snelheids_tempel(breedte, hoogte)
     elif niveau == 7:
         _level7_de_wolken(breedte, hoogte)
-    else:
+    elif niveau == 8:
         _level8_ultieme_dak(breedte, hoogte)
+    else:
+        _level9_grote_achtervolging(breedte, hoogte)
 
 
 # =============================================
@@ -356,4 +358,49 @@ def _level8_ultieme_dak(w, h):
     # Vallende meteoor (decoratief)
     arcade.draw_line(180, h - 80, 80, h - 160, (255, 200, 100), 3)
     arcade.draw_circle_filled(180, h - 80, 5, (255, 220, 150))
+
+
+# =============================================
+# LEVEL 9: De Grote Achtervolging
+# Dramatisch en spannend — rode lucht, stofwolken
+# De eindbaas jaagt (of vlucht)! Duister en gevaarlijk!
+# =============================================
+def _level9_grote_achtervolging(w, h):
+    # Lucht: dramatisch donkerrood verloop
+    arcade.draw_lrbt_rectangle_filled(0, w, h // 2, h, (80, 10, 10))
+    arcade.draw_lrbt_rectangle_filled(0, w, 0, h // 2, (50, 5, 5))
+
+    # Donkere verre bergen als silhouet
+    for x, breedte, hoogte in [(0, 350, 180), (250, 300, 200),
+                                (480, 350, 160), (700, 320, 190),
+                                (w - 350, 350, 175), (w - 100, 280, 185)]:
+        arcade.draw_triangle_filled(x, 40, x + breedte, 40,
+                                    x + breedte // 2, 40 + hoogte, (30, 0, 0))
+
+    # Omineuze rode zon/bloedmaan achter de bergen
+    arcade.draw_circle_filled(w // 2, h // 2, 80, (150, 20, 0))
+    arcade.draw_circle_filled(w // 2, h // 2, 70, (180, 40, 0))
+    # Gloeiring rondom de zon
+    arcade.draw_circle_outline(w // 2, h // 2, 90, (100, 10, 0), 8)
+    arcade.draw_circle_outline(w // 2, h // 2, 110, (60, 5, 0), 4)
+
+    # Stofwolken aan de grond (de achtervolging stoft op!)
+    import random
+    rng = random.Random(77)
+    for _ in range(8):
+        x = rng.randint(0, w)
+        br = rng.randint(120, 250)
+        arcade.draw_ellipse_filled(x, 50, br, 40, (80, 30, 10))
+
+    # Vuursporen / stofstrepen (snelheidseffect)
+    for x, y1, y2 in [(100, 60, 80), (250, 55, 75), (500, 65, 85),
+                       (750, 58, 78), (w - 200, 62, 82)]:
+        arcade.draw_line(x, y1, x + 60, y2, (200, 80, 0), 3)
+        arcade.draw_line(x + 10, y1 + 5, x + 50, y2 + 3, (255, 150, 50), 2)
+
+    # Donkere dreigingswolken bovenin
+    for x in range(0, w + 200, 200):
+        arcade.draw_ellipse_filled(x, h - 40, 220, 70, (40, 5, 5))
+        arcade.draw_ellipse_filled(x - 60, h - 50, 160, 55, (30, 3, 3))
+        arcade.draw_ellipse_filled(x + 60, h - 45, 170, 60, (35, 4, 4))
 

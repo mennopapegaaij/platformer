@@ -61,7 +61,7 @@ class PlatformerSpel(arcade.Window):
 
         # Bepaal of de speler genoeg punten heeft voor dit bonus-level
         # Toon anders een waarschuwing (gedurende 240 frames = 4 seconden)
-        benodigde_punten = {6: 10, 7: 20, 8: 30}
+        benodigde_punten = {6: 10, 7: 20, 8: 30, 9: 70}
         if nummer in benodigde_punten and self.punten < benodigde_punten[nummer]:
             self._waarschuwing = (f"⚠️  Let op! Dit level heeft minimaal "
                                   f"{benodigde_punten[nummer]} punten nodig. "

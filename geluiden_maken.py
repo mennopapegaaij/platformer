@@ -606,6 +606,59 @@ schrijf_wav("muziek_level8.wav", muz8 * 2)
 print("  muziek_level8.wav klaar! (Het Ultieme Dak - episch met drums)")
 
 
+# ──────────────────────────────────────────────
+# LEVEL 9: De Grote Achtervolging
+# Spannende achtervolging — hartslag-ritme, 160 BPM.
+# Donker en dreigend, maar ook razend snel!
+# Klinkt als: DE EINDBAAS RENT WEG!
+# ──────────────────────────────────────────────
+
+# Extra noten
+As3  = 208
+Bes4 = 466
+Es4  = 311
+
+muz9_m = melodie([
+    # Opzwepende spanning — steeds verder!
+    (A4, .25), (G4, .25), (A4, .25), (C5, .25), (E5, .5), (D5, .5),
+    (C5, .25), (B4, .25), (A4, .25), (G4, .25), (F4, .5), (E4, .5),
+    (G4, .25), (A4, .25), (B4, .25), (C5, .25), (D5, .5), (C5, .5),
+    (A4, 2),
+    # Achtervolging versnelt!
+    (E5, .5), (D5, .5), (C5, .5), (B4, .5),
+    (A4, .25), (B4, .25), (C5, .25), (D5, .25), (E5, .5), (G5, .5),
+    (A5, .5), (G5, .5), (E5, .5), (C5, .5),
+    (A4, 2),
+    # Gespannen middenstuk — bijna gepakt!
+    (A4, .25), (0, .25), (A4, .25), (0, .25), (C5, .5), (E5, .5),
+    (D5, .25), (0, .25), (D5, .25), (0, .25), (B4, .5), (G4, .5),
+    (A4, .25), (C5, .25), (E5, .25), (G5, .25), (F5, .5), (E5, .5),
+    (D5, 2),
+    # Finale — alles of niets!
+    (E5, .25), (F5, .25), (G5, .25), (A5, .25), (G5, .25), (F5, .25), (E5, .25), (D5, .25),
+    (C5, .5), (E5, .5), (G5, .5), (A5, .5),
+    (G5, .5), (F5, .5), (E5, .5), (D5, .5),
+    (E5, 2),
+], bpm=160, volume=0.75)
+
+muz9_b = baslijn([
+    (A3, 1), (E3, 1), (A3, 1), (C3, 1),
+    (G3, 1), (E3, 1), (A3, 1), (E3, 1),
+    (A3, 1), (G3, 1), (F3, 1), (E3, 1),
+    (A3, 1), (E3, 1), (A3, 1), (A3, 1),
+    (A3, 1), (E3, 1), (A3, 1), (C3, 1),
+    (G3, 1), (E3, 1), (D3, 1), (E3, 1),
+    (A3, 1), (G3, 1), (F3, 1), (E3, 1),
+    (A3, 1), (E3, 1), (A3, 1), (A3, 1),
+], bpm=160, volume=0.55)
+
+# Snellere drums voor de achtervolging!
+muz9_drums = beat_patroon(64, bpm=160)
+muz9 = meng(meng(muz9_m, muz9_b), muz9_drums)
+schrijf_wav("muziek_level9.wav", muz9 * 2)
+print("  muziek_level9.wav klaar! (De Grote Achtervolging - spannend met drums!)")
+
+
 print()
 print("Klaar! Alle geluiden staan in de map 'geluiden/'.")
 

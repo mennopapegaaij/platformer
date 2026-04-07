@@ -36,7 +36,8 @@ LEVEL_NAMEN = {
     6: "De Snelheids Tempel",
     7: "De Wolken",
     8: "Het Ultieme Dak",
+    9: "De Grote Achtervolging",
 }
 
 # --- Aantal levels in het spel ---
-AANTAL_LEVELS = 8
+AANTAL_LEVELS = 9
