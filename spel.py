@@ -59,6 +59,18 @@ class PlatformerSpel(arcade.Window):
         self.level_breedte = level_breedte
         self.kogels = []   # Lijst van actieve kogels
 
+        # Bepaal of de speler genoeg punten heeft voor dit bonus-level
+        # Toon anders een waarschuwing (gedurende 240 frames = 4 seconden)
+        benodigde_punten = {6: 10, 7: 20, 8: 30}
+        if nummer in benodigde_punten and self.punten < benodigde_punten[nummer]:
+            self._waarschuwing = (f"⚠️  Let op! Dit level heeft minimaal "
+                                  f"{benodigde_punten[nummer]} punten nodig. "
+                                  f"Jij hebt er {self.punten}. Verslaan monsters voor meer punten!")
+            self._waarschuwing_teller = 300   # 5 seconden zichtbaar
+        else:
+            self._waarschuwing = ""
+            self._waarschuwing_teller = 0
+
         # Start de juiste muziek voor dit level
         geluid_manager.speel_muziek(nummer)
 
@@ -116,6 +128,15 @@ class PlatformerSpel(arcade.Window):
 
         # Power-up icoontjes als een effect actief is
         self._teken_actieve_effecten()
+
+        # Waarschuwing voor bonus-levels (als speler te weinig punten heeft)
+        if self._waarschuwing_teller > 0:
+            arcade.draw_lrbt_rectangle_filled(20, SCHERM_BREEDTE - 20, 60, 110, (80, 40, 0))
+            arcade.draw_lrbt_rectangle_outline(20, SCHERM_BREEDTE - 20, 60, 110,
+                                               arcade.color.ORANGE, 2)
+            arcade.draw_text(self._waarschuwing, 30, 78,
+                             arcade.color.ORANGE, 11, width=SCHERM_BREEDTE - 60,
+                             multiline=True)
 
         if self.game_over:
             arcade.draw_lrbt_rectangle_filled(100, 700, 160, 340, (80, 0, 0))
@@ -189,6 +210,10 @@ class PlatformerSpel(arcade.Window):
 
         # Laat de speler bewegen en botsingen controleren
         self.speler.bijwerken(self.level_breedte, self.platforms)
+
+        # Waarschuwingstimer aftellen
+        if self._waarschuwing_teller > 0:
+            self._waarschuwing_teller -= 1
 
         # Is de speler in een kuil gevallen?
         if self.speler.is_gevallen():

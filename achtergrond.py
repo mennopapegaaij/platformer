@@ -22,6 +22,12 @@ def teken_achtergrond(niveau, breedte, hoogte):
         _level4_het_kasteel(breedte, hoogte)
     elif niveau == 5:
         _level5_de_eindbaas(breedte, hoogte)
+    elif niveau == 6:
+        _level6_snelheids_tempel(breedte, hoogte)
+    elif niveau == 7:
+        _level7_de_wolken(breedte, hoogte)
+    else:
+        _level8_ultieme_dak(breedte, hoogte)
 
 
 # =============================================
@@ -236,3 +242,118 @@ def _vuurpijler(x, y):
     arcade.draw_triangle_filled(x - 12, y, x + 12, y, x, y + 50, (220, 100, 0))
     # Gele kern
     arcade.draw_triangle_filled(x - 7, y, x + 7, y, x, y + 30, (255, 200, 0))
+
+
+# =============================================
+# LEVEL 6: De Snelheids Tempel
+# Woestijn/tempel-sfeer — warm oranje en geel
+# =============================================
+def _level6_snelheids_tempel(w, h):
+    # Lucht: warm geel-oranje verloop
+    arcade.draw_lrbt_rectangle_filled(0, w, h // 2, h, (255, 180, 80))
+    arcade.draw_lrbt_rectangle_filled(0, w, 0, h // 2, (220, 130, 50))
+
+    # Zon: groot en vurig
+    arcade.draw_circle_filled(w - 80, h - 80, 55, (255, 220, 50))
+    arcade.draw_circle_filled(w - 80, h - 80, 45, (255, 240, 100))
+
+    # Zandduinen op de achtergrond
+    for i, (x, breedte, hoogte) in enumerate([
+        (0, 300, 90), (220, 350, 110), (500, 300, 80),
+        (650, 400, 100), (w - 350, 320, 95), (w - 100, 250, 85)
+    ]):
+        arcade.draw_ellipse_filled(x + breedte // 2, 50, breedte, hoogte,
+                                   (210, 170, 80) if i % 2 == 0 else (195, 155, 65))
+
+    # Tempel-pilaren op de achtergrond
+    for x in [80, 220, 400, 560, w - 200, w - 80]:
+        # Pilaarsokkel
+        arcade.draw_lrbt_rectangle_filled(x - 18, x + 18, 60, 200, (180, 140, 70))
+        arcade.draw_lrbt_rectangle_filled(x - 22, x + 22, 60, 80, (160, 120, 55))
+        arcade.draw_lrbt_rectangle_filled(x - 22, x + 22, 185, 205, (160, 120, 55))
+
+    # Hiëroglieven (kleine streepjes als decoratie)
+    for x in [100, 400, w - 180]:
+        for dy in range(90, 170, 20):
+            arcade.draw_lrbt_rectangle_filled(x - 5, x + 5, dy, dy + 10, (140, 100, 40))
+
+
+# =============================================
+# LEVEL 7: De Wolken
+# Hoog in de lucht — lichtblauw en wit
+# =============================================
+def _level7_de_wolken(w, h):
+    # Lucht: hemelsblauw verloop
+    arcade.draw_lrbt_rectangle_filled(0, w, h // 2, h, (120, 180, 255))
+    arcade.draw_lrbt_rectangle_filled(0, w, 0, h // 2, (160, 210, 255))
+
+    # Zon met stralen
+    arcade.draw_circle_filled(100, h - 90, 45, (255, 240, 100))
+    arcade.draw_circle_filled(100, h - 90, 35, (255, 255, 180))
+    for i in range(8):
+        import math
+        hoek = math.radians(i * 45)
+        x1 = 100 + 48 * math.cos(hoek)
+        y1 = h - 90 + 48 * math.sin(hoek)
+        x2 = 100 + 70 * math.cos(hoek)
+        y2 = h - 90 + 70 * math.sin(hoek)
+        arcade.draw_line(x1, y1, x2, y2, (255, 220, 50), 3)
+
+    # Grote wolken (wit en lichtgrijs)
+    for (x, y, breed) in [(100, h - 160, 180), (350, h - 200, 220),
+                           (600, h - 150, 160), (w - 200, h - 180, 200),
+                           (150, h // 2 + 80, 200), (500, h // 2 + 50, 170),
+                           (w - 150, h // 2 + 90, 190)]:
+        arcade.draw_ellipse_filled(x, y, breed, 70, (240, 245, 255))
+        arcade.draw_ellipse_filled(x - 40, y - 15, breed * 0.6, 55, (255, 255, 255))
+        arcade.draw_ellipse_filled(x + 40, y - 10, breed * 0.7, 60, (255, 255, 255))
+
+    # Kleine vogeltjes in de verte
+    for (x, y) in [(200, h - 280), (420, h - 310), (600, h - 260), (w - 200, h - 290)]:
+        arcade.draw_arc_outline(x, y, 20, 10, (80, 80, 100), 0, 180, 2)
+        arcade.draw_arc_outline(x + 22, y + 2, 18, 9, (80, 80, 100), 0, 180, 2)
+
+    # Regenboog in de verte
+    for i, kleur in enumerate([(255, 0, 0), (255, 140, 0), (255, 255, 0),
+                                (0, 200, 0), (0, 100, 255), (150, 0, 255)]):
+        arcade.draw_arc_outline(w // 2, 80, 400 - i * 18, 200 - i * 9,
+                                 kleur, 0, 180, 4)
+
+
+# =============================================
+# LEVEL 8: Het Ultieme Dak
+# Op het dak van de wereld — donkerblauw, sterren, ruimtesfeer
+# =============================================
+def _level8_ultieme_dak(w, h):
+    # Achtergrond: donkerblauw naar zwart (bijna ruimte!)
+    arcade.draw_lrbt_rectangle_filled(0, w, h // 2, h, (10, 10, 40))
+    arcade.draw_lrbt_rectangle_filled(0, w, 0, h // 2, (20, 20, 80))
+
+    # Sterren (kleine witte puntjes)
+    import random
+    rng = random.Random(99)
+    for _ in range(120):
+        x = rng.randint(0, w)
+        y = rng.randint(h // 3, h)
+        grootte = rng.choice([1, 1, 1, 2, 2, 3])
+        helderheid = rng.randint(180, 255)
+        arcade.draw_circle_filled(x, y, grootte, (helderheid, helderheid, helderheid))
+
+    # Grote maan/planeet rechtsboven
+    arcade.draw_circle_filled(w - 90, h - 90, 60, (200, 200, 230))
+    arcade.draw_circle_filled(w - 90, h - 90, 55, (210, 210, 240))
+    # Kraters op de maan
+    arcade.draw_circle_outline(w - 110, h - 70, 12, (170, 170, 200), 2)
+    arcade.draw_circle_outline(w - 70, h - 110, 8, (170, 170, 200), 2)
+    arcade.draw_circle_outline(w - 95, h - 100, 5, (170, 170, 200), 2)
+
+    # Wolkenlaag onderin (we zijn erboven!)
+    for x in range(-50, w + 100, 180):
+        arcade.draw_ellipse_filled(x, 50, 200, 60, (60, 60, 120))
+        arcade.draw_ellipse_filled(x - 50, 40, 140, 45, (50, 50, 110))
+        arcade.draw_ellipse_filled(x + 50, 45, 150, 50, (55, 55, 115))
+
+    # Vallende meteoor (decoratief)
+    arcade.draw_line(180, h - 80, 80, h - 160, (255, 200, 100), 3)
+    arcade.draw_circle_filled(180, h - 80, 5, (255, 220, 150))
+

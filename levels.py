@@ -282,6 +282,210 @@ def maak_level(nummer):
             SterPowerUp(2870, 382),             # Laatste kans voor de vlag!
         ]
 
+    # =============================================
+    # LEVEL 6: De Snelheids Tempel
+    # Je hebt minimaal 10 punten nodig (snelheidsbonus +1)!
+    # De gaten zijn 205px breed — zonder bonus kun je er NIET overheen springen.
+    # Verslaan van monsters geeft je punten én meer snelheid.
+    # =============================================
+    elif nummer == 6:
+        level_breedte = 3200
+        platforms = [
+            # Grond-eilanden met brede gaten (205-210px — minimum +1 bonus nodig!)
+            Platform(0, 0, 260, 40),
+            Platform(465, 0, 225, 40),      # gat: 205px
+            Platform(895, 0, 225, 40),      # gat: 205px
+            Platform(1325, 0, 225, 40),     # gat: 205px
+            Platform(1755, 0, 225, 40),     # gat: 205px
+            Platform(2185, 0, 225, 40),     # gat: 210px
+            Platform(2620, 0, 580, 40),     # gat: 210px → eindzone
+
+            # Verhoogde platforms (top=210px) — net bereikbaar met +1 sprong
+            # Dienen als tussenstap om gaten makkelijker over te komen
+            Platform(290, 190, 80, 20),
+            Platform(400, 190, 80, 20),
+            Platform(720, 190, 80, 20),
+            Platform(830, 190, 80, 20),
+            Platform(1150, 190, 80, 20),
+            Platform(1260, 190, 80, 20),
+            Platform(1580, 190, 80, 20),
+            Platform(1690, 190, 80, 20),
+            Platform(2010, 190, 80, 20),
+            Platform(2120, 190, 80, 20),
+            Platform(2440, 190, 80, 20),
+            Platform(2550, 190, 80, 20),
+        ]
+        vijanden = [
+            # Veel monsters — verslaan ze voor extra punten en snelheid!
+            Vijand(50, 40, 0, 260, 3),
+            Vijand(520, 40, 465, 690, 3),
+            JagerVijand(570, 40, 465, 690, 3),
+            Vijand(950, 40, 895, 1120, 3),
+            JagerVijand(1000, 40, 895, 1120, 3.5),
+            Vijand(1380, 40, 1325, 1550, 3),
+            JagerVijand(1430, 40, 1325, 1550, 3.5),
+            Vijand(1810, 40, 1755, 1980, 3.5),
+            VliegendVijand(1850, 150, 1755, 1980, 3),
+            Vijand(2240, 40, 2185, 2410, 3.5),
+            VliegendVijand(2280, 150, 2185, 2410, 3),
+            GroteVijand(2700, 40, 2620, 3100, 2.5),
+            JagerVijand(2800, 40, 2620, 3100, 4),
+        ]
+        vlag_x = 3150
+        vlag_y = 40
+        powerups = [
+            SchietPowerUp(100, 62),             # Op de grond aan het begin — schiet voor punten!
+            ExtraLevenPowerUp(720, 212),        # Op verhoogd platform
+            SterPowerUp(1580, 212),             # Halverwege — handig bij de jagers
+            SnelheidPowerUp(2010, 212),         # Boost op verhoogd platform
+            DubbelSprongPowerUp(2440, 212),     # Helpt met de laatste gaten
+        ]
+
+    # =============================================
+    # LEVEL 7: De Wolken
+    # Je hebt minimaal 20 punten nodig (snelheidsbonus +2)!
+    # Gaten van 275px EN platforms op y=220 — zonder +2 kom je er NIET doorheen.
+    # =============================================
+    elif nummer == 7:
+        level_breedte = 3600
+        platforms = [
+            # Grond-eilanden met gaten van 275px (niet te overbruggen zonder +2!)
+            Platform(0, 0, 260, 40),
+            Platform(535, 0, 220, 40),      # gat: 275px
+            Platform(1030, 0, 220, 40),     # gat: 275px
+            Platform(1525, 0, 220, 40),     # gat: 275px
+            Platform(2020, 0, 220, 40),     # gat: 275px
+            Platform(2520, 0, 220, 40),     # gat: 280px
+            Platform(3020, 0, 580, 40),     # gat: 280px
+
+            # Hoge wolken-platforms (y=220, top=240 — net bereikbaar met +2 bonus)
+            Platform(270, 220, 80, 20),
+            Platform(400, 220, 80, 20),
+            Platform(760, 220, 80, 20),
+            Platform(890, 220, 80, 20),
+            Platform(1255, 220, 80, 20),
+            Platform(1385, 220, 80, 20),
+            Platform(1755, 220, 80, 20),
+            Platform(1880, 220, 80, 20),
+            Platform(2250, 220, 80, 20),
+            Platform(2380, 220, 80, 20),
+            Platform(2750, 220, 80, 20),
+            Platform(2880, 220, 80, 20),
+
+            # Extra lage tussenplatforms voor afwisseling
+            Platform(310, 130, 60, 20),
+            Platform(800, 130, 60, 20),
+            Platform(1300, 130, 60, 20),
+            Platform(1800, 130, 60, 20),
+        ]
+        vijanden = [
+            Vijand(100, 40, 0, 260, 4),
+            VliegendVijand(600, 120, 535, 755, 3.5),
+            JagerVijand(650, 40, 535, 755, 4),
+            SpringendVijand(700, 40, 535, 755, 3),
+            VliegendVijand(1100, 120, 1030, 1250, 3.5),
+            JagerVijand(1150, 40, 1030, 1250, 4.5),
+            GeestVijand(1300, 200, 1250, 1530, 3.5),
+            VliegendVijand(1600, 120, 1525, 1745, 4),
+            JagerVijand(1650, 40, 1525, 1745, 4.5),
+            SpringendVijand(1700, 40, 1525, 1745, 3.5),
+            GroteVijand(2100, 40, 2020, 2240, 3),
+            VliegendVijand(2150, 150, 2020, 2240, 4),
+            JagerVijand(2600, 40, 2520, 2740, 5),
+            GeestVijand(2700, 200, 2520, 2740, 4),
+            GroteVijand(3100, 40, 3020, 3500, 3.5),
+            JagerVijand(3200, 40, 3020, 3500, 5),
+        ]
+        vlag_x = 3550
+        vlag_y = 40
+        powerups = [
+            SchietPowerUp(100, 62),             # Begin: schiet voor punten!
+            ExtraLevenPowerUp(310, 152),        # Op tussenplatform
+            SterPowerUp(760, 242),              # Beschermt bij de jagers
+            SchietPowerUp(1255, 242),           # Midden: extra punten nodig!
+            DubbelSprongPowerUp(1755, 242),     # Helpt met hoge wolken
+            ExtraLevenPowerUp(2250, 242),       # Bijna eindbaas
+            SterPowerUp(2750, 242),             # Laatste stuk
+        ]
+
+    # =============================================
+    # LEVEL 8: Het Ultieme Dak
+    # Je hebt minimaal 30 punten nodig (snelheidsbonus +3)!
+    # Gaten van 345px EN platforms op y=250 — het zwaarste level van het spel!
+    # =============================================
+    elif nummer == 8:
+        level_breedte = 4000
+        platforms = [
+            # Grond-eilanden met gaten van 345-360px (onmogelijk zonder +3!)
+            Platform(0, 0, 280, 40),
+            Platform(625, 0, 220, 40),      # gat: 345px
+            Platform(1195, 0, 220, 40),     # gat: 350px
+            Platform(1765, 0, 220, 40),     # gat: 350px
+            Platform(2340, 0, 220, 40),     # gat: 355px
+            Platform(2920, 0, 220, 40),     # gat: 360px
+            Platform(3500, 0, 500, 40),     # gat: 360px
+
+            # Extreme hoge platforms (y=250, top=270 — bereikbaar met +3 bonus)
+            Platform(300, 250, 70, 20),
+            Platform(430, 250, 70, 20),
+            Platform(870, 250, 70, 20),
+            Platform(1000, 250, 70, 20),
+            Platform(1440, 250, 70, 20),
+            Platform(1570, 250, 70, 20),
+            Platform(2015, 250, 70, 20),
+            Platform(2145, 250, 70, 20),
+            Platform(2590, 250, 70, 20),
+            Platform(2720, 250, 70, 20),
+            Platform(3165, 250, 70, 20),
+            Platform(3295, 250, 70, 20),
+
+            # Tussenstap platforms op twee hoogtes
+            Platform(330, 140, 60, 20),
+            Platform(880, 140, 60, 20),
+            Platform(1450, 140, 60, 20),
+            Platform(2025, 140, 60, 20),
+            Platform(2600, 140, 60, 20),
+            Platform(3175, 140, 60, 20),
+        ]
+        vijanden = [
+            # Alle vijandtypen — zo snel en gevaarlijk mogelijk!
+            Vijand(80, 40, 0, 280, 5),
+            GroteVijand(160, 40, 0, 280, 3),
+            JagerVijand(700, 40, 625, 845, 5.5),
+            VliegendVijand(750, 150, 625, 845, 4.5),
+            SpringendVijand(800, 40, 625, 845, 4),
+            JagerVijand(1270, 40, 1195, 1415, 5.5),
+            GeestVijand(1350, 220, 1195, 1415, 4.5),
+            GroteVijand(1300, 40, 1195, 1415, 3.5),
+            JagerVijand(1840, 40, 1765, 1985, 6),
+            VliegendVijand(1900, 180, 1765, 1985, 5),
+            SpringendVijand(1950, 40, 1765, 1985, 4.5),
+            JagerVijand(2420, 40, 2340, 2560, 6),
+            GeestVijand(2480, 220, 2340, 2560, 5),
+            GroteVijand(2460, 40, 2340, 2560, 4),
+            JagerVijand(3010, 40, 2920, 3140, 6),
+            VliegendVijand(3060, 180, 2920, 3140, 5),
+            GroteVijand(3050, 40, 2920, 3140, 4),
+            # Eindbaas-groep!
+            GroteVijand(3600, 40, 3500, 3900, 4),
+            JagerVijand(3700, 40, 3500, 3900, 6.5),
+            GeestVijand(3750, 220, 3500, 3900, 5),
+            VliegendVijand(3800, 200, 3500, 3900, 5),
+        ]
+        vlag_x = 3960
+        vlag_y = 40
+        powerups = [
+            SchietPowerUp(100, 62),             # Schiet vanaf het begin!
+            ExtraLevenPowerUp(330, 162),        # Op tussenstap platform
+            SterPowerUp(300, 272),              # Op hoog platform
+            SchietPowerUp(870, 162),            # Midden: verslaan monsters = punten!
+            ExtraLevenPowerUp(1440, 162),       # Bijna halverwege
+            DubbelSprongPowerUp(1570, 272),     # Op hoog platform
+            SterPowerUp(2590, 272),             # Bescherming bij eindbaas-aanloop
+            SchietPowerUp(3165, 272),           # Laatste stuk: schiet je vrij baan!
+            ExtraLevenPowerUp(3500, 62),        # Net voor de eindbaas-groep
+        ]
+
     else:
         # Onbekend levelnummer — geef lege data terug
         level_breedte = 800

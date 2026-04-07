@@ -33,7 +33,10 @@ LEVEL_NAMEN = {
     3: "De Bergen",
     4: "Het Kasteel",
     5: "De Eindbaas",
+    6: "De Snelheids Tempel",
+    7: "De Wolken",
+    8: "Het Ultieme Dak",
 }
 
 # --- Aantal levels in het spel ---
-AANTAL_LEVELS = 5
+AANTAL_LEVELS = 8
