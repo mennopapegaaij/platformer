@@ -463,6 +463,149 @@ muz5 = meng(meng(muz5_m, muz5_b), muz5_drums)
 schrijf_wav("muziek_level5.wav", muz5 * 2)
 print("  muziek_level5.wav klaar! (De Eindstrijd - episch met drums)")
 
+# ──────────────────────────────────────────────
+# LEVEL 6: De Snelheids Tempel
+# Woestijn/tempel — exotisch en snel! E-Phrygisch, 175 BPM.
+# Phrygisch klinkt Arabisch-achtig (b2 toon = F na E geeft die sfeer).
+# ──────────────────────────────────────────────
+
+# Extra noten die we nodig hebben
+Fis4 = 370   # F# (verhoogde Fa)
+Fis5 = 740
+Es4  = 311   # Eb (verlaagde Mi)
+As4  = 415   # Ab (verlaagde La)
+
+muz6_m = melodie([
+    # Exotische opening — typisch Arabisch loopje
+    (E4, .25), (F4, .25), (E4, .25), (D4, .25), (E4, 1),
+    (A4, .25), (G4, .25), (F4, .25), (E4, .25), (D4, .5), (E4, .5),
+    (B4, .5), (A4, .25), (G4, .25), (F4, .25), (E4, .75),
+    (E4, 1.5), (0, .5),
+    # Snelle tempel-run
+    (E4, .25), (F4, .25), (G4, .25), (A4, .25), (B4, .25), (C5, .25), (B4, .25), (A4, .25),
+    (G4, .5), (A4, .5), (B4, 1),
+    (A4, .25), (G4, .25), (F4, .25), (E4, .25), (D4, .5), (E4, .5),
+    (E5, 1), (0, 1),
+    # Mysterieuze middenpartij
+    (C5, .5), (B4, .5), (A4, 1),
+    (G4, .5), (F4, .5), (E4, 1),
+    (F4, .5), (G4, .5), (A4, .5), (B4, .5),
+    (C5, 2),
+    # Razende finale — snel omhoog en omlaag
+    (E4, .25), (F4, .25), (G4, .25), (A4, .25), (B4, .25), (C5, .25), (D5, .25), (E5, .25),
+    (E5, .5), (D5, .5), (C5, .5), (B4, .5),
+    (A4, .25), (G4, .25), (F4, .25), (E4, .25), (D4, .5), (E4, .5),
+    (E4, 2),
+], bpm=175, volume=0.75)
+
+muz6_b = baslijn([
+    (E3, 2), (A3, 2), (E3, 2), (G3, 2),
+    (E3, 2), (A3, 2), (D3, 2), (E3, 2),
+    (E3, 2), (F3, 2), (E3, 2), (A3, 2),
+    (E3, 2), (A3, 2), (E3, 2), (E3, 2),
+], bpm=175, volume=0.55)
+
+muz6_drums = beat_patroon(32, bpm=175)
+muz6 = meng(meng(muz6_m, muz6_b), muz6_drums)
+schrijf_wav("muziek_level6.wav", muz6 * 2)
+print("  muziek_level6.wav klaar! (De Snelheids Tempel - exotisch met drums)")
+
+
+# ──────────────────────────────────────────────
+# LEVEL 7: De Wolken
+# Licht en zweefachtig! D-groot, 125 BPM.
+# Hoge noten, vloeiende melodie — je zweeft door de lucht.
+# ──────────────────────────────────────────────
+
+# Extra noten
+Fis4 = 370   # F# in D-groot
+Fis5 = 740
+Cis5 = 554   # C# in D-groot
+
+muz7_m = melodie([
+    # Zweefende opening — lange noten, alsof je drijft op de wolken
+    (D5, 1), (Fis5, 1),
+    (A5, 1.5), (0, .5),
+    (G5, .5), (Fis5, .5), (E5, 1),
+    (D5, 2),
+    # Luchtige melodie omhoog en omlaag
+    (Fis4, .5), (A4, .5), (D5, .5), (Fis5, .5),
+    (E5, .5), (D5, .5), (Cis5, 1),
+    (B4, .5), (A4, .5), (G4, .5), (Fis4, .5),
+    (D4, 2),
+    # Iets levendiger middenstuk
+    (D5, .25), (E5, .25), (Fis5, .25), (G5, .25), (A5, 1),
+    (G5, .5), (Fis5, .5), (E5, 1),
+    (Fis5, .5), (E5, .5), (D5, .5), (Cis5, .5),
+    (D5, 1.5), (0, .5),
+    # Regenboog-loopje (hoog en tinkelend)
+    (A4, .25), (B4, .25), (Cis5, .25), (D5, .25), (E5, .25), (Fis5, .25), (G5, .25), (A5, .25),
+    (A5, .5), (G5, .5), (Fis5, .5), (E5, .5),
+    (D5, .5), (Cis5, .5), (B4, .5), (A4, .5),
+    (D5, 2),
+], bpm=125, volume=0.75)
+
+muz7_b = baslijn([
+    (D3, 2), (A3, 2), (D3, 2), (A3, 2),
+    (G3, 2), (D3, 2), (A3, 2), (D3, 2),
+    (D3, 2), (A3, 2), (G3, 2), (A3, 2),
+    (D3, 2), (A3, 2), (G3, 2), (D3, 2),
+], bpm=125, volume=0.50)
+
+schrijf_wav("muziek_level7.wav", meng(muz7_m, muz7_b) * 2)
+print("  muziek_level7.wav klaar! (De Wolken - zweefachtig)")
+
+
+# ──────────────────────────────────────────────
+# LEVEL 8: Het Ultieme Dak
+# Episch en dramatisch! C-klein, 100 BPM.
+# Donker en krachtig — de allermoeilijkste uitdaging!
+# Met echte drums voor maximale spanning.
+# ──────────────────────────────────────────────
+
+# Extra noten voor C-klein
+Es4  = 311   # Eb (verlaagde Mi)
+Es5  = 622
+As3  = 208   # Ab laag
+As4  = 415   # Ab
+Bes4 = 466   # Bb
+
+muz8_m = melodie([
+    # Donkere, dramatische opening
+    (C4, 1), (0, .5), (G3, .5),
+    (C4, .5), (Es4, .5), (G4, 1),
+    (As4, 1), (G4, .5), (F4, .5),
+    (Es4, 2),
+    # Spanning opbouwen
+    (G4, .5), (As4, .5), (Bes4, 1),
+    (C5, .5), (Bes4, .5), (As4, 1),
+    (G4, .5), (Es4, .5), (G4, .5), (As4, .5),
+    (G4, 2),
+    # Krachtig hoogtepunt
+    (C5, .5), (C5, .5), (Es5, .5), (Es5, .5),
+    (G5, 1), (0, 1),
+    (As4, .5), (Bes4, .5), (C5, 1),
+    (G4, 2),
+    # Razende finale — snelle dalende reeks
+    (C5, .25), (Bes4, .25), (As4, .25), (G4, .25), (F4, .25), (Es4, .25), (D4, .25), (C4, .25),
+    (Es4, .5), (G4, .5), (C5, .5), (Es5, .5),
+    (G5, .5), (Es5, .5), (C5, .5), (G4, .5),
+    (C4, 2),
+], bpm=100, volume=0.75)
+
+muz8_b = baslijn([
+    (C3, 2), (G3, 2), (C3, 2), (G3, 2),
+    (As3, 2), (E3, 2), (G3, 2), (C3, 2),
+    (C3, 2), (G3, 2), (As3, 2), (G3, 2),
+    (C3, 2), (G3, 2), (C3, 2), (C3, 2),
+], bpm=100, volume=0.55)
+
+muz8_drums = beat_patroon(32, bpm=100)
+muz8 = meng(meng(muz8_m, muz8_b), muz8_drums)
+schrijf_wav("muziek_level8.wav", muz8 * 2)
+print("  muziek_level8.wav klaar! (Het Ultieme Dak - episch met drums)")
+
+
 print()
 print("Klaar! Alle geluiden staan in de map 'geluiden/'.")
 
