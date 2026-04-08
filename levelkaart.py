@@ -33,9 +33,11 @@ PADEN = [
 class LevelKaartView(arcade.View):
     """De levelkaart — hier kies je welk level je wilt spelen."""
 
-    def __init__(self, voltooid_levels):
+    def __init__(self, voltooid_levels, punten=0, levens=None):
         super().__init__()
         self.voltooid = voltooid_levels  # Set met voltooide level-nummers
+        self.punten = punten             # Punten uit het vorige level
+        self.levens = levens             # Levens uit het vorige level (None = standaard)
 
         # Begin bij het eerste level dat nog niet gehaald is
         self.geselecteerd = self._bereken_start()
@@ -190,7 +192,7 @@ class LevelKaartView(arcade.View):
                 self._start_level(self.geselecteerd)
 
     def _start_level(self, nummer):
-        """Start het gekozen level."""
+        """Start het gekozen level — met de huidige punten en levens."""
         from spel import PlatformerSpel
-        spel = PlatformerSpel(nummer, self.voltooid)
+        spel = PlatformerSpel(nummer, self.voltooid, self.punten, self.levens)
         self.window.show_view(spel)

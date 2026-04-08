@@ -17,11 +17,14 @@ import voortgang as voortgang_module
 class PlatformerSpel(arcade.View):
     """Het hoofdspel — alles zit hierin."""
 
-    def __init__(self, level_nummer, voltooid_levels):
+    def __init__(self, level_nummer, voltooid_levels, punten=0, levens=None):
         super().__init__()
         # Onthoud welk level we starten en welke al gehaald zijn
         self.start_level = level_nummer
         self.voltooid = voltooid_levels
+        # Bewaar punten en levens van het vorige level
+        self.start_punten = punten
+        self.start_levens = levens   # None = gebruik het standaard aantal levens
         # Maak een camera aan die de speler volgt
         self.camera = arcade.camera.Camera2D()
         self.speler = Speler()
@@ -29,10 +32,18 @@ class PlatformerSpel(arcade.View):
     def on_show_view(self):
         """Wordt aangeroepen als dit scherm zichtbaar wordt."""
         arcade.set_background_color(LUCHT_KLEUR)
-        # Reset de speler en start het level
         self.huidig_level = self.start_level
-        self.punten = 0
+        # Herstel punten van het vorige level
+        self.punten = self.start_punten
+        # Reset de speler (power-ups weg, positie terug naar start)
         self.speler.volledig_reset()
+        # Herstel levens als die meegegeven zijn
+        if self.start_levens is not None:
+            self.speler.levens = self.start_levens
+        # Herstel de snelheids- en sprongbonus die je met punten verdiend had
+        bonus = self.punten // 10
+        self.speler.snelheid_bonus = bonus
+        self.speler.sprong_bonus = bonus
         self.maak_level(self.start_level)
 
     def maak_level(self, nummer):
@@ -367,8 +378,8 @@ class PlatformerSpel(arcade.View):
             self.speler.rechts_ingedrukt = False
 
     def _naar_kaart(self):
-        """Ga terug naar de levelkaart."""
+        """Ga terug naar de levelkaart — punten en levens worden bewaard."""
         from levelkaart import LevelKaartView
         geluid_manager.stop_muziek()
-        kaart = LevelKaartView(self.voltooid)
+        kaart = LevelKaartView(self.voltooid, self.punten, self.speler.levens)
         self.window.show_view(kaart)
