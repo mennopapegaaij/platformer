@@ -166,8 +166,8 @@ class LevelKaartView(arcade.View):
 
         # Boompjes
         for tx, ty in [(50, 150), (700, 150), (50, 290), (700, 290), (730, 120), (60, 390)]:
-            # Stam
-            arcade.draw_rectangle_filled(tx, ty - 15, 10, 20, (100, 60, 20))
+            # Stam (lrbt = left, right, bottom, top)
+            arcade.draw_lrbt_rectangle_filled(tx - 5, tx + 5, ty - 25, ty - 5, (100, 60, 20))
             # Bladeren (driehoek)
             arcade.draw_triangle_filled(tx - 18, ty - 5, tx + 18, ty - 5,
                                         tx, ty + 28, (30, 120, 30))
