@@ -6,32 +6,34 @@ import arcade
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
-from instellingen import (SCHERM_BREEDTE, SCHERM_HOOGTE, SCHERM_TITEL,
+from instellingen import (SCHERM_BREEDTE, SCHERM_HOOGTE,
                            SPRING_KRACHT, LUCHT_KLEUR, VLAG_KLEUR,
                            VLAG_DOEK_KLEUR, LEVEL_NAMEN, AANTAL_LEVELS)
 from speler import Speler
 from powerup import Kogel
+import voortgang as voortgang_module
 
 
-class PlatformerSpel(arcade.Window):
+class PlatformerSpel(arcade.View):
     """Het hoofdspel — alles zit hierin."""
 
-    def __init__(self):
-        # Maak het venster aan
-        super().__init__(SCHERM_BREEDTE, SCHERM_HOOGTE, SCHERM_TITEL)
-        arcade.set_background_color(LUCHT_KLEUR)
+    def __init__(self, level_nummer, voltooid_levels):
+        super().__init__()
+        # Onthoud welk level we starten en welke al gehaald zijn
+        self.start_level = level_nummer
+        self.voltooid = voltooid_levels
         # Maak een camera aan die de speler volgt
         self.camera = arcade.camera.Camera2D()
         self.speler = Speler()
-        # Laad alle geluiden
-        geluid_manager.laad_alles()
 
-    def setup(self):
-        """Herstart het spel helemaal vanaf level 1."""
-        self.huidig_level = 1
-        self.punten = 0                  # Punten resetten bij nieuw spel
+    def on_show_view(self):
+        """Wordt aangeroepen als dit scherm zichtbaar wordt."""
+        arcade.set_background_color(LUCHT_KLEUR)
+        # Reset de speler en start het level
+        self.huidig_level = self.start_level
+        self.punten = 0
         self.speler.volledig_reset()
-        self.maak_level(1)
+        self.maak_level(self.start_level)
 
     def maak_level(self, nummer):
         """Laad een level op basis van het nummer (1 t/m AANTAL_LEVELS)."""
@@ -142,20 +144,20 @@ class PlatformerSpel(arcade.Window):
             arcade.draw_lrbt_rectangle_filled(100, 700, 160, 340, (80, 0, 0))
             arcade.draw_text("💀 Game Over! 💀",
                              230, 270, arcade.color.WHITE, 28, bold=True)
-            arcade.draw_text("Druk op R om opnieuw te beginnen",
-                             210, 210, arcade.color.WHITE, 18)
+            arcade.draw_text("Druk op R om terug naar de kaart te gaan",
+                             185, 210, arcade.color.WHITE, 18)
         elif self.gewonnen:
             arcade.draw_lrbt_rectangle_filled(100, 700, 160, 340, arcade.color.DARK_GREEN)
             arcade.draw_text("🎉 Je hebt het hele spel uitgespeeld! 🎉",
                              130, 270, arcade.color.WHITE, 22, bold=True)
-            arcade.draw_text("Druk op R om opnieuw te beginnen",
-                             220, 210, arcade.color.WHITE, 18)
+            arcade.draw_text("Druk op R om terug naar de kaart te gaan",
+                             185, 210, arcade.color.WHITE, 18)
         elif self.level_gehaald:
             arcade.draw_lrbt_rectangle_filled(100, 700, 160, 340, arcade.color.DARK_BLUE)
             arcade.draw_text(f"Level {self.huidig_level} gehaald! 🎉",
                              240, 270, arcade.color.WHITE, 26, bold=True)
-            arcade.draw_text(f"Druk op ENTER voor level {self.huidig_level + 1}",
-                             220, 210, arcade.color.WHITE, 18)
+            arcade.draw_text("Druk op ENTER om terug naar de kaart te gaan",
+                             185, 210, arcade.color.WHITE, 18)
         elif self.dood:
             arcade.draw_lrbt_rectangle_filled(100, 700, 160, 340, arcade.color.DARK_RED)
             arcade.draw_text("Oeps! Probeer het opnieuw.",
@@ -290,6 +292,8 @@ class PlatformerSpel(arcade.Window):
         if (self.speler.x + self.speler.breedte > self.vlag_x and
                 self.speler.x < self.vlag_x + 10 and
                 self.speler.y < self.vlag_y + 60):
+            # Markeer dit level als voltooid (sla op in het bestand)
+            self.voltooid = voortgang_module.markeer_level_voltooid(self.huidig_level, self.voltooid)
             if self.huidig_level < AANTAL_LEVELS:
                 self.level_gehaald = True
                 geluid_manager.speel_level_gehaald()  # 🎵 Fanfare!
@@ -336,13 +340,12 @@ class PlatformerSpel(arcade.Window):
                 kogel_y = self.speler.y + self.speler.hoogte // 2
                 self.kogels.append(Kogel(kogel_x, kogel_y, richting))
         elif toets == arcade.key.ENTER or toets == arcade.key.NUM_ENTER:
-            # ENTER = ga naar het volgende level (als je het huidige level gehaald hebt)
+            # ENTER = ga terug naar de kaart als je het level gehaald hebt
             if self.level_gehaald:
-                self.huidig_level += 1
-                self.maak_level(self.huidig_level)
+                self._naar_kaart()
         elif toets == arcade.key.R:
             if self.gewonnen or self.game_over:
-                self.setup()                       # Helemaal opnieuw beginnen
+                self._naar_kaart()                     # Terug naar de kaart
             elif self.dood:
                 self.maak_level(self.huidig_level) # Zelfde level opnieuw (levens blijven!)
 
@@ -352,3 +355,10 @@ class PlatformerSpel(arcade.Window):
             self.speler.links_ingedrukt = False
         elif toets == arcade.key.RIGHT:
             self.speler.rechts_ingedrukt = False
+
+    def _naar_kaart(self):
+        """Ga terug naar de levelkaart."""
+        from levelkaart import LevelKaartView
+        geluid_manager.stop_muziek()
+        kaart = LevelKaartView(self.voltooid)
+        self.window.show_view(kaart)

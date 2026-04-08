@@ -3,11 +3,21 @@
 # Dit is het enige bestand dat je hoeft te starten.
 
 import arcade
-from spel import PlatformerSpel
+from instellingen import SCHERM_BREEDTE, SCHERM_HOOGTE, SCHERM_TITEL
+from geluid import geluid as geluid_manager
+from levelkaart import LevelKaartView
+import voortgang
 
 def main():
-    spel = PlatformerSpel()   # Maak het spel aan
-    spel.setup()              # Zet alles klaar
+    # Maak het venster aan
+    window = arcade.Window(SCHERM_BREEDTE, SCHERM_HOOGTE, SCHERM_TITEL)
+    # Laad alle geluiden (één keer aan het begin)
+    geluid_manager.laad_alles()
+    # Laad de opgeslagen voortgang
+    voltooid = voortgang.laad_voortgang()
+    # Laat de levelkaart zien
+    kaart = LevelKaartView(voltooid)
+    window.show_view(kaart)
     arcade.run()              # Start de game loop
 
 # Dit zorgt ervoor dat het spel alleen start als je dit bestand rechtstreeks uitvoert
