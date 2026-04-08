@@ -347,11 +347,14 @@ class PlatformerSpel(arcade.View):
             if self.gewonnen:
                 self._naar_kaart()                     # Terug naar de kaart na winst
             elif self.game_over:
-                # Opnieuw beginnen bij level 1! Levens en punten worden gereset
+                # Opnieuw beginnen bij level 1! Alles wordt gereset
                 self.punten = 0
                 self.start_level = 1
                 self.huidig_level = 1
                 self.speler.volledig_reset()
+                # Voortgang wissen — alle levels weer op slot
+                self.voltooid.clear()
+                voortgang_module.sla_voortgang_op(self.voltooid)
                 self.maak_level(1)
             elif self.dood:
                 self.maak_level(self.huidig_level) # Zelfde level opnieuw (levens blijven!)
