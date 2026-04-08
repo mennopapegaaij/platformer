@@ -149,7 +149,7 @@ class LevelKaartView(arcade.View):
     def _teken_poppetje(self, x, y):
         """Teken een klein geel poppetje (de speler op de kaart)."""
         # Lichaam
-        arcade.draw_rectangle_filled(x, y, 18, 18, arcade.color.YELLOW)
+        arcade.draw_lrbt_rectangle_filled(x - 9, x + 9, y - 9, y + 9, arcade.color.YELLOW)
         # Hoofd
         arcade.draw_circle_filled(x, y + 14, 10, arcade.color.YELLOW)
         # Ogen
