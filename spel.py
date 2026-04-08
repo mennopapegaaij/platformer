@@ -144,8 +144,8 @@ class PlatformerSpel(arcade.View):
             arcade.draw_lrbt_rectangle_filled(100, 700, 160, 340, (80, 0, 0))
             arcade.draw_text("💀 Game Over! 💀",
                              230, 270, arcade.color.WHITE, 28, bold=True)
-            arcade.draw_text("Druk op R om terug naar de kaart te gaan",
-                             185, 210, arcade.color.WHITE, 18)
+            arcade.draw_text("Druk op R om opnieuw te beginnen",
+                             205, 210, arcade.color.WHITE, 18)
         elif self.gewonnen:
             arcade.draw_lrbt_rectangle_filled(100, 700, 160, 340, arcade.color.DARK_GREEN)
             arcade.draw_text("🎉 Je hebt het hele spel uitgespeeld! 🎉",
@@ -344,8 +344,13 @@ class PlatformerSpel(arcade.View):
             if self.level_gehaald:
                 self._naar_kaart()
         elif toets == arcade.key.R:
-            if self.gewonnen or self.game_over:
-                self._naar_kaart()                     # Terug naar de kaart
+            if self.gewonnen:
+                self._naar_kaart()                     # Terug naar de kaart na winst
+            elif self.game_over:
+                # Opnieuw beginnen! Levens en punten worden gereset
+                self.punten = 0
+                self.speler.volledig_reset()
+                self.maak_level(self.huidig_level)
             elif self.dood:
                 self.maak_level(self.huidig_level) # Zelfde level opnieuw (levens blijven!)
 
