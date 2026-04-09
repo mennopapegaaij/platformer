@@ -299,6 +299,13 @@ class PlatformerSpel(arcade.View):
         # Verwijder kogels die niet meer actief zijn
         self.kogels = [k for k in self.kogels if k.actief]
 
+        # --- In level 9: win als de eindbaas verslagen is ---
+        if self.huidig_level == AANTAL_LEVELS and len(self.vijanden) == 0:
+            self.voltooid = voortgang_module.markeer_level_voltooid(self.huidig_level, self.voltooid)
+            self.gewonnen = True
+            geluid_manager.speel_level_gehaald()
+            return
+
         # --- Heeft de speler de vlag bereikt? ---
         if (self.speler.x + self.speler.breedte > self.vlag_x and
                 self.speler.x < self.vlag_x + 10 and

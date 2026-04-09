@@ -514,17 +514,10 @@ def maak_level(nummer):
         vijanden = [
             EindBaas(1400, 40, 100, 2900),
         ]
-        vlag_x = 2960
-        vlag_y = 40
-        powerups = [
-            SchietPowerUp(80, 62),              # Begin: schiet voor punten!
-            SnelheidPowerUp(300, 152),          # Snelheid nodig voor de jacht
-            ExtraLevenPowerUp(700, 182),        # Extra kans
-            SchietPowerUp(1100, 152),           # Midden: meer punten
-            DubbelSprongPowerUp(1500, 182),     # Dubbele sprong voor platforms
-            ExtraLevenPowerUp(1900, 152),       # Bijna eindstreep
-            SterPowerUp(2300, 182),             # Bescherming aan het eind
-        ]
+        # Geen vlag — versla de eindbaas om te winnen!
+        vlag_x = -999   # Ver buiten het scherm, zodat de speler hem nooit bereikt
+        vlag_y = -999
+        powerups = []   # Geen power-ups — het is een echte eindbaas-strijd!
 
     else:
         # Onbekend levelnummer — geef lege data terug
