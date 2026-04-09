@@ -492,27 +492,24 @@ def maak_level(nummer):
     # De eindbaas heeft snelheid 11 — je moet hem inhalen en 3x stompen!
     # =============================================
     elif nummer == 9:
-        level_breedte = 3000
-        platforms = [
-            # Lange doorlopende grond — de achtervolging speelt zich af op één vlak!
-            Platform(0, 0, 3000, 40),
+        level_breedte = 99999   # Zo groot dat het eindeloos lijkt!
 
-            # Wat verhoogde platforms om de baas te stoppen (hij rent er niet op!)
-            Platform(300, 130, 120, 20),
-            Platform(700, 160, 120, 20),
-            Platform(1100, 130, 120, 20),
-            Platform(1500, 160, 120, 20),
-            Platform(1900, 130, 120, 20),
-            Platform(2300, 160, 120, 20),
+        # De grond gaat het hele level door
+        platforms = [Platform(0, 0, 99999, 40)]
 
-            # Een paar hogere platforms voor gevorderde spelers
-            Platform(500, 260, 100, 20),
-            Platform(1300, 260, 100, 20),
-            Platform(2100, 260, 100, 20),
-        ]
-        # De eindbaas staat midden in het level — klaar om te vluchten!
+        # Platforms herhalen zich steeds — elke 400 pixels een nieuw blokje
+        hoogtes = [130, 160, 200, 130, 170, 150, 190, 160]
+        for i in range(200):
+            x = 300 + i * 400
+            hoogte = hoogtes[i % len(hoogtes)]
+            platforms.append(Platform(x, hoogte, 120, 20))
+            # Om de twee: ook een hoger platform
+            if i % 2 == 0:
+                platforms.append(Platform(x + 180, hoogte + 80, 100, 20))
+
+        # De eindbaas kan het hele level door vluchten
         vijanden = [
-            EindBaas(1400, 40, 100, 2900),
+            EindBaas(1400, 40, 100, 99900),
         ]
         # Geen vlag — versla de eindbaas om te winnen!
         vlag_x = -999   # Ver buiten het scherm, zodat de speler hem nooit bereikt
