@@ -154,7 +154,7 @@ class PlatformerSpel(arcade.View):
         # K-toets hint linksonder
         arcade.draw_text("K = kaart", 10, 10, arcade.color.WHITE, 13)
 
-
+        if self.game_over:
             arcade.draw_lrbt_rectangle_filled(100, 700, 160, 340, (80, 0, 0))
             arcade.draw_text("💀 Game Over! 💀",
                              230, 270, arcade.color.WHITE, 28, bold=True)
