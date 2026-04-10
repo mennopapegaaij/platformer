@@ -151,7 +151,10 @@ class PlatformerSpel(arcade.View):
                              arcade.color.ORANGE, 11, width=SCHERM_BREEDTE - 60,
                              multiline=True)
 
-        if self.game_over:
+        # K-toets hint linksonder
+        arcade.draw_text("K = kaart", 10, 10, arcade.color.WHITE, 13)
+
+
             arcade.draw_lrbt_rectangle_filled(100, 700, 160, 340, (80, 0, 0))
             arcade.draw_text("💀 Game Over! 💀",
                              230, 270, arcade.color.WHITE, 28, bold=True)
@@ -357,6 +360,9 @@ class PlatformerSpel(arcade.View):
                            else self.speler.x - 4)
                 kogel_y = self.speler.y + self.speler.hoogte // 2
                 self.kogels.append(Kogel(kogel_x, kogel_y, richting))
+        elif toets == arcade.key.K:
+            # K = terug naar de kaart (altijd beschikbaar)
+            self._naar_kaart()
         elif toets == arcade.key.ENTER or toets == arcade.key.NUM_ENTER:
             # ENTER = ga terug naar de kaart als je het level gehaald hebt
             if self.level_gehaald:
