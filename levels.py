@@ -5,8 +5,6 @@
 from platforms import Platform
 from vijand import Vijand, VliegendVijand, SpringendVijand, GroteVijand, GeestVijand, JagerVijand, EindBaas
 from powerup import SterPowerUp, SnelheidPowerUp, DubbelSprongPowerUp, ExtraLevenPowerUp, SchietPowerUp
-from infinite_level import InfinitePlatformProvider
-from instellingen import SCHERM_BREEDTE
 
 
 def maak_level(nummer):
@@ -494,21 +492,28 @@ def maak_level(nummer):
     # De eindbaas heeft snelheid 11 — je moet hem inhalen en 3x stompen!
     # =============================================
     elif nummer == 9:
-        # Oneindig/zeer groot level maar gebruik een chunked provider om haperen te voorkomen
-        level_breedte = float('inf')
+        level_breedte = 99999
+        platforms = [
+            Platform(0, 0, 99999, 40),
+        ]
 
-        # De grond zelf blijft aanwezig (we genereren chunks met platforms)
-        platforms = InfinitePlatformProvider(chunk_size=SCHERM_BREEDTE)
+        # Herhalende platforms voor variatie
+        hoogtes = [130, 160, 200, 130, 170, 150, 190, 160]
+        for i in range(200):
+            x = 300 + i * 400
+            hoogte = hoogtes[i % len(hoogtes)]
+            platforms.append(Platform(x, hoogte, 120, 20))
+            if i % 2 == 0:
+                platforms.append(Platform(x + 180, hoogte + 80, 100, 20))
 
-        # De eindbaas kan het hele level door vluchten
-        # Gebruik grote grenzen zodat de baas niet onbedoeld aan de rand vastloopt
+        # De eindbaas kan ver weglopen maar binnen deze grote grenzen
         vijanden = [
-            EindBaas(1400, 40, 100, float('inf')),
+            EindBaas(1400, 40, 100, 99900),
         ]
         # Geen vlag — versla de eindbaas om te winnen!
-        vlag_x = -999   # Ver buiten het scherm, zodat de speler hem nooit bereikt
+        vlag_x = -999
         vlag_y = -999
-        powerups = []   # Geen power-ups — het is een echte eindbaas-strijd!
+        powerups = []
 
     else:
         # Onbekend levelnummer — geef lege data terug

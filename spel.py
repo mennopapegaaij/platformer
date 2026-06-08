@@ -45,13 +45,6 @@ class PlatformerSpel(arcade.View):
         self.speler.snelheid_bonus = bonus
         self.speler.sprong_bonus = bonus
         self.maak_level(self.start_level)
-        # Als platforms een chunk-provider is: genereer direct de eerste chunks
-        if hasattr(self.platforms, 'ensure_chunks'):
-            try:
-                center_x = self.speler.x + self.speler.breedte / 2
-                self.platforms.ensure_chunks(center_x, SCHERM_BREEDTE)
-            except Exception:
-                pass
 
     def maak_level(self, nummer):
         """Laad een level op basis van het nummer (1 t/m AANTAL_LEVELS)."""
@@ -230,14 +223,6 @@ class PlatformerSpel(arcade.View):
         # Als de speler dood is, wacht op toetsinvoer (wordt hierboven al getekend)
         if self.dood:
             return
-
-        # Zorg dat bij grote/oneindige levels alleen zichtbare chunks gemaakt worden
-        if hasattr(self.platforms, 'ensure_chunks'):
-            try:
-                center_x = self.speler.x + self.speler.breedte / 2
-                self.platforms.ensure_chunks(center_x, SCHERM_BREEDTE)
-            except Exception:
-                pass
 
         # Laat de speler bewegen en botsingen controleren
         self.speler.bijwerken(self.level_breedte, self.platforms)
