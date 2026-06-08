@@ -45,6 +45,13 @@ class PlatformerSpel(arcade.View):
         self.speler.snelheid_bonus = bonus
         self.speler.sprong_bonus = bonus
         self.maak_level(self.start_level)
+        # Als platforms een chunk-provider is: genereer direct de eerste chunks
+        if hasattr(self.platforms, 'ensure_chunks'):
+            try:
+                center_x = self.speler.x + self.speler.breedte / 2
+                self.platforms.ensure_chunks(center_x, SCHERM_BREEDTE)
+            except Exception:
+                pass
 
     def maak_level(self, nummer):
         """Laad een level op basis van het nummer (1 t/m AANTAL_LEVELS)."""
@@ -224,6 +231,14 @@ class PlatformerSpel(arcade.View):
         if self.dood:
             return
 
+        # Zorg dat bij grote/oneindige levels alleen zichtbare chunks gemaakt worden
+        if hasattr(self.platforms, 'ensure_chunks'):
+            try:
+                center_x = self.speler.x + self.speler.breedte / 2
+                self.platforms.ensure_chunks(center_x, SCHERM_BREEDTE)
+            except Exception:
+                pass
+
         # Laat de speler bewegen en botsingen controleren
         self.speler.bijwerken(self.level_breedte, self.platforms)
 
@@ -304,7 +319,8 @@ class PlatformerSpel(arcade.View):
 
         # --- In level 9: win als de eindbaas verslagen is ---
         if self.huidig_level == AANTAL_LEVELS and len(self.vijanden) == 0:
-            self.voltooid = voortgang_module.markeer_level_voltooid(self.huidig_level, self.voltooid)
+            self.voltooid = voortgang_module.markeer_level_voltooid(
+                self.huidig_level, self.voltooid, self.punten, self.speler.levens)
             self.gewonnen = True
             geluid_manager.speel_level_gehaald()
             return
@@ -314,7 +330,8 @@ class PlatformerSpel(arcade.View):
                 self.speler.x < self.vlag_x + 10 and
                 self.speler.y < self.vlag_y + 60):
             # Markeer dit level als voltooid (sla op in het bestand)
-            self.voltooid = voortgang_module.markeer_level_voltooid(self.huidig_level, self.voltooid)
+            self.voltooid = voortgang_module.markeer_level_voltooid(
+                self.huidig_level, self.voltooid, self.punten, self.speler.levens)
             if self.huidig_level < AANTAL_LEVELS:
                 self.level_gehaald = True
                 geluid_manager.speel_level_gehaald()  # 🎵 Fanfare!
@@ -328,11 +345,21 @@ class PlatformerSpel(arcade.View):
         bonus = self.punten // 10
         self.speler.snelheid_bonus = bonus
         self.speler.sprong_bonus = bonus  # Elke 10 punten ook iets hoger springen
+        # Sla voortgang op (updates punten)
+        try:
+            voortgang_module.sla_voortgang_op(self.voltooid, self.punten, self.speler.levens)
+        except Exception:
+            pass
 
     def _speler_geraakt(self):
         """Verwerk dat de speler geraakt wordt: leven aftrekken of game over."""
         self.speler.levens -= 1
         geluid_manager.speel_geraakt()  # 🎵 Bonk!
+        # Sla voortgang op (update levens)
+        try:
+            voortgang_module.sla_voortgang_op(self.voltooid, self.punten, self.speler.levens)
+        except Exception:
+            pass
         if self.speler.levens <= 0:
             self.game_over = True
             geluid_manager.stop_muziek()
@@ -378,7 +405,8 @@ class PlatformerSpel(arcade.View):
                 self.speler.volledig_reset()
                 # Voortgang wissen — alle levels weer op slot
                 self.voltooid.clear()
-                voortgang_module.sla_voortgang_op(self.voltooid)
+                # Sla op: geen voltooide levels meer, punten en levens terug naar 0/None
+                voortgang_module.sla_voortgang_op(self.voltooid, 0, None)
                 self.maak_level(1)
             elif self.dood:
                 self.maak_level(self.huidig_level) # Zelfde level opnieuw (levens blijven!)
@@ -394,5 +422,10 @@ class PlatformerSpel(arcade.View):
         """Ga terug naar de levelkaart — punten en levens worden bewaard."""
         from levelkaart import LevelKaartView
         geluid_manager.stop_muziek()
+        # Sla voortgang op vóór je naar de kaart gaat
+        try:
+            voortgang_module.sla_voortgang_op(self.voltooid, self.punten, self.speler.levens)
+        except Exception:
+            pass
         kaart = LevelKaartView(self.voltooid, self.punten, self.speler.levens)
         self.window.show_view(kaart)
