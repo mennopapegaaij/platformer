@@ -4,7 +4,10 @@
 
 import random  # nodig om automatisch oneindige levels te maken
 from platforms import Platform
-from vijand import Vijand, VliegendVijand, SpringendVijand, GroteVijand, GeestVijand, JagerVijand, EindBaas
+from vijand import (Vijand, VliegendVijand, SpringendVijand, GroteVijand, GeestVijand,
+                    JagerVijand, EindBaas,
+                    SlijmVijand, StekelVijand, VuurVijand, IJsVijand, BomVijand,
+                    VleermuisVijand, SlangVijand, RobotVijand, KraaiVijand, PaddenstoelVijand)
 from powerup import ExtraLevenPowerUp
 
 
@@ -548,8 +551,11 @@ def _genereer_oneindig_level(nummer):
             platforms.append(Platform(px, hoogte, pw, 20))
 
     # --- 3. Vijanden (niet op het start-eiland, wel op de rest) ---
-    grond_soorten = [Vijand, SpringendVijand, JagerVijand, GroteVijand]
-    lucht_soorten = [VliegendVijand, GeestVijand]
+    grond_soorten = [Vijand, SpringendVijand, JagerVijand, GroteVijand,
+                     SlijmVijand, StekelVijand, IJsVijand, BomVijand,
+                     SlangVijand, RobotVijand, PaddenstoelVijand]
+    lucht_soorten = [VliegendVijand, GeestVijand,
+                     VuurVijand, VleermuisVijand, KraaiVijand]
     for (ex, ebr) in eilanden[1:-1]:       # sla het start- en eindeiland over
         for _ in range(vijanden_per_eiland):
             links = ex + 10

@@ -549,3 +549,390 @@ class EindBaas(Vijand):
         if self._vlucht_modus:
             arcade.draw_text("VLUCHT!", cx - 28, y + h + 52,
                              arcade.color.YELLOW, 12, bold=True)
+
+
+# =============================================
+# 🟢 SLIJMBAL
+# Een groene blob die stuiterend heen en weer wiebelt.
+# =============================================
+class SlijmVijand(Vijand):
+    """Een groene slijmbal die wiebelend over de grond glijdt."""
+
+    def __init__(self, x, y, links_grens, rechts_grens, snelheid=2):
+        super().__init__(x, y, links_grens, rechts_grens, snelheid)
+        self.breedte = 34
+        self.hoogte = 26
+        self._teller = 0   # Voor het wiebel-animatietje
+
+    def bijwerken(self, speler_x=None):
+        self._teller += 0.2
+        self.x += self.snelheid
+        if self.x <= self.links_grens or self.x + self.breedte >= self.rechts_grens:
+            self.snelheid = -self.snelheid
+
+    def teken(self):
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w // 2
+        # Wiebel: nu eens breed en plat, dan smal en hoog
+        wobble = math.sin(self._teller) * 4
+        bw = w + wobble
+        bh = h - wobble
+        cy = y + bh / 2
+        arcade.draw_ellipse_filled(cx, cy, bw, bh, (80, 200, 90))
+        arcade.draw_ellipse_outline(cx, cy, bw, bh, (40, 140, 50), 2)
+        # Lichtvlek zodat hij glimt
+        arcade.draw_ellipse_filled(cx - bw * 0.2, cy + bh * 0.15, bw * 0.25, bh * 0.2,
+                                   (170, 240, 170))
+        # Ogen
+        arcade.draw_circle_filled(cx - 7, cy + 2, 4, OOG_KLEUR)
+        arcade.draw_circle_filled(cx + 7, cy + 2, 4, OOG_KLEUR)
+        arcade.draw_circle_filled(cx - 6, cy + 3, 1, arcade.color.WHITE)
+        arcade.draw_circle_filled(cx + 8, cy + 3, 1, arcade.color.WHITE)
+        # Mondje
+        arcade.draw_arc_outline(cx, cy - 4, 10, 6, OOG_KLEUR, 200, 340, 2)
+
+
+# =============================================
+# 🦔 STEKELEGEL
+# LET OP: hier kun je NIET op springen! Alleen ontwijken of overheen springen.
+# =============================================
+class StekelVijand(Vijand):
+    """Een egel vol stekels. Springen op zijn rug doet PIJN — ontwijk hem!"""
+
+    def __init__(self, x, y, links_grens, rechts_grens, snelheid=2):
+        super().__init__(x, y, links_grens, rechts_grens, snelheid)
+        self.breedte = 34
+        self.hoogte = 26
+
+    def speler_springt_erop(self, px, py, pw, ph):
+        """Door de stekels kun je hem NOOIT stompen (altijd False)."""
+        return False
+
+    def teken(self):
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w // 2
+        cy = y + h // 2
+        richting = 1 if self.snelheid > 0 else -1
+        # Stekels bovenop (grijze driehoekjes)
+        for i in range(5):
+            sx = x + 5 + i * (w - 10) / 4
+            arcade.draw_triangle_filled(sx - 5, y + h - 4, sx + 5, y + h - 4,
+                                        sx, y + h + 12, (120, 120, 140))
+        # Lijf
+        arcade.draw_ellipse_filled(cx, cy, w, h, (110, 80, 60))
+        arcade.draw_ellipse_outline(cx, cy, w, h, (60, 40, 30), 2)
+        # Snoetje aan de voorkant
+        snoet_x = cx + (w // 2 - 4) * richting
+        arcade.draw_circle_filled(snoet_x, cy - 2, 5, (240, 210, 190))
+        arcade.draw_circle_filled(snoet_x + 2 * richting, cy - 2, 2, OOG_KLEUR)
+        # Oog
+        arcade.draw_circle_filled(cx + 5 * richting, cy + 4, 3, OOG_KLEUR)
+
+
+# =============================================
+# 🔥 VUURMONSTER
+# Een zwevend vlammetje dat flikkert in de lucht.
+# =============================================
+class VuurVijand(Vijand):
+    """Een vurig monster dat flikkerend door de lucht zweeft."""
+
+    def __init__(self, x, y, links_grens, rechts_grens, snelheid=2.5):
+        super().__init__(x, y, links_grens, rechts_grens, snelheid)
+        self.breedte = 28
+        self.hoogte = 34
+        self._teller = 0
+        self._midden_y = y
+
+    def bijwerken(self, speler_x=None):
+        self._teller += 0.3
+        self.x += self.snelheid
+        if self.x <= self.links_grens or self.x + self.breedte >= self.rechts_grens:
+            self.snelheid = -self.snelheid
+        # Zweeft zachtjes op en neer
+        self.y = self._midden_y + math.sin(self._teller * 0.5) * 12
+
+    def teken(self):
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w // 2
+        cy = y + h / 2
+        flikker = math.sin(self._teller) * 3
+        # Buitenvlam (rood/oranje, doorschijnend)
+        arcade.draw_ellipse_filled(cx, cy, w + flikker, h + flikker, (230, 60, 20, 180))
+        # Binnenvlam (geel)
+        arcade.draw_ellipse_filled(cx, cy - 2, w - 8, h - 10, (255, 200, 40))
+        # Ogen
+        arcade.draw_circle_filled(cx - 6, cy + 4, 3, OOG_KLEUR)
+        arcade.draw_circle_filled(cx + 6, cy + 4, 3, OOG_KLEUR)
+
+
+# =============================================
+# ❄️ SNEEUWPOP
+# Heel langzaam — maar koud en gevaarlijk!
+# =============================================
+class IJsVijand(Vijand):
+    """Een ijskoude sneeuwpop die langzaam heen en weer schuift."""
+
+    def __init__(self, x, y, links_grens, rechts_grens, snelheid=1.5):
+        super().__init__(x, y, links_grens, rechts_grens, snelheid)
+        self.breedte = 30
+        self.hoogte = 38
+
+    def teken(self):
+        x, y, w = self.x, self.y, self.breedte
+        cx = x + w // 2
+        # Twee sneeuwballen
+        arcade.draw_circle_filled(cx, y + 12, 14, (235, 245, 255))
+        arcade.draw_circle_filled(cx, y + 30, 10, (235, 245, 255))
+        arcade.draw_circle_outline(cx, y + 12, 14, (170, 200, 230), 2)
+        arcade.draw_circle_outline(cx, y + 30, 10, (170, 200, 230), 2)
+        # Ogen
+        arcade.draw_circle_filled(cx - 4, y + 32, 2, OOG_KLEUR)
+        arcade.draw_circle_filled(cx + 4, y + 32, 2, OOG_KLEUR)
+        # Wortelneus
+        arcade.draw_triangle_filled(cx, y + 29, cx, y + 33, cx + 10, y + 31, arcade.color.ORANGE)
+        # Knopen
+        arcade.draw_circle_filled(cx, y + 14, 2, OOG_KLEUR)
+        arcade.draw_circle_filled(cx, y + 8, 2, OOG_KLEUR)
+
+
+# =============================================
+# 💣 WANDELENDE BOM
+# Loopt rond met een sissende lont.
+# =============================================
+class BomVijand(Vijand):
+    """Een wandelende bom met een sissende, vonkende lont."""
+
+    def __init__(self, x, y, links_grens, rechts_grens, snelheid=2):
+        super().__init__(x, y, links_grens, rechts_grens, snelheid)
+        self.breedte = 30
+        self.hoogte = 30
+        self._teller = 0
+
+    def bijwerken(self, speler_x=None):
+        self._teller += 0.3
+        self.x += self.snelheid
+        if self.x <= self.links_grens or self.x + self.breedte >= self.rechts_grens:
+            self.snelheid = -self.snelheid
+
+    def teken(self):
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w // 2
+        cy = y + h // 2 - 2
+        # Ronde zwarte bom
+        arcade.draw_circle_filled(cx, cy, w // 2, (40, 40, 50))
+        arcade.draw_circle_outline(cx, cy, w // 2, (10, 10, 20), 2)
+        arcade.draw_circle_filled(cx - 5, cy + 5, 3, (120, 120, 140))  # glimlicht
+        # Lont
+        arcade.draw_line(cx + 6, y + h - 4, cx + 12, y + h + 8, (150, 100, 40), 3)
+        # Vonk (flikkert tussen geel en oranje)
+        vonk = arcade.color.YELLOW if int(self._teller * 4) % 2 == 0 else arcade.color.ORANGE
+        arcade.draw_circle_filled(cx + 12, y + h + 9, 4, vonk)
+        # Boze ogen
+        arcade.draw_circle_filled(cx - 5, cy, 3, arcade.color.RED)
+        arcade.draw_circle_filled(cx + 5, cy, 3, arcade.color.RED)
+
+
+# =============================================
+# 🦇 VLEERMUIS
+# Fladdert in scherpe golfjes door de lucht.
+# =============================================
+class VleermuisVijand(Vijand):
+    """Een vleermuis die in scherpe golven op en neer door de lucht fladdert."""
+
+    def __init__(self, x, y, links_grens, rechts_grens, snelheid=3):
+        super().__init__(x, y, links_grens, rechts_grens, snelheid)
+        self.breedte = 34
+        self.hoogte = 20
+        self._teller = 0
+        self._midden_y = y
+
+    def bijwerken(self, speler_x=None):
+        self._teller += 0.25
+        self.x += self.snelheid
+        if self.x <= self.links_grens or self.x + self.breedte >= self.rechts_grens:
+            self.snelheid = -self.snelheid
+        self.y = self._midden_y + math.sin(self._teller) * 30
+
+    def teken(self):
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w // 2
+        cy = y + h // 2
+        flap = math.sin(self._teller * 4) * 6
+        # Vleugels (fladderen)
+        arcade.draw_triangle_filled(cx, cy, x - 2, cy + flap, x + 6, cy - 8, (90, 60, 120))
+        arcade.draw_triangle_filled(cx, cy, x + w + 2, cy + flap, x + w - 6, cy - 8, (90, 60, 120))
+        # Lijf
+        arcade.draw_ellipse_filled(cx, cy, 16, 18, (60, 40, 90))
+        # Oortjes
+        arcade.draw_triangle_filled(cx - 6, cy + 8, cx - 1, cy + 8, cx - 4, cy + 16, (60, 40, 90))
+        arcade.draw_triangle_filled(cx + 1, cy + 8, cx + 6, cy + 8, cx + 4, cy + 16, (60, 40, 90))
+        # Rode oogjes
+        arcade.draw_circle_filled(cx - 4, cy + 2, 2, arcade.color.RED)
+        arcade.draw_circle_filled(cx + 4, cy + 2, 2, arcade.color.RED)
+
+
+# =============================================
+# 🐍 SLANG
+# Kronkelt over de grond met een golvend lichaam.
+# =============================================
+class SlangVijand(Vijand):
+    """Een slang die kronkelend over de grond glijdt."""
+
+    def __init__(self, x, y, links_grens, rechts_grens, snelheid=2.5):
+        super().__init__(x, y, links_grens, rechts_grens, snelheid)
+        self.breedte = 44
+        self.hoogte = 20
+        self._teller = 0
+
+    def bijwerken(self, speler_x=None):
+        self._teller += 0.3
+        self.x += self.snelheid
+        if self.x <= self.links_grens or self.x + self.breedte >= self.rechts_grens:
+            self.snelheid = -self.snelheid
+
+    def teken(self):
+        x, y, w = self.x, self.y, self.breedte
+        richting = 1 if self.snelheid > 0 else -1
+        # Kronkelend lichaam: een rij bolletjes die golven
+        for i in range(6):
+            seg_x = x + i * (w / 6) + w / 12
+            seg_y = y + 8 + math.sin(self._teller + i * 0.7) * 4
+            r = 8 - i * 0.6
+            arcade.draw_circle_filled(seg_x, seg_y, r, (70, 170, 70))
+        # Kop aan de voorkant
+        kop_x = x + (w - 6 if richting > 0 else 6)
+        kop_y = y + 8 + math.sin(self._teller) * 4
+        arcade.draw_circle_filled(kop_x, kop_y, 9, (90, 190, 90))
+        arcade.draw_circle_filled(kop_x + 3 * richting, kop_y + 2, 2, OOG_KLEUR)
+        # Tong
+        arcade.draw_line(kop_x + 6 * richting, kop_y, kop_x + 12 * richting, kop_y,
+                         arcade.color.RED, 2)
+
+
+# =============================================
+# 🤖 ROBOT
+# Stevig van metaal — je moet hem TWEE keer stompen!
+# =============================================
+class RobotVijand(Vijand):
+    """Een metalen robot met 2 levens: na de eerste stomp wordt hij sneller!"""
+
+    def __init__(self, x, y, links_grens, rechts_grens, snelheid=2):
+        super().__init__(x, y, links_grens, rechts_grens, snelheid)
+        self.breedte = 32
+        self.hoogte = 40
+        self.levens = 2
+        self._woede = 0
+
+    def word_gestompt(self):
+        self.levens -= 1
+        self._woede = 25
+        if self.levens == 1:
+            self.snelheid = self.snelheid * 1.7   # Boos en sneller!
+
+    def bijwerken(self, speler_x=None):
+        self.x += self.snelheid
+        if self.x <= self.links_grens or self.x + self.breedte >= self.rechts_grens:
+            self.snelheid = -self.snelheid
+        if self._woede > 0:
+            self._woede -= 1
+
+    def teken(self):
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w // 2
+        kleur = (255, 120, 0) if (self._woede > 0 and self._woede % 6 < 3) else (150, 160, 175)
+        # Lijf
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h - 12, kleur)
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h - 12, (80, 90, 100), 2)
+        # Hoofd
+        arcade.draw_lrbt_rectangle_filled(x + 6, x + w - 6, y + h - 12, y + h, (185, 195, 205))
+        # Antenne
+        arcade.draw_line(cx, y + h, cx, y + h + 8, (80, 90, 100), 2)
+        arcade.draw_circle_filled(cx, y + h + 9, 3, arcade.color.RED)
+        # Led-ogen (rood als hij al 1x geraakt is, anders blauw)
+        oog_kleur = arcade.color.RED if self.levens == 1 else (0, 200, 255)
+        arcade.draw_circle_filled(cx - 6, y + h - 6, 3, oog_kleur)
+        arcade.draw_circle_filled(cx + 6, y + h - 6, 3, oog_kleur)
+        # Knopjes op de buik
+        for i in range(2):
+            arcade.draw_circle_filled(cx - 6 + i * 12, y + 12, 2, (80, 90, 100))
+        # Levens-stipjes erboven
+        for i in range(self.levens):
+            arcade.draw_circle_filled(cx - 5 + i * 10, y + h + 16, 3, arcade.color.RED)
+
+
+# =============================================
+# 🐦 KRAAI
+# Duikt op en neer terwijl hij door de lucht vliegt.
+# =============================================
+class KraaiVijand(Vijand):
+    """Een zwarte kraai die in grote duikbewegingen door de lucht vliegt."""
+
+    def __init__(self, x, y, links_grens, rechts_grens, snelheid=3.5):
+        super().__init__(x, y, links_grens, rechts_grens, snelheid)
+        self.breedte = 32
+        self.hoogte = 24
+        self._teller = 0
+        self._midden_y = y
+
+    def bijwerken(self, speler_x=None):
+        self._teller += 0.15
+        self.x += self.snelheid
+        if self.x <= self.links_grens or self.x + self.breedte >= self.rechts_grens:
+            self.snelheid = -self.snelheid
+        self.y = self._midden_y + math.sin(self._teller) * 40   # Grote duik-golf
+
+    def teken(self):
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w // 2
+        cy = y + h // 2
+        richting = 1 if self.snelheid > 0 else -1
+        flap = math.sin(self._teller * 5) * 8
+        # Lijf
+        arcade.draw_ellipse_filled(cx, cy, w - 8, h - 6, (30, 30, 40))
+        # Vleugels (fladderen)
+        arcade.draw_triangle_filled(cx, cy, cx - 16, cy + flap, cx - 4, cy - 6, (20, 20, 30))
+        arcade.draw_triangle_filled(cx, cy, cx + 16, cy + flap, cx + 4, cy - 6, (20, 20, 30))
+        # Kop en snavel
+        kop_x = cx + 10 * richting
+        arcade.draw_circle_filled(kop_x, cy + 2, 6, (30, 30, 40))
+        arcade.draw_triangle_filled(kop_x + 4 * richting, cy + 4, kop_x + 4 * richting, cy,
+                                    kop_x + 12 * richting, cy + 2, arcade.color.ORANGE)
+        arcade.draw_circle_filled(kop_x + 2 * richting, cy + 4, 2, arcade.color.YELLOW)
+
+
+# =============================================
+# 🍄 PADDENSTOEL
+# Wipt vrolijk op en neer terwijl hij rondloopt.
+# =============================================
+class PaddenstoelVijand(Vijand):
+    """Een boze paddenstoel die op en neer wipt terwijl hij loopt."""
+
+    def __init__(self, x, y, links_grens, rechts_grens, snelheid=2):
+        super().__init__(x, y, links_grens, rechts_grens, snelheid)
+        self.breedte = 32
+        self.hoogte = 30
+        self._grond_y = y
+        self._teller = 0
+
+    def bijwerken(self, speler_x=None):
+        self._teller += 0.2
+        self.x += self.snelheid
+        if self.x <= self.links_grens or self.x + self.breedte >= self.rechts_grens:
+            self.snelheid = -self.snelheid
+        # Wipt op en neer (altijd positief met abs)
+        self.y = self._grond_y + abs(math.sin(self._teller)) * 6
+
+    def teken(self):
+        x, y, w = self.x, self.y, self.breedte
+        cx = x + w // 2
+        # Steel (crème-wit)
+        arcade.draw_lrbt_rectangle_filled(cx - 7, cx + 7, y, y + 16, (240, 230, 210))
+        # Hoed (rood)
+        arcade.draw_ellipse_filled(cx, y + 20, w, 22, (210, 40, 40))
+        arcade.draw_ellipse_outline(cx, y + 20, w, 22, (150, 20, 20), 2)
+        # Witte stippen op de hoed
+        for dx in [-9, 0, 9]:
+            arcade.draw_circle_filled(cx + dx, y + 22, 3, arcade.color.WHITE)
+        # Ogen op de steel
+        arcade.draw_circle_filled(cx - 4, y + 9, 2, OOG_KLEUR)
+        arcade.draw_circle_filled(cx + 4, y + 9, 2, OOG_KLEUR)
