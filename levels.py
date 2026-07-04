@@ -2,6 +2,7 @@
 # Alle level-gegevens op één plek.
 # Wil je een nieuw level toevoegen? Voeg hier een nieuw blok toe!
 
+import random  # nodig om automatisch oneindige levels te maken
 from platforms import Platform
 from vijand import Vijand, VliegendVijand, SpringendVijand, GroteVijand, GeestVijand, JagerVijand, EindBaas
 from powerup import SterPowerUp, SnelheidPowerUp, DubbelSprongPowerUp, ExtraLevenPowerUp, SchietPowerUp
@@ -10,7 +11,8 @@ from powerup import SterPowerUp, SnelheidPowerUp, DubbelSprongPowerUp, ExtraLeve
 def maak_level(nummer):
     """
     Geeft de gegevens voor een level terug.
-    nummer = 1 t/m 5
+    nummer = 1 t/m 9 zijn handgemaakte levels.
+    nummer = 10 of hoger worden AUTOMATISCH gemaakt (oneindig veel levels!).
 
     Geeft terug: (platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte)
     """
@@ -516,12 +518,88 @@ def maak_level(nummer):
         powerups = []
 
     else:
-        # Onbekend levelnummer — geef lege data terug
-        level_breedte = 800
-        platforms = []
-        vijanden = []
-        powerups = []
-        vlag_x = 700
-        vlag_y = 40
+        # Level 10 of hoger: laat de computer automatisch een nieuw level maken!
+        return _genereer_oneindig_level(nummer)
+
+    return platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte
+
+
+def _genereer_oneindig_level(nummer):
+    """Maak automatisch een level voor nummer 10, 11, 12, ... (oneindig veel!).
+
+    Hoe hoger het nummer, hoe moeilijker: breder, meer vijanden en sneller.
+    Met random.Random(nummer) krijgt elk levelnummer ALTIJD hetzelfde level,
+    ook als je hetzelfde level nog een keer speelt. Handig én eerlijk!
+    """
+    # Een eigen 'dobbelsteen' die altijd dezelfde worp geeft bij hetzelfde nummer
+    rng = random.Random(nummer)
+    trap = nummer - 9                      # 1 bij level 10, 2 bij level 11, enz.
+
+    # Moeilijkheid loopt langzaam op (met een MAXIMUM zodat het spel niet gaat haperen)
+    level_breedte = min(2600 + trap * 250, 5000)  # breder, maar nooit gigantisch groot
+    basis_snelheid = min(2.5 + trap * 0.15, 6.0)  # vijanden worden sneller (max 6)
+
+    platforms = []
+    vijanden = []
+    powerups = []
+
+    # --- 1. De grond: eilandjes met gaten ertussen ---
+    eilanden = []                          # onthoud elk eiland als (start_x, breedte)
+    x = 0
+    while x < level_breedte - 500:
+        breedte = rng.randint(230, 340)
+        platforms.append(Platform(x, 0, breedte, 40))
+        eilanden.append((x, breedte))
+        gat = rng.randint(120, 170)        # zo'n gat kun je makkelijk overspringen
+        x += breedte + gat
+
+    # Groot eindeiland waar de vlag op komt te staan
+    eind_start = x
+    eind_breedte = max(400, level_breedte - x)
+    platforms.append(Platform(eind_start, 0, eind_breedte, 40))
+    eilanden.append((eind_start, eind_breedte))
+
+    # --- 2. Zwevende platforms om op te springen ---
+    for (ex, ebr) in eilanden:
+        if rng.random() < 0.7:             # niet op elk eiland eentje
+            hoogte = rng.choice([130, 160, 190, 220])
+            pw = rng.randint(80, 120)
+            speelruimte = max(10, ebr - pw - 20)
+            px = ex + rng.randint(10, speelruimte)
+            platforms.append(Platform(px, hoogte, pw, 20))
+
+    # --- 3. Vijanden (niet op het start-eiland, wel op de rest) ---
+    grond_soorten = [Vijand, SpringendVijand, JagerVijand, GroteVijand]
+    lucht_soorten = [VliegendVijand, GeestVijand]
+    for (ex, ebr) in eilanden[1:-1]:       # sla het start- en eindeiland over
+        aantal = min(1 + trap // 3, 3)     # meer vijanden in latere levels (max 3)
+        for _ in range(aantal):
+            links = ex + 10
+            rechts = ex + ebr - 10
+            start_x = rng.randint(links, rechts)
+            if rng.random() < 0.35:
+                # Een vliegende of zwevende vijand, hoog in de lucht
+                soort = rng.choice(lucht_soorten)
+                y = rng.choice([130, 160, 190])
+            else:
+                # Een vijand die over de grond loopt
+                soort = rng.choice(grond_soorten)
+                y = 40
+            snelheid = round(basis_snelheid + rng.uniform(-0.3, 0.6), 1)
+            vijanden.append(soort(start_x, y, links, rechts, snelheid))
+
+    # --- 4. Power-ups op sommige zwevende platforms ---
+    powerup_soorten = [SterPowerUp, SnelheidPowerUp, DubbelSprongPowerUp,
+                       ExtraLevenPowerUp, SchietPowerUp]
+    zwevend = [p for p in platforms if p.y > 40]   # alleen de hoge platforms
+    rng.shuffle(zwevend)
+    aantal_powerups = min(3 + trap // 2, len(zwevend))
+    for p in zwevend[:aantal_powerups]:
+        soort = rng.choice(powerup_soorten)
+        powerups.append(soort(p.x + p.breedte // 2 - 10, p.y + 22))
+
+    # --- 5. De vlag helemaal aan het einde ---
+    vlag_x = eind_start + eind_breedte - 60
+    vlag_y = 40
 
     return platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte

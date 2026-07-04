@@ -2,32 +2,40 @@
 # De overzichtskaart — net als bij Mario!
 # Hier kun je kiezen welk level je wilt spelen.
 # Levels die je nog niet gehaald hebt zijn op slot.
+# De kaart is ONEINDIG: er komen steeds nieuwe bolletjes bij (10, 11, 12...).
 
 import arcade
 from instellingen import SCHERM_BREEDTE, SCHERM_HOOGTE, AANTAL_LEVELS, LEVEL_NAMEN
 
-# Posities van de level-bolletjes op de kaart (x, y)
-# Het pad slingert als een slang: rechts → omhoog → links → omhoog → rechts
-LEVEL_POSITIES = {
-    1: (150,  80),   # Rij 1 (onderaan), van links naar rechts
-    2: (370,  80),
-    3: (590,  80),
-    4: (590, 220),   # Rij 2 (midden), van rechts naar links
-    5: (370, 220),
-    6: (150, 220),
-    7: (150, 360),   # Rij 3 (bovenaan), van links naar rechts
-    8: (370, 360),
-    9: (590, 360),
-}
+# De drie kolommen (x-posities) waar de bolletjes op staan
+KOL_X = [150, 370, 590]
 
-# De verbindingen tussen de levels op het pad
-PADEN = [
-    (1, 2), (2, 3),         # Onderste rij: naar rechts
-    (3, 4),                  # Omhoog
-    (4, 5), (5, 6),         # Middelste rij: naar links
-    (6, 7),                  # Omhoog
-    (7, 8), (8, 9),         # Bovenste rij: naar rechts
-]
+# Elke rij is 140 pixels hoger dan de vorige
+RIJ_HOOGTE = 140
+# De onderste rij staat op deze hoogte
+BASIS_Y = 80
+
+
+def _rij_en_kolom(nummer):
+    """Reken uit in welke rij en kolom een level hoort (level 1 = rij 0, kolom 0)."""
+    rij = (nummer - 1) // 3
+    kolom = (nummer - 1) % 3
+    return rij, kolom
+
+
+def _basis_positie(nummer):
+    """De positie van een level op de kaart, nog zonder scrollen.
+
+    De rijen slingeren als een slang: even rijen van links naar rechts,
+    oneven rijen van rechts naar links.
+    """
+    rij, kolom = _rij_en_kolom(nummer)
+    if rij % 2 == 0:
+        x = KOL_X[kolom]          # even rij: links → rechts
+    else:
+        x = KOL_X[2 - kolom]      # oneven rij: rechts → links
+    y = BASIS_Y + rij * RIJ_HOOGTE
+    return x, y
 
 
 class LevelKaartView(arcade.View):
@@ -43,15 +51,44 @@ class LevelKaartView(arcade.View):
         self.geselecteerd = self._bereken_start()
 
     def _bereken_start(self):
-        """Zoek het eerste level dat nog niet gehaald is."""
-        for i in range(1, AANTAL_LEVELS + 1):
-            if i not in self.voltooid:
-                return i
-        return AANTAL_LEVELS  # Alles gehaald!
+        """Zoek het eerste level dat nog niet gehaald is (kan ook level 10+ zijn!)."""
+        i = 1
+        while i in self.voltooid:
+            i += 1
+        return i
+
+    def _hoogste_level(self):
+        """Het hoogste level dat op de kaart getekend mag worden.
+
+        Altijd minstens de 9 handgemaakte levels, en daarna steeds ééntje
+        meer dan je hoogste gehaalde level (het volgende dat je kunt spelen).
+        """
+        behaald = max(self.voltooid) if self.voltooid else 0
+        return max(AANTAL_LEVELS, behaald + 1)
 
     def _is_ontgrendeld(self, nummer):
         """Controleer of een level gespeeld mag worden (het vorige moet gehaald zijn)."""
         return nummer == 1 or (nummer - 1) in self.voltooid
+
+    # --- Scrollen: de kaart schuift omhoog als je hoger komt ---
+    def _scroll(self):
+        """Hoeveel de kaart omhoog geschoven is.
+
+        De geselecteerde rij blijft mooi in beeld. In het begin (rij 0 en 1)
+        schuift er nog niets.
+        """
+        doel_rij = (self.geselecteerd - 1) // 3
+        return max(0, (doel_rij - 1) * RIJ_HOOGTE)
+
+    def _scherm_positie(self, nummer):
+        """De positie van een level op het scherm (mét scrollen meegerekend)."""
+        x, y = _basis_positie(nummer)
+        return x, y - self._scroll()
+
+    def _zichtbaar(self, nummer):
+        """Staat dit bolletje op dit moment in beeld?"""
+        _, y = self._scherm_positie(nummer)
+        return 30 <= y <= 415
 
     def on_show_view(self):
         """Wordt aangeroepen als dit scherm zichtbaar wordt."""
@@ -64,10 +101,16 @@ class LevelKaartView(arcade.View):
         # --- Achtergrond decoraties ---
         self._teken_achtergrond()
 
+        hoogste = self._hoogste_level()
+
         # --- Teken de paden (verbindingen tussen levels) ---
-        for (van, naar) in PADEN:
-            x1, y1 = LEVEL_POSITIES[van]
-            x2, y2 = LEVEL_POSITIES[naar]
+        for van in range(1, hoogste):
+            naar = van + 1
+            # Alleen tekenen als tenminste één van de twee bolletjes in beeld is
+            if not (self._zichtbaar(van) or self._zichtbaar(naar)):
+                continue
+            x1, y1 = self._scherm_positie(van)
+            x2, y2 = self._scherm_positie(naar)
             # Vergrendeld pad = grijs, beschikbaar pad = bruin/zand
             if self._is_ontgrendeld(naar):
                 arcade.draw_line(x1, y1, x2, y2, (180, 120, 60), 10)
@@ -76,12 +119,14 @@ class LevelKaartView(arcade.View):
                 arcade.draw_line(x1, y1, x2, y2, (80, 80, 80), 10)
 
         # --- Teken de level-bolletjes ---
-        for nummer in range(1, AANTAL_LEVELS + 1):
-            x, y = LEVEL_POSITIES[nummer]
+        for nummer in range(1, hoogste + 1):
+            if not self._zichtbaar(nummer):
+                continue
+            x, y = self._scherm_positie(nummer)
             self._teken_level_knoop(nummer, x, y)
 
         # --- Teken het poppetje op het geselecteerde level ---
-        px, py = LEVEL_POSITIES[self.geselecteerd]
+        px, py = self._scherm_positie(self.geselecteerd)
         self._teken_poppetje(px, py + 38)
 
         # --- Titel bovenaan ---
@@ -92,7 +137,7 @@ class LevelKaartView(arcade.View):
                          arcade.color.WHITE, 26, bold=True, anchor_x="center")
 
         # --- Uitleg onderaan ---
-        naam = LEVEL_NAMEN.get(self.geselecteerd, "")
+        naam = LEVEL_NAMEN.get(self.geselecteerd) or f"Oneindig Level {self.geselecteerd}"
         if not self._is_ontgrendeld(self.geselecteerd):
             extra = f"  🔒  Haal level {self.geselecteerd - 1} eerst!"
             tekst_kleur = arcade.color.LIGHT_GRAY
@@ -183,8 +228,9 @@ class LevelKaartView(arcade.View):
             if self.geselecteerd > 1:
                 self.geselecteerd -= 1
         elif toets == arcade.key.RIGHT:
-            # Ga naar het volgende level (als dat ontgrendeld is)
-            if self.geselecteerd < AANTAL_LEVELS and self._is_ontgrendeld(self.geselecteerd + 1):
+            # Ga naar het volgende level (als dat ontgrendeld is). Geen bovengrens:
+            # zolang je levels haalt, komen er steeds nieuwe bij!
+            if self._is_ontgrendeld(self.geselecteerd + 1):
                 self.geselecteerd += 1
         elif toets in (arcade.key.ENTER, arcade.key.NUM_ENTER):
             # Start het level als het ontgrendeld is

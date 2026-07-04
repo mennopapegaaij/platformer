@@ -123,8 +123,8 @@ class PlatformerSpel(arcade.View):
 
         # --- Teken de berichten buiten de camera (altijd midden op het scherm) ---
 
-        # Levelnaam altijd bovenin
-        naam = LEVEL_NAMEN.get(self.huidig_level, "")
+        # Levelnaam altijd bovenin (nieuwe oneindige levels krijgen een standaardnaam)
+        naam = LEVEL_NAMEN.get(self.huidig_level) or f"Oneindig Level {self.huidig_level}"
         arcade.draw_text(f"Level {self.huidig_level}: {naam}",
                          10, SCHERM_HOOGTE - 30, arcade.color.WHITE, 16, bold=True)
 
@@ -317,12 +317,10 @@ class PlatformerSpel(arcade.View):
             # Markeer dit level als voltooid (sla op in het bestand)
             self.voltooid = voortgang_module.markeer_level_voltooid(
                 self.huidig_level, self.voltooid, self.punten, self.speler.levens)
-            if self.huidig_level < AANTAL_LEVELS:
-                self.level_gehaald = True
-                geluid_manager.speel_level_gehaald()  # 🎵 Fanfare!
-            else:
-                self.gewonnen = True
-                geluid_manager.speel_level_gehaald()
+            # In een oneindig spel is er geen 'laatste' level:
+            # elke vlag betekent gewoon "level gehaald, door naar het volgende!"
+            self.level_gehaald = True
+            geluid_manager.speel_level_gehaald()  # 🎵 Fanfare!
 
     def _voeg_punt_toe(self):
         """Geef de speler 1 punt. Elke 10 punten: sneller én hoger springen!"""
