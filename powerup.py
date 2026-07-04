@@ -45,34 +45,6 @@ class PowerUp:
         return math.sin(self._teller) * 4
 
 
-class SterPowerUp(PowerUp):
-    """⭐ Ster — tijdelijk onkwetsbaar! Vijanden kunnen je niet pakken."""
-
-    def toepassen(self, speler):
-        speler.onkwetsbaar_timer = EFFECT_DUUR
-
-    def teken(self):
-        y_extra = self._wiebel_y()
-        cx = self.x + self.breedte // 2
-        cy = self.y + self.hoogte // 2 + y_extra
-
-        # Teken een ster als 10 punten (5 punten, afwisselend buiten/binnen)
-        punten = []
-        for i in range(10):
-            hoek = math.radians(i * 36 - 90)
-            straal = 14 if i % 2 == 0 else 6
-            punten.append(cx + straal * math.cos(hoek))
-            punten.append(cy + straal * math.sin(hoek))
-        arcade.draw_polygon_filled(
-            [(punten[i], punten[i+1]) for i in range(0, len(punten), 2)],
-            arcade.color.YELLOW
-        )
-        arcade.draw_polygon_outline(
-            [(punten[i], punten[i+1]) for i in range(0, len(punten), 2)],
-            arcade.color.ORANGE, 2
-        )
-
-
 class SnelheidPowerUp(PowerUp):
     """💨 Snelheid — je rent tijdelijk dubbel zo snel!"""
 

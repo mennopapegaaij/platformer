@@ -5,7 +5,7 @@
 import random  # nodig om automatisch oneindige levels te maken
 from platforms import Platform
 from vijand import Vijand, VliegendVijand, SpringendVijand, GroteVijand, GeestVijand, JagerVijand, EindBaas
-from powerup import SterPowerUp, SnelheidPowerUp, DubbelSprongPowerUp, ExtraLevenPowerUp, SchietPowerUp
+from powerup import SnelheidPowerUp, DubbelSprongPowerUp, ExtraLevenPowerUp, SchietPowerUp
 
 
 def maak_level(nummer):
@@ -53,7 +53,6 @@ def maak_level(nummer):
         vlag_y = 40
         powerups = [
             ExtraLevenPowerUp(200, 152),        # Op het eerste hoge platform
-            SterPowerUp(660, 222),              # Op het platform op hoogte 200
             SchietPowerUp(1030, 242),           # 🔫 Schiet power-up halverwege!
             DubbelSprongPowerUp(1580, 222),     # Bijna aan het einde
         ]
@@ -152,7 +151,6 @@ def maak_level(nummer):
         powerups = [
             DubbelSprongPowerUp(120, 182),      # Op eerste hoge platform
             SchietPowerUp(1040, 332),           # 🔫 Schiet power-up in gevaarlijk stuk!
-            SterPowerUp(1580, 242),             # Gevaarlijk punt: ster helpt!
             SnelheidPowerUp(2470, 322),         # Bijna aan het einde
         ]
     # Moeilijk — smalle platforms, veel vijanden
@@ -208,11 +206,9 @@ def maak_level(nummer):
         vlag_x = 3150
         vlag_y = 40
         powerups = [
-            SterPowerUp(100, 192),              # Direct aan het begin — nodig!
             SchietPowerUp(580, 352),            # 🔫 Schiet power-up op hoog platform
             ExtraLevenPowerUp(1450, 362),       # Halverwege, beloont moed
             SnelheidPowerUp(2300, 362),         # In het moeilijke stuk
-            SterPowerUp(2830, 342),             # Laatste stuk: extra ster
         ]
     # Heel moeilijk — grote gaten, razendsnelle vijanden
     # =============================================
@@ -277,11 +273,9 @@ def maak_level(nummer):
         vlag_y = 40
         powerups = [
             ExtraLevenPowerUp(100, 202),        # Eerste platform — extra leven!
-            SterPowerUp(620, 372),              # Gevaarlijk stuk, ster helpt
             SchietPowerUp(1170, 272),           # 🔫 Schiet power-up halverwege!
             SnelheidPowerUp(1810, 232),         # Hoog platform
             ExtraLevenPowerUp(2340, 382),       # Bijna eindbaas
-            SterPowerUp(2870, 382),             # Laatste kans voor de vlag!
         ]
 
     # =============================================
@@ -338,7 +332,6 @@ def maak_level(nummer):
         powerups = [
             SchietPowerUp(100, 62),             # Op de grond aan het begin — schiet voor punten!
             ExtraLevenPowerUp(720, 212),        # Op verhoogd platform
-            SterPowerUp(1580, 212),             # Halverwege — handig bij de jagers
             SnelheidPowerUp(2010, 212),         # Boost op verhoogd platform
             DubbelSprongPowerUp(2440, 212),     # Helpt met de laatste gaten
         ]
@@ -403,11 +396,9 @@ def maak_level(nummer):
         powerups = [
             SchietPowerUp(100, 62),             # Begin: schiet voor punten!
             ExtraLevenPowerUp(310, 152),        # Op tussenplatform
-            SterPowerUp(760, 242),              # Beschermt bij de jagers
             SchietPowerUp(1255, 242),           # Midden: extra punten nodig!
             DubbelSprongPowerUp(1755, 242),     # Helpt met hoge wolken
             ExtraLevenPowerUp(2250, 242),       # Bijna eindbaas
-            SterPowerUp(2750, 242),             # Laatste stuk
         ]
 
     # =============================================
@@ -479,11 +470,9 @@ def maak_level(nummer):
         powerups = [
             SchietPowerUp(100, 62),             # Schiet vanaf het begin!
             ExtraLevenPowerUp(330, 162),        # Op tussenstap platform
-            SterPowerUp(300, 272),              # Op hoog platform
             SchietPowerUp(870, 162),            # Midden: verslaan monsters = punten!
             ExtraLevenPowerUp(1440, 162),       # Bijna halverwege
             DubbelSprongPowerUp(1570, 272),     # Op hoog platform
-            SterPowerUp(2590, 272),             # Bescherming bij eindbaas-aanloop
             SchietPowerUp(3165, 272),           # Laatste stuk: schiet je vrij baan!
             ExtraLevenPowerUp(3500, 62),        # Net voor de eindbaas-groep
         ]
@@ -608,12 +597,12 @@ def _genereer_oneindig_level(nummer):
     zwevend = [p for p in platforms if p.y > 40]   # alleen de hoge platforms
     rng.shuffle(zwevend)
     if moeilijk:
-        # In zware levels: meer power-ups, vooral sterren en levens om te overleven!
-        powerup_soorten = [SterPowerUp, ExtraLevenPowerUp, SchietPowerUp,
-                           SterPowerUp, ExtraLevenPowerUp]
+        # In zware levels: meer power-ups, vooral levens en schieten om te overleven!
+        powerup_soorten = [ExtraLevenPowerUp, SchietPowerUp,
+                           ExtraLevenPowerUp, SchietPowerUp]
         aantal_powerups = min(5 + extra, len(zwevend))
     else:
-        powerup_soorten = [SterPowerUp, SnelheidPowerUp, DubbelSprongPowerUp,
+        powerup_soorten = [SnelheidPowerUp, DubbelSprongPowerUp,
                            ExtraLevenPowerUp, SchietPowerUp]
         aantal_powerups = min(3 + trap // 2, len(zwevend))
     for p in zwevend[:aantal_powerups]:
