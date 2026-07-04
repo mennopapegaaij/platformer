@@ -535,9 +535,22 @@ def _genereer_oneindig_level(nummer):
     rng = random.Random(nummer)
     trap = nummer - 9                      # 1 bij level 10, 2 bij level 11, enz.
 
-    # Moeilijkheid loopt langzaam op (met een MAXIMUM zodat het spel niet gaat haperen)
+    # Breedte loopt op (met een MAXIMUM zodat het spel niet gaat haperen)
     level_breedte = min(2600 + trap * 250, 5000)  # breder, maar nooit gigantisch groot
-    basis_snelheid = min(2.5 + trap * 0.15, 6.0)  # vijanden worden sneller (max 6)
+
+    if nummer >= 11:
+        # === LEVEL 11 EN HOGER: BIJNA ONMOGELIJK (maar wél te halen!) ===
+        extra = nummer - 10                              # 1 bij level 11, 2 bij 12...
+        basis_snelheid = min(6.0 + extra * 0.25, 9.0)    # razendsnelle vijanden!
+        vijanden_per_eiland = min(3 + extra // 2, 5)     # heel veel vijanden
+        kans_lucht = 0.45                                # ook veel vliegende vijanden
+        moeilijk = True
+    else:
+        # === Level 10: een rustige opwarmer ===
+        basis_snelheid = min(2.5 + trap * 0.15, 6.0)     # vijanden worden sneller (max 6)
+        vijanden_per_eiland = min(1 + trap // 3, 3)      # rustig aantal vijanden
+        kans_lucht = 0.35
+        moeilijk = False
 
     platforms = []
     vijanden = []
@@ -572,12 +585,11 @@ def _genereer_oneindig_level(nummer):
     grond_soorten = [Vijand, SpringendVijand, JagerVijand, GroteVijand]
     lucht_soorten = [VliegendVijand, GeestVijand]
     for (ex, ebr) in eilanden[1:-1]:       # sla het start- en eindeiland over
-        aantal = min(1 + trap // 3, 3)     # meer vijanden in latere levels (max 3)
-        for _ in range(aantal):
+        for _ in range(vijanden_per_eiland):
             links = ex + 10
             rechts = ex + ebr - 10
             start_x = rng.randint(links, rechts)
-            if rng.random() < 0.35:
+            if rng.random() < kans_lucht:
                 # Een vliegende of zwevende vijand, hoog in de lucht
                 soort = rng.choice(lucht_soorten)
                 y = rng.choice([130, 160, 190])
@@ -588,12 +600,22 @@ def _genereer_oneindig_level(nummer):
             snelheid = round(basis_snelheid + rng.uniform(-0.3, 0.6), 1)
             vijanden.append(soort(start_x, y, links, rechts, snelheid))
 
+    # Veiligheid: nooit te veel vijanden, anders gaat het spel haperen
+    if len(vijanden) > 45:
+        vijanden = vijanden[:45]
+
     # --- 4. Power-ups op sommige zwevende platforms ---
-    powerup_soorten = [SterPowerUp, SnelheidPowerUp, DubbelSprongPowerUp,
-                       ExtraLevenPowerUp, SchietPowerUp]
     zwevend = [p for p in platforms if p.y > 40]   # alleen de hoge platforms
     rng.shuffle(zwevend)
-    aantal_powerups = min(3 + trap // 2, len(zwevend))
+    if moeilijk:
+        # In zware levels: meer power-ups, vooral sterren en levens om te overleven!
+        powerup_soorten = [SterPowerUp, ExtraLevenPowerUp, SchietPowerUp,
+                           SterPowerUp, ExtraLevenPowerUp]
+        aantal_powerups = min(5 + extra, len(zwevend))
+    else:
+        powerup_soorten = [SterPowerUp, SnelheidPowerUp, DubbelSprongPowerUp,
+                           ExtraLevenPowerUp, SchietPowerUp]
+        aantal_powerups = min(3 + trap // 2, len(zwevend))
     for p in zwevend[:aantal_powerups]:
         soort = rng.choice(powerup_soorten)
         powerups.append(soort(p.x + p.breedte // 2 - 10, p.y + 22))
