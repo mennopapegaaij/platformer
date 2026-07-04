@@ -602,4 +602,8 @@ def _genereer_oneindig_level(nummer):
     vlag_x = eind_start + eind_breedte - 60
     vlag_y = 40
 
+    # BELANGRIJK: maak de levelbreedte precies zo groot als het eindeiland.
+    # Anders staat er een onzichtbare muur vóór de vlag en kun je er niet bij!
+    level_breedte = eind_start + eind_breedte
+
     return platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte
