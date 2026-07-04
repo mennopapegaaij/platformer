@@ -13,10 +13,13 @@ def main():
     window = arcade.Window(SCHERM_BREEDTE, SCHERM_HOOGTE, SCHERM_TITEL)
     # Laad alle geluiden (één keer aan het begin)
     geluid_manager.laad_alles()
-    # Laad de opgeslagen voortgang
-    voltooid = voortgang.laad_voortgang()
-    # Laat de levelkaart zien
-    kaart = LevelKaartView(voltooid)
+    # Laad de opgeslagen voortgang (voltooide levels, punten, levens)
+    data = voortgang.laad_voortgang()
+    voltooid = data.get("voltooid", set())
+    punten = data.get("punten", 0)
+    levens = data.get("levens", None)
+    # Laat de levelkaart zien (met bewaarde punten en levens)
+    kaart = LevelKaartView(voltooid, punten, levens)
     window.show_view(kaart)
     arcade.run()              # Start de game loop
 
