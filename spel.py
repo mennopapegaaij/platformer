@@ -17,7 +17,8 @@ import voortgang as voortgang_module
 class PlatformerSpel(arcade.View):
     """Het hoofdspel — alles zit hierin."""
 
-    def __init__(self, level_nummer, voltooid_levels, punten=0, levens=None):
+    def __init__(self, level_nummer, voltooid_levels, punten=0, levens=None,
+                 arena=False, kaart_punten=0, kaart_levens=None):
         super().__init__()
         # Onthoud welk level we starten en welke al gehaald zijn
         self.start_level = level_nummer
@@ -25,6 +26,11 @@ class PlatformerSpel(arcade.View):
         # Bewaar punten en levens van het vorige level
         self.start_punten = punten
         self.start_levens = levens   # None = gebruik het standaard aantal levens
+        # Vechtmodus (arena): aparte levels waar je alle monsters moet verslaan
+        self.arena = arena
+        # De punten/levens van de gewone kaart, om terug te zetten na de arena
+        self.kaart_punten = kaart_punten
+        self.kaart_levens = kaart_levens
         # Maak een camera aan die de speler volgt
         self.camera = arcade.camera.Camera2D()
         self.speler = Speler()
@@ -62,8 +68,12 @@ class PlatformerSpel(arcade.View):
         if not hasattr(self, 'punten'):
             self.punten = 0
 
-        # Haal de level-gegevens op uit levels.py
-        platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte = levels_module.maak_level(nummer)
+        # Haal de level-gegevens op: uit de arena of uit de gewone levels
+        if self.arena:
+            data = levels_module.maak_arena(nummer)
+        else:
+            data = levels_module.maak_level(nummer)
+        platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte = data
         self.platforms = platforms
         self.vijanden = vijanden
         self.powerups = powerups
@@ -73,8 +83,8 @@ class PlatformerSpel(arcade.View):
         self.kogels = []   # Lijst van actieve kogels
 
         # Bepaal of de speler genoeg punten heeft voor dit bonus-level
-        # Toon anders een waarschuwing (gedurende 240 frames = 4 seconden)
-        benodigde_punten = {6: 10, 7: 20, 8: 30, 9: 70}
+        # (in de arena bestaat deze waarschuwing niet)
+        benodigde_punten = {} if self.arena else {6: 10, 7: 20, 8: 30, 9: 70}
         if nummer in benodigde_punten and self.punten < benodigde_punten[nummer]:
             self._waarschuwing = (f"⚠️  Let op! Dit level heeft minimaal "
                                   f"{benodigde_punten[nummer]} punten nodig. "
@@ -111,8 +121,9 @@ class PlatformerSpel(arcade.View):
                 if not powerup.opgepakt:
                     powerup.teken()
 
-            # Teken de vlag
-            self._teken_vlag(self.vlag_x, self.vlag_y)
+            # Teken de vlag (in de arena is er geen vlag)
+            if not self.arena:
+                self._teken_vlag(self.vlag_x, self.vlag_y)
 
             # Teken de kogels
             for kogel in self.kogels:
@@ -123,9 +134,13 @@ class PlatformerSpel(arcade.View):
 
         # --- Teken de berichten buiten de camera (altijd midden op het scherm) ---
 
-        # Levelnaam altijd bovenin (nieuwe oneindige levels krijgen een standaardnaam)
-        naam = LEVEL_NAMEN.get(self.huidig_level) or f"Oneindig Level {self.huidig_level}"
-        arcade.draw_text(f"Level {self.huidig_level}: {naam}",
+        # Levelnaam altijd bovenin (arena en oneindige levels krijgen een eigen naam)
+        if self.arena:
+            naam_tekst = f"⚔️ Arena — Level {self.huidig_level}  (versla alle monsters!)"
+        else:
+            naam = LEVEL_NAMEN.get(self.huidig_level) or f"Oneindig Level {self.huidig_level}"
+            naam_tekst = f"Level {self.huidig_level}: {naam}"
+        arcade.draw_text(naam_tekst,
                          10, SCHERM_HOOGTE - 30, arcade.color.WHITE, 16, bold=True)
 
         # Punten rechtsboven
@@ -158,8 +173,14 @@ class PlatformerSpel(arcade.View):
             arcade.draw_lrbt_rectangle_filled(100, 700, 160, 340, (80, 0, 0))
             arcade.draw_text("💀 Game Over! 💀",
                              230, 270, arcade.color.WHITE, 28, bold=True)
-            arcade.draw_text("Druk op R om opnieuw te beginnen",
-                             205, 210, arcade.color.WHITE, 18)
+            if self.arena:
+                arcade.draw_text(f"Je haalde arena-level {self.huidig_level}!",
+                                 220, 240, arcade.color.YELLOW, 16, bold=True)
+                arcade.draw_text("Druk op R om terug naar de kaart te gaan",
+                                 190, 205, arcade.color.WHITE, 16)
+            else:
+                arcade.draw_text("Druk op R om opnieuw te beginnen",
+                                 205, 210, arcade.color.WHITE, 18)
         elif self.gewonnen:
             arcade.draw_lrbt_rectangle_filled(100, 700, 160, 340, arcade.color.DARK_GREEN)
             arcade.draw_text("🎉 Je hebt het hele spel uitgespeeld! 🎉",
@@ -168,10 +189,16 @@ class PlatformerSpel(arcade.View):
                              185, 210, arcade.color.WHITE, 18)
         elif self.level_gehaald:
             arcade.draw_lrbt_rectangle_filled(100, 700, 160, 340, arcade.color.DARK_BLUE)
-            arcade.draw_text(f"Level {self.huidig_level} gehaald! 🎉",
-                             240, 270, arcade.color.WHITE, 26, bold=True)
-            arcade.draw_text("Druk op ENTER om terug naar de kaart te gaan",
-                             185, 210, arcade.color.WHITE, 18)
+            if self.arena:
+                arcade.draw_text("Alle monsters verslagen! 🎉",
+                                 200, 270, arcade.color.WHITE, 24, bold=True)
+                arcade.draw_text("ENTER = volgend monster-level  •  K = kaart",
+                                 180, 210, arcade.color.WHITE, 16)
+            else:
+                arcade.draw_text(f"Level {self.huidig_level} gehaald! 🎉",
+                                 240, 270, arcade.color.WHITE, 26, bold=True)
+                arcade.draw_text("Druk op ENTER om terug naar de kaart te gaan",
+                                 185, 210, arcade.color.WHITE, 18)
         elif self.dood:
             arcade.draw_lrbt_rectangle_filled(100, 700, 160, 340, arcade.color.DARK_RED)
             arcade.draw_text("Oeps! Probeer het opnieuw.",
@@ -254,9 +281,15 @@ class PlatformerSpel(arcade.View):
 
         # --- Vijanden bijwerken en controleren ---
         vijanden_weg = []
+        nieuwe_vijanden = []   # monsters die de arena-baas oproept
         speler_cx = self.speler.x + self.speler.breedte / 2
         for vijand in self.vijanden:
             vijand.bijwerken(speler_cx)
+
+            # De arena-baas kan kleine monsters oproepen
+            if getattr(vijand, 'nieuwe_monsters', None):
+                nieuwe_vijanden.extend(vijand.nieuwe_monsters)
+                vijand.nieuwe_monsters = []
 
             # Springt de speler van bovenaf op de vijand?
             if (self.speler.snelheid_y < 0 and
@@ -283,6 +316,9 @@ class PlatformerSpel(arcade.View):
         for vijand in vijanden_weg:
             self.vijanden.remove(vijand)
 
+        # Voeg de door de baas opgeroepen monsters toe
+        self.vijanden.extend(nieuwe_vijanden)
+
         # --- Kogels bijwerken en vijanden raken ---
         for kogel in self.kogels:
             kogel.bijwerken(self.level_breedte)
@@ -301,6 +337,15 @@ class PlatformerSpel(arcade.View):
 
         # Verwijder kogels die niet meer actief zijn
         self.kogels = [k for k in self.kogels if k.actief]
+
+        # --- Arena/vechtmodus: win als ALLE monsters verslagen zijn ---
+        if self.arena:
+            if len(self.vijanden) == 0 and not self.level_gehaald:
+                self.level_gehaald = True
+                geluid_manager.speel_level_gehaald()
+                # Bewaar het record (hoogste gehaalde arena-level)
+                voortgang_module.sla_arena_record_op(self.huidig_level)
+            return
 
         # --- In level 9: win als de eindbaas verslagen is ---
         if self.huidig_level == AANTAL_LEVELS and len(self.vijanden) == 0:
@@ -328,21 +373,23 @@ class PlatformerSpel(arcade.View):
         bonus = self.punten // 10
         self.speler.snelheid_bonus = bonus
         self.speler.sprong_bonus = bonus  # Elke 10 punten ook iets hoger springen
-        # Sla voortgang op (updates punten)
-        try:
-            voortgang_module.sla_voortgang_op(self.voltooid, self.punten, self.speler.levens)
-        except Exception:
-            pass
+        # Sla voortgang op (updates punten) — in de arena NIET, want die telt apart
+        if not self.arena:
+            try:
+                voortgang_module.sla_voortgang_op(self.voltooid, self.punten, self.speler.levens)
+            except Exception:
+                pass
 
     def _speler_geraakt(self):
         """Verwerk dat de speler geraakt wordt: leven aftrekken of game over."""
         self.speler.levens -= 1
         geluid_manager.speel_geraakt()  # 🎵 Bonk!
-        # Sla voortgang op (update levens)
-        try:
-            voortgang_module.sla_voortgang_op(self.voltooid, self.punten, self.speler.levens)
-        except Exception:
-            pass
+        # Sla voortgang op (update levens) — in de arena NIET
+        if not self.arena:
+            try:
+                voortgang_module.sla_voortgang_op(self.voltooid, self.punten, self.speler.levens)
+            except Exception:
+                pass
         if self.speler.levens <= 0:
             self.game_over = True
             geluid_manager.stop_muziek()
@@ -372,14 +419,22 @@ class PlatformerSpel(arcade.View):
                 self.kogels.append(Kogel(kogel_x, kogel_y, richting))
         elif toets == arcade.key.K:
             # K = terug naar de kaart (altijd beschikbaar)
-            self._naar_kaart()
-        elif toets == arcade.key.ENTER or toets == arcade.key.NUM_ENTER:
-            # ENTER = ga terug naar de kaart als je het level gehaald hebt
-            if self.level_gehaald:
+            if self.arena:
+                self._verlaat_arena()
+            else:
                 self._naar_kaart()
+        elif toets == arcade.key.ENTER or toets == arcade.key.NUM_ENTER:
+            # ENTER = door na een gehaald level
+            if self.level_gehaald:
+                if self.arena:
+                    self._volgende_arena_level()   # Door naar het volgende monster-level!
+                else:
+                    self._naar_kaart()
         elif toets == arcade.key.R:
-            if self.gewonnen:
-                self._naar_kaart()                     # Terug naar de kaart na winst
+            if self.arena and self.game_over:
+                self._verlaat_arena()              # Na game-over in de arena: terug naar de kaart
+            elif self.gewonnen:
+                self._naar_kaart()                 # Terug naar de kaart na winst
             elif self.game_over:
                 # Opnieuw beginnen bij level 1! Alles wordt gereset
                 self.punten = 0
@@ -410,5 +465,23 @@ class PlatformerSpel(arcade.View):
             voortgang_module.sla_voortgang_op(self.voltooid, self.punten, self.speler.levens)
         except Exception:
             pass
-        kaart = LevelKaartView(self.voltooid, self.punten, self.speler.levens)
+        record = voortgang_module.laad_voortgang().get("arena_record", 0)
+        kaart = LevelKaartView(self.voltooid, self.punten, self.speler.levens, record)
+        self.window.show_view(kaart)
+
+    def _volgende_arena_level(self):
+        """Ga naar het volgende monster-level (punten en levens blijven behouden)."""
+        self.huidig_level += 1
+        self.maak_level(self.huidig_level)
+
+    def _verlaat_arena(self):
+        """Verlaat de vechtmodus en ga terug naar de kaart.
+
+        De gewone punten en levens van de kaart worden teruggezet
+        (de arena telt helemaal apart).
+        """
+        from levelkaart import LevelKaartView
+        geluid_manager.stop_muziek()
+        record = voortgang_module.laad_voortgang().get("arena_record", 0)
+        kaart = LevelKaartView(self.voltooid, self.kaart_punten, self.kaart_levens, record)
         self.window.show_view(kaart)

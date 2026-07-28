@@ -4,6 +4,7 @@
 
 import arcade
 import math
+import random
 from instellingen import VIJAND_SNELHEID, VIJAND_KLEUR, OOG_KLEUR
 
 
@@ -936,3 +937,154 @@ class PaddenstoelVijand(Vijand):
         # Ogen op de steel
         arcade.draw_circle_filled(cx - 4, y + 9, 2, OOG_KLEUR)
         arcade.draw_circle_filled(cx + 4, y + 9, 2, OOG_KLEUR)
+
+
+# =============================================
+# 😈 ARENA-EINDBAAS
+# De grote baas van de vechtmodus, met SPECIALE KRACHTEN:
+#   1. Teleporteren (springt ineens naar een andere plek)
+#   2. Een schild (dan kun je hem NIET stompen)
+#   3. Kleine monsters oproepen
+# Hoe hoger 'kracht', hoe sterker en gevaarlijker hij is!
+# =============================================
+class ArenaBaas(Vijand):
+    """De eindbaas van de vechtmodus, met speciale krachten die sterker
+    worden naarmate 'kracht' hoger is."""
+
+    def __init__(self, x, y, links_grens, rechts_grens, snelheid=2.5, kracht=1):
+        super().__init__(x, y, links_grens, rechts_grens, snelheid)
+        self.kracht = kracht
+        self.breedte = 76
+        self.hoogte = 76
+        self.levens = 3 + kracht          # meer levens bij hogere kracht
+        self._grond_y = y
+        self._woede = 0                   # knippert na een treffer
+        self._adem = 0                    # voor de adem-animatie
+        self._richting = 1 if snelheid >= 0 else -1
+        # Schild (dan onkwetsbaar)
+        self._schild = False
+        self._schild_teller = 0
+        # Teleporteren
+        self._teleport_teller = 0
+        self._flits = 0                   # witte flits vlak na een teleport
+        # Monsters oproepen
+        self.nieuwe_monsters = []         # spel.py leest deze uit en maakt ze echt
+        self._spawn_teller = 0
+        self._gespawnd = 0
+        self._max_minions = 2 + kracht    # hoeveel hij er in totaal mag oproepen
+
+    def word_gestompt(self):
+        """Verliest een leven — zet meteen zijn schild aan en teleporteert weg!"""
+        self.levens -= 1
+        self._woede = 40
+        self._schild = True
+        self._schild_teller = 90          # ongeveer 1,5 seconde beschermd
+        self._teleporteer()
+
+    def _teleporteer(self):
+        """Spring ineens naar een willekeurige plek binnen de arena."""
+        self.x = random.randint(int(self.links_grens),
+                                int(self.rechts_grens - self.breedte))
+        self._flits = 12
+
+    def speler_springt_erop(self, px, py, pw, ph):
+        """Met het schild aan kun je hem NIET stompen."""
+        if self._schild:
+            return False
+        return super().speler_springt_erop(px, py, pw, ph)
+
+    def _roep_monster_op(self):
+        """Roep een klein monster op dat de speler helpt lastigvallen."""
+        soort = random.choice([Vijand, SpringendVijand, VleermuisVijand, SlijmVijand])
+        mx = random.randint(int(self.links_grens), int(self.rechts_grens - 30))
+        my = self._grond_y + (120 if soort is VleermuisVijand else 0)
+        snel = 2 + self.kracht * 0.5
+        self.nieuwe_monsters.append(
+            soort(mx, my, self.links_grens, self.rechts_grens, snel))
+
+    def bijwerken(self, speler_x=None):
+        self._adem += 0.08
+        if self._woede > 0:
+            self._woede -= 1
+        if self._flits > 0:
+            self._flits -= 1
+
+        # Schild-timer aftikken
+        if self._schild:
+            self._schild_teller -= 1
+            if self._schild_teller <= 0:
+                self._schild = False
+
+        # Heen en weer bewegen
+        self.x += self._richting * self.snelheid
+        if self.x <= self.links_grens:
+            self.x = self.links_grens
+            self._richting = 1
+        if self.x + self.breedte >= self.rechts_grens:
+            self.x = self.rechts_grens - self.breedte
+            self._richting = -1
+
+        # SPECIALE KRACHT 1: af en toe teleporteren
+        self._teleport_teller += 1
+        if self._teleport_teller >= 200:
+            self._teleport_teller = 0
+            self._teleporteer()
+
+        # SPECIALE KRACHT 2: kleine monsters oproepen
+        self._spawn_teller += 1
+        spawn_snelheid = max(60, 160 - self.kracht * 20)
+        if self._spawn_teller >= spawn_snelheid and self._gespawnd < self._max_minions:
+            self._spawn_teller = 0
+            self._gespawnd += 1
+            self._roep_monster_op()
+
+    def teken(self):
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w // 2
+        adem = math.sin(self._adem) * 2
+
+        # Dreigende gloed eromheen
+        arcade.draw_circle_filled(cx, y + h / 2, w / 1.4 + adem, (150, 0, 40, 60))
+
+        # Lijf: donkerrood, wit bij teleport-flits, oranje bij woede
+        if self._flits > 0:
+            kleur = (255, 255, 255)
+        elif self._woede > 0 and self._woede % 6 < 3:
+            kleur = (255, 120, 0)
+        else:
+            kleur = (120, 10, 30)
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, kleur)
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (60, 0, 15), 4)
+
+        # Horens
+        arcade.draw_triangle_filled(x + 6, y + h, x + 20, y + h, x + 4, y + h + 22, (40, 0, 10))
+        arcade.draw_triangle_filled(x + w - 20, y + h, x + w - 6, y + h, x + w - 4, y + h + 22, (40, 0, 10))
+
+        # Grote gele ogen met rode pupillen (kijken naar de speler)
+        oog_y = y + h - 24
+        for dx in (-18, 18):
+            arcade.draw_circle_filled(cx + dx, oog_y, 11, (255, 240, 150))
+            arcade.draw_circle_filled(cx + dx + 3 * self._richting, oog_y, 5, (200, 0, 0))
+        # Boze wenkbrauwen
+        arcade.draw_line(cx - 28, oog_y + 14, cx - 8, oog_y + 6, (30, 0, 10), 5)
+        arcade.draw_line(cx + 8, oog_y + 6, cx + 28, oog_y + 14, (30, 0, 10), 5)
+        # Grijns met tanden
+        arcade.draw_arc_outline(cx, y + 18, 40, 20, (30, 0, 10), 200, 340, 4)
+        for tx in (cx - 14, cx - 4, cx + 6, cx + 16):
+            arcade.draw_lrbt_rectangle_filled(tx - 3, tx + 3, y + 10, y + 22, arcade.color.WHITE)
+
+        # Levens-hartjes boven de baas
+        for i in range(self.levens):
+            hx = cx - (self.levens - 1) * 10 + i * 20
+            arcade.draw_circle_filled(hx - 3, y + h + 30, 4, arcade.color.RED)
+            arcade.draw_circle_filled(hx + 3, y + h + 30, 4, arcade.color.RED)
+            arcade.draw_triangle_filled(hx - 7, y + h + 30, hx + 7, y + h + 30, hx, y + h + 22, arcade.color.RED)
+
+        # Schild-bubbel als hij beschermd is
+        if self._schild:
+            straal = w / 1.3 + math.sin(self._adem * 4) * 3
+            arcade.draw_circle_filled(cx, y + h / 2, straal, (120, 210, 255, 40))
+            arcade.draw_circle_outline(cx, y + h / 2, straal, (80, 200, 255), 3)
+
+        # "BAAS"-label erboven
+        arcade.draw_text("BAAS", cx - 22, y + h + 44, arcade.color.YELLOW, 14, bold=True)

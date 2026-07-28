@@ -18,8 +18,9 @@ def main():
     voltooid = data.get("voltooid", set())
     punten = data.get("punten", 0)
     levens = data.get("levens", None)
-    # Laat de levelkaart zien (met bewaarde punten en levens)
-    kaart = LevelKaartView(voltooid, punten, levens)
+    arena_record = data.get("arena_record", 0)
+    # Laat de levelkaart zien (met bewaarde punten, levens en arena-record)
+    kaart = LevelKaartView(voltooid, punten, levens, arena_record)
     window.show_view(kaart)
     arcade.run()              # Start de game loop
 

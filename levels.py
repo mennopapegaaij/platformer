@@ -7,7 +7,8 @@ from platforms import Platform
 from vijand import (Vijand, VliegendVijand, SpringendVijand, GroteVijand, GeestVijand,
                     JagerVijand, EindBaas,
                     SlijmVijand, StekelVijand, VuurVijand, IJsVijand, BomVijand,
-                    VleermuisVijand, SlangVijand, RobotVijand, KraaiVijand, PaddenstoelVijand)
+                    VleermuisVijand, SlangVijand, RobotVijand, KraaiVijand, PaddenstoelVijand,
+                    ArenaBaas)
 from powerup import ExtraLevenPowerUp
 
 
@@ -596,3 +597,77 @@ def _genereer_oneindig_level(nummer):
     level_breedte = eind_start + eind_breedte
 
     return platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte
+
+
+# =================================================================
+# VECHTMODUS (ARENA)
+# Aparte levels waar je ALLE monsters moet verslaan om te winnen.
+# Begint heel makkelijk en wordt steeds moeilijker. Elke 10 levels
+# een eindbaas met speciale krachten! Oneindig veel levels.
+# =================================================================
+def maak_arena(nummer):
+    """Maak een vecht-level (arena) voor de vechtmodus.
+
+    Je wint door alle monsters te verslaan (er is geen vlag).
+    nummer 1 = supermakkelijk, daarna steeds moeilijker.
+    Elke 10e level (10, 20, 30, ...) is een eindbaas met speciale krachten.
+    """
+    ARENA_BREEDTE = 1100
+    rng = random.Random(1000 + nummer)   # eigen deterministische reeks
+
+    # De vloer (geen gaten!) + een paar zwevende platforms om op te springen
+    platforms = [
+        Platform(0, 0, ARENA_BREEDTE, 40),
+        Platform(180, 150, 120, 20),
+        Platform(490, 210, 120, 20),
+        Platform(800, 150, 120, 20),
+    ]
+    vijanden = []
+    powerups = []
+    links, rechts = 40, ARENA_BREEDTE - 40
+
+    # Vliegende monsters staan hoog in de lucht, de rest op de grond
+    vlieg_soorten = (VliegendVijand, VuurVijand, VleermuisVijand, KraaiVijand, GeestVijand)
+
+    if nummer % 10 == 0:
+        # ===== EINDBAAS-LEVEL =====
+        kracht = nummer // 10   # level 10 -> 1, level 20 -> 2, level 30 -> 3, ...
+        baas_x = ARENA_BREEDTE // 2 - 38
+        vijanden.append(ArenaBaas(baas_x, 40, links, rechts,
+                                  snelheid=2.5 + kracht * 0.3, kracht=kracht))
+        # Bij sterkere bazen staan er ook handlangers klaar
+        for _ in range(kracht - 1):
+            mx = rng.randint(links, rechts)
+            vijanden.append(Vijand(mx, 40, links, rechts, 2 + kracht * 0.3))
+        # Altijd een hartje zodat je een kans hebt
+        powerups.append(ExtraLevenPowerUp(540, 232))
+
+    elif nummer == 1:
+        # ===== ALLEREERSTE LEVEL: supermakkelijk (1 traag monster) =====
+        vijanden.append(Vijand(ARENA_BREEDTE // 2, 40, links, rechts, 1.2))
+
+    else:
+        # ===== GEWOON VECHT-LEVEL =====
+        # De lijst met toegestane monsters wordt langer bij een hoger level
+        soorten = [Vijand, SlijmVijand, IJsVijand, PaddenstoelVijand]
+        if nummer >= 5:
+            soorten += [SpringendVijand, VliegendVijand, BomVijand, SlangVijand, VuurVijand]
+        if nummer >= 12:
+            soorten += [JagerVijand, GeestVijand, VleermuisVijand, KraaiVijand,
+                        StekelVijand, RobotVijand, GroteVijand]
+
+        aantal = min(1 + nummer // 3, 6)                 # meer monsters, max 6
+        basis_snelheid = min(1.5 + nummer * 0.12, 7.0)   # sneller, max 7
+        for _ in range(aantal):
+            soort = rng.choice(soorten)
+            mx = rng.randint(links, rechts)
+            my = rng.choice([130, 170, 200]) if soort in vlieg_soorten else 40
+            snel = round(basis_snelheid + rng.uniform(-0.3, 0.5), 1)
+            vijanden.append(soort(mx, my, links, rechts, snel))
+
+        # Af en toe een hartje op een zwevend platform
+        if nummer % 3 == 0:
+            powerups.append(ExtraLevenPowerUp(230, 172))
+
+    # Geen vlag in de arena — je wint door ALLE monsters te verslaan!
+    return platforms, vijanden, powerups, -999, -999, ARENA_BREEDTE

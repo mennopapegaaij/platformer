@@ -41,11 +41,15 @@ def _basis_positie(nummer):
 class LevelKaartView(arcade.View):
     """De levelkaart — hier kies je welk level je wilt spelen."""
 
-    def __init__(self, voltooid_levels, punten=0, levens=None):
+    # De knop voor de vechtmodus (arena) aan de rechterkant: (links, rechts, onder, boven)
+    ARENA_KNOP = (648, 792, 175, 315)
+
+    def __init__(self, voltooid_levels, punten=0, levens=None, arena_record=0):
         super().__init__()
         self.voltooid = voltooid_levels  # Set met voltooide level-nummers
         self.punten = punten             # Punten uit het vorige level
         self.levens = levens             # Levens uit het vorige level (None = standaard)
+        self.arena_record = arena_record # Hoogste vechtmodus-level dat je haalde
 
         # Begin bij het eerste level dat nog niet gehaald is
         self.geselecteerd = self._bereken_start()
@@ -153,6 +157,27 @@ class LevelKaartView(arcade.View):
                          SCHERM_BREEDTE // 2, 16,
                          tekst_kleur, 15, bold=True, anchor_x="center")
 
+        # --- De knop voor de vechtmodus (arena) ---
+        self._teken_arena_knop()
+
+    def _teken_arena_knop(self):
+        """Teken de knop aan de zijkant waarmee je de vechtmodus start."""
+        l, r, b, t = self.ARENA_KNOP
+        cx = (l + r) // 2
+        # Rood/oranje knop met een randje
+        arcade.draw_lrbt_rectangle_filled(l, r, b, t, (180, 40, 40))
+        arcade.draw_lrbt_rectangle_filled(l, r, b, t - 6, (210, 70, 40))
+        arcade.draw_lrbt_rectangle_outline(l, r, b, t, (255, 220, 120), 3)
+        # Zwaardjes en tekst
+        arcade.draw_text("⚔️", cx, t - 40, arcade.color.WHITE, 30, anchor_x="center")
+        arcade.draw_text("VECHT-", cx, t - 72, arcade.color.WHITE, 15, bold=True, anchor_x="center")
+        arcade.draw_text("MODUS", cx, t - 90, arcade.color.WHITE, 15, bold=True, anchor_x="center")
+        arcade.draw_text("versla de monsters!", cx, b + 42, arcade.color.WHITE, 9, anchor_x="center")
+        if self.arena_record > 0:
+            arcade.draw_text(f"record: level {self.arena_record}", cx, b + 26,
+                             arcade.color.YELLOW, 10, bold=True, anchor_x="center")
+        arcade.draw_text("(klik of druk V)", cx, b + 8, (255, 230, 180), 9, anchor_x="center")
+
     def _teken_level_knoop(self, nummer, x, y):
         """Teken één level-bolletje op de kaart."""
         ontgrendeld = self._is_ontgrendeld(nummer)
@@ -236,9 +261,25 @@ class LevelKaartView(arcade.View):
             # Start het level als het ontgrendeld is
             if self._is_ontgrendeld(self.geselecteerd):
                 self._start_level(self.geselecteerd)
+        elif toets == arcade.key.V:
+            # V = start de vechtmodus (arena)
+            self._start_arena()
+
+    def on_mouse_press(self, x, y, knop, modifiers):
+        """Start de vechtmodus als je op de knop aan de zijkant klikt."""
+        l, r, b, t = self.ARENA_KNOP
+        if l <= x <= r and b <= y <= t:
+            self._start_arena()
 
     def _start_level(self, nummer):
         """Start het gekozen level — met de huidige punten en levens."""
         from spel import PlatformerSpel
         spel = PlatformerSpel(nummer, self.voltooid, self.punten, self.levens)
+        self.window.show_view(spel)
+
+    def _start_arena(self):
+        """Start de vechtmodus (arena) bij level 1 — begint helemaal fris."""
+        from spel import PlatformerSpel
+        spel = PlatformerSpel(1, self.voltooid, punten=0, levens=None, arena=True,
+                              kaart_punten=self.punten, kaart_levens=self.levens)
         self.window.show_view(spel)
