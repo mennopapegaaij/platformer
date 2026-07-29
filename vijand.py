@@ -1103,7 +1103,8 @@ class ArenaVechter(Vijand):
 
     # Alle krachten die een arena-monster kan hebben
     ALLE_KRACHTEN = ['teleport', 'schild', 'springen', 'dashen', 'vliegen',
-                     'snel', 'taai', 'groot', 'flikker', 'zigzag', 'woede', 'spook']
+                     'snel', 'taai', 'groot', 'flikker', 'zigzag', 'woede', 'spook',
+                     'oproepen']
 
     def __init__(self, x, y, links_grens, rechts_grens, snelheid=2, niveau=1):
         super().__init__(x, y, links_grens, rechts_grens, snelheid)
@@ -1125,6 +1126,7 @@ class ArenaVechter(Vijand):
         self.kan_springen = 'springen' in self.krachten
         self.kan_dashen = 'dashen' in self.krachten
         self.kan_vliegen = 'vliegen' in self.krachten
+        self.kan_oproepen = 'oproepen' in self.krachten   # roept kleine hulpjes op!
 
         # Passieve krachten meteen toepassen
         if 'snel' in self.krachten:
@@ -1155,11 +1157,25 @@ class ArenaVechter(Vijand):
         self._dash_actief = False
         self._dash_tijd = 0
         self._dash_richting = 1
+        # Voor de oproep-kracht: kleine hulpjes maken (spel.py leest 'nieuwe_monsters')
+        self.nieuwe_monsters = []
+        self._spawn_teller = 0
+        self._gespawnd = 0
+        self._max_minions = min(1 + niveau // 6, 4)   # hoeveel hulpjes hij mag oproepen
 
     def _teleporteer(self):
         self.x = random.randint(int(self.links_grens),
                                 int(self.rechts_grens - self.breedte))
         self._flits = 12
+
+    def _roep_monster_op(self):
+        """Roep een klein hulpje op (alleen als hij de oproep-kracht heeft)."""
+        soort = random.choice([Vijand, SlijmVijand, SpringendVijand, VleermuisVijand])
+        mx = random.randint(int(self.links_grens), int(self.rechts_grens - 30))
+        my = self._grond_y + (110 if soort is VleermuisVijand else 0)
+        snel = 2 + self.niveau * 0.05
+        self.nieuwe_monsters.append(
+            soort(mx, my, self.links_grens, self.rechts_grens, snel))
 
     def word_gestompt(self):
         """Verliest een leven en zet (als hij dat kan) meteen zijn krachten in."""
@@ -1230,6 +1246,14 @@ class ArenaVechter(Vijand):
                 self._dash_tijd = 22
                 doel = speler_x if speler_x is not None else self.x
                 self._dash_richting = 1 if doel > self.x else -1
+
+        # KRACHT: kleine hulpjes oproepen (spawn)
+        if self.kan_oproepen:
+            self._spawn_teller += 1
+            if self._spawn_teller >= 150 and self._gespawnd < self._max_minions:
+                self._spawn_teller = 0
+                self._gespawnd += 1
+                self._roep_monster_op()
 
         # --- Verticaal bewegen: vliegen > springen > zigzag > gewoon ---
         if self.kan_vliegen:
@@ -1341,6 +1365,7 @@ class ArenaVechter(Vijand):
             'taai': (210, 90, 90), 'groot': (170, 110, 230),
             'flikker': (255, 180, 255), 'zigzag': (100, 255, 210),
             'woede': (255, 0, 0), 'spook': (210, 225, 255),
+            'oproepen': (255, 120, 120),
         }
         aanwezig = [k for k in self.ALLE_KRACHTEN if k in self.krachten]
         start_x = cx - (len(aanwezig) - 1) * 3
