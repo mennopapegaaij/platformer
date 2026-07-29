@@ -1097,33 +1097,48 @@ class ArenaBaas(Vijand):
 # krachten erbij. Ook verandert steeds zijn uiterlijk (nieuwe monsters!).
 # =============================================
 class ArenaVechter(Vijand):
-    """Het ene monster van een arena-level. Krijgt steeds meer krachten
-    naarmate 'niveau' hoger is — oneindig veel moeilijker!"""
+    """Het ene monster van een arena-level. Krijgt steeds MEER krachten
+    naarmate 'niveau' hoger is. Er zijn 12 verschillende krachten die in
+    willekeurige combinaties voorkomen — meer dan 4000 mogelijkheden!"""
 
-    # Vanaf welk niveau een NIEUWE kracht erbij komt
-    NIVEAU_TELEPORT = 3     # kan ineens verspringen
-    NIVEAU_SCHILD = 5       # even onkwetsbaar na een treffer
-    NIVEAU_SPRONG = 8       # springt in het rond
-    NIVEAU_DASH = 11        # schiet naar de speler toe
-    NIVEAU_VLIEGEN = 15     # gaat zweven in de lucht
+    # Alle krachten die een arena-monster kan hebben
+    ALLE_KRACHTEN = ['teleport', 'schild', 'springen', 'dashen', 'vliegen',
+                     'snel', 'taai', 'groot', 'flikker', 'zigzag', 'woede', 'spook']
 
     def __init__(self, x, y, links_grens, rechts_grens, snelheid=2, niveau=1):
         super().__init__(x, y, links_grens, rechts_grens, snelheid)
         self.niveau = niveau
         self.breedte = 34
         self.hoogte = 34
-        # Meer levens naarmate je verder komt
+        # Basis-levens: meer naarmate je verder komt
         self.levens = 1 + niveau // 4
+
+        # Kies willekeurig WELKE krachten dit monster heeft (vast per niveau).
+        # Hoe hoger het niveau, hoe MEER krachten tegelijk → steeds moeilijker.
+        rng = random.Random(niveau * 7 + 3)
+        aantal = min(niveau // 2, len(self.ALLE_KRACHTEN))
+        self.krachten = set(rng.sample(self.ALLE_KRACHTEN, aantal))
+
+        # Handige vlaggen voor de krachten die iets 'doen'
+        self.kan_teleport = 'teleport' in self.krachten
+        self.kan_schild = 'schild' in self.krachten
+        self.kan_springen = 'springen' in self.krachten
+        self.kan_dashen = 'dashen' in self.krachten
+        self.kan_vliegen = 'vliegen' in self.krachten
+
+        # Passieve krachten meteen toepassen
+        if 'snel' in self.krachten:
+            self.snelheid *= 1.6          # rent sneller
+        if 'taai' in self.krachten:
+            self.levens += 2              # extra taai
+        if 'groot' in self.krachten:
+            self.breedte = 46             # groter én steviger
+            self.hoogte = 46
+            self.levens += 1
         self.max_levens = self.levens
-        # Welke krachten heeft dit monster?
-        self.kan_teleport = niveau >= self.NIVEAU_TELEPORT
-        self.kan_schild = niveau >= self.NIVEAU_SCHILD
-        self.kan_springen = niveau >= self.NIVEAU_SPRONG
-        self.kan_dashen = niveau >= self.NIVEAU_DASH
-        self.kan_vliegen = niveau >= self.NIVEAU_VLIEGEN
-        # Uiterlijk: elke 2 niveaus een andere gedaante → het lijkt een nieuw monster
+
+        # Uiterlijk: elke 2 niveaus een andere gedaante, feller bij hoger tier
         self.vorm = (niveau // 2) % 5
-        # Kleur wordt feller in hogere 'tiers'
         self.tier = niveau // 10
         # Animatie- en kracht-timers
         self._teller = 0
@@ -1169,6 +1184,12 @@ class ArenaVechter(Vijand):
         if self._flits > 0:
             self._flits -= 1
 
+        # KRACHT 'woede': razend (sneller) als hij gewond is
+        factor = 1.0
+        if 'woede' in self.krachten and self.levens <= self.max_levens / 2:
+            factor = 1.7
+        snel = self.snelheid * factor
+
         # Schild-timer
         if self._schild:
             self._schild_teller -= 1
@@ -1177,12 +1198,12 @@ class ArenaVechter(Vijand):
 
         # --- Horizontaal bewegen (dashen of gewoon lopen) ---
         if self.kan_dashen and self._dash_actief:
-            self.x += self._dash_richting * self.snelheid * 2.5
+            self.x += self._dash_richting * snel * 2.5
             self._dash_tijd -= 1
             if self._dash_tijd <= 0:
                 self._dash_actief = False
         else:
-            self.x += self._richting * self.snelheid
+            self.x += self._richting * snel
         # Binnen de grenzen blijven
         if self.x <= self.links_grens:
             self.x = self.links_grens
@@ -1196,21 +1217,21 @@ class ArenaVechter(Vijand):
         # KRACHT: teleporteren
         if self.kan_teleport:
             self._teleport_teller += 1
-            if self._teleport_teller >= max(90, 220 - self.niveau * 4):
+            if self._teleport_teller >= max(80, 220 - self.niveau * 4):
                 self._teleport_teller = 0
                 self._teleporteer()
 
         # KRACHT: dashen naar de speler
         if self.kan_dashen and not self._dash_actief:
             self._dash_teller += 1
-            if self._dash_teller >= max(120, 260 - self.niveau * 4):
+            if self._dash_teller >= max(110, 260 - self.niveau * 4):
                 self._dash_teller = 0
                 self._dash_actief = True
                 self._dash_tijd = 22
                 doel = speler_x if speler_x is not None else self.x
                 self._dash_richting = 1 if doel > self.x else -1
 
-        # --- Verticaal bewegen (vliegen of springen) ---
+        # --- Verticaal bewegen: vliegen > springen > zigzag > gewoon ---
         if self.kan_vliegen:
             self.y = self._grond_y + 60 + math.sin(self._teller) * 25
         elif self.kan_springen:
@@ -1223,6 +1244,11 @@ class ArenaVechter(Vijand):
             if self.y <= self._grond_y:
                 self.y = self._grond_y
                 self._spring_vy = 0
+        elif 'zigzag' in self.krachten:
+            # Wipt op en neer terwijl hij loopt
+            self.y = self._grond_y + (math.sin(self._teller * 2) + 1) * 10
+        else:
+            self.y = self._grond_y
 
     # ---------- Tekenen ----------
     def _basis_kleur(self):
@@ -1239,11 +1265,17 @@ class ArenaVechter(Vijand):
         cx = x + w // 2
         cy = y + h // 2
 
+        # Doorzichtigheid door de krachten 'spook' en 'flikker'
+        alpha = 255
+        if 'spook' in self.krachten:
+            alpha = 170
+        if 'flikker' in self.krachten and int(self._teller * 3) % 2 == 0:
+            alpha = 80
+
         # Gloed rondom (groter bij meer krachten)
-        krachten = sum([self.kan_teleport, self.kan_schild, self.kan_springen,
-                        self.kan_dashen, self.kan_vliegen])
-        if krachten > 0:
-            arcade.draw_circle_filled(cx, cy, w / 2 + 4 + krachten * 2,
+        aantal_krachten = len(self.krachten)
+        if aantal_krachten > 0:
+            arcade.draw_circle_filled(cx, cy, w / 2 + 4 + aantal_krachten * 2,
                                       (255, 240, 120, 40))
 
         # Kleur: wit bij teleport-flits, oranje bij woede, anders zijn eigen kleur
@@ -1252,7 +1284,8 @@ class ArenaVechter(Vijand):
         elif self._woede > 0 and self._woede % 6 < 3:
             kleur = (255, 140, 0)
         else:
-            kleur = self._basis_kleur()
+            r, g, b = self._basis_kleur()
+            kleur = (r, g, b, alpha)
 
         # De gedaante (5 verschillende uiterlijken)
         if self.vorm == 0:
@@ -1298,14 +1331,18 @@ class ArenaVechter(Vijand):
         if self.max_levens > 1:
             for i in range(self.levens):
                 arcade.draw_circle_filled(cx - (self.levens - 1) * 5 + i * 10,
-                                          y + h + 12, 3, arcade.color.RED)
+                                          y + h + 14, 3, arcade.color.RED)
 
-        # Kleine gekleurde puntjes: één per kracht die hij heeft
-        krachten_kleuren = []
-        if self.kan_teleport: krachten_kleuren.append((255, 100, 255))
-        if self.kan_schild:   krachten_kleuren.append((80, 200, 255))
-        if self.kan_springen: krachten_kleuren.append((120, 255, 120))
-        if self.kan_dashen:   krachten_kleuren.append((255, 160, 40))
-        if self.kan_vliegen:  krachten_kleuren.append((255, 255, 255))
-        for i, kk in enumerate(krachten_kleuren):
-            arcade.draw_circle_filled(x - 6 + i * 6, y + h + 2, 2, kk)
+        # Eén gekleurd puntje per kracht die hij heeft (onderaan)
+        kleur_per_kracht = {
+            'teleport': (255, 100, 255), 'schild': (80, 200, 255),
+            'springen': (120, 255, 120), 'dashen': (255, 160, 40),
+            'vliegen': (255, 255, 255), 'snel': (255, 255, 0),
+            'taai': (210, 90, 90), 'groot': (170, 110, 230),
+            'flikker': (255, 180, 255), 'zigzag': (100, 255, 210),
+            'woede': (255, 0, 0), 'spook': (210, 225, 255),
+        }
+        aanwezig = [k for k in self.ALLE_KRACHTEN if k in self.krachten]
+        start_x = cx - (len(aanwezig) - 1) * 3
+        for i, k in enumerate(aanwezig):
+            arcade.draw_circle_filled(start_x + i * 6, y - 6, 2.5, kleur_per_kracht[k])

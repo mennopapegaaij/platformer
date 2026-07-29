@@ -215,6 +215,16 @@ class PlatformerSpel(arcade.View):
 
     def _teken_levens_hud(self):
         """Teken de levens als hartjes rechtsboven in het scherm."""
+        # In de vechtmodus heb je oneindig levens: toon één hartje met ∞
+        if self.arena:
+            cx = SCHERM_BREEDTE - 34
+            cy = SCHERM_HOOGTE - 20
+            arcade.draw_circle_filled(cx - 5, cy + 4, 7, arcade.color.RED)
+            arcade.draw_circle_filled(cx + 5, cy + 4, 7, arcade.color.RED)
+            arcade.draw_triangle_filled(cx - 10, cy + 2, cx + 10, cy + 2, cx, cy - 8,
+                                        arcade.color.RED)
+            arcade.draw_text("∞", cx + 14, cy - 10, arcade.color.WHITE, 20, bold=True)
+            return
         for i in range(self.speler.levens):
             cx = SCHERM_BREEDTE - 30 - i * 36
             cy = SCHERM_HOOGTE - 20
@@ -382,6 +392,9 @@ class PlatformerSpel(arcade.View):
 
     def _speler_geraakt(self):
         """Verwerk dat de speler geraakt wordt: leven aftrekken of game over."""
+        # In de vechtmodus heb je ONEINDIG levens — je gaat daar nooit dood!
+        if self.arena:
+            return
         self.speler.levens -= 1
         geluid_manager.speel_geraakt()  # 🎵 Bonk!
         # Sla voortgang op (update levens) — in de arena NIET
