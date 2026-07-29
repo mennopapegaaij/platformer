@@ -8,7 +8,7 @@ from vijand import (Vijand, VliegendVijand, SpringendVijand, GroteVijand, GeestV
                     JagerVijand, EindBaas,
                     SlijmVijand, StekelVijand, VuurVijand, IJsVijand, BomVijand,
                     VleermuisVijand, SlangVijand, RobotVijand, KraaiVijand, PaddenstoelVijand,
-                    ArenaBaas)
+                    ArenaBaas, ArenaVechter)
 from powerup import ExtraLevenPowerUp
 
 
@@ -626,44 +626,22 @@ def maak_arena(nummer):
     powerups = []
     links, rechts = 40, ARENA_BREEDTE - 40
 
-    # Vliegende monsters staan hoog in de lucht, de rest op de grond
-    vlieg_soorten = (VliegendVijand, VuurVijand, VleermuisVijand, KraaiVijand, GeestVijand)
-
     if nummer % 10 == 0:
         # ===== EINDBAAS-LEVEL =====
+        # Alleen de eindbaas mag extra beesten oproepen!
         kracht = nummer // 10   # level 10 -> 1, level 20 -> 2, level 30 -> 3, ...
         baas_x = ARENA_BREEDTE // 2 - 38
         vijanden.append(ArenaBaas(baas_x, 40, links, rechts,
                                   snelheid=2.5 + kracht * 0.3, kracht=kracht))
-        # Bij sterkere bazen staan er ook handlangers klaar
-        for _ in range(kracht - 1):
-            mx = rng.randint(links, rechts)
-            vijanden.append(Vijand(mx, 40, links, rechts, 2 + kracht * 0.3))
         # Altijd een hartje zodat je een kans hebt
         powerups.append(ExtraLevenPowerUp(540, 232))
 
-    elif nummer == 1:
-        # ===== ALLEREERSTE LEVEL: supermakkelijk (1 traag monster) =====
-        vijanden.append(Vijand(ARENA_BREEDTE // 2, 40, links, rechts, 1.2))
-
     else:
-        # ===== GEWOON VECHT-LEVEL =====
-        # De lijst met toegestane monsters wordt langer bij een hoger level
-        soorten = [Vijand, SlijmVijand, IJsVijand, PaddenstoelVijand]
-        if nummer >= 5:
-            soorten += [SpringendVijand, VliegendVijand, BomVijand, SlangVijand, VuurVijand]
-        if nummer >= 12:
-            soorten += [JagerVijand, GeestVijand, VleermuisVijand, KraaiVijand,
-                        StekelVijand, RobotVijand, GroteVijand]
-
-        aantal = min(1 + nummer // 3, 6)                 # meer monsters, max 6
-        basis_snelheid = min(1.5 + nummer * 0.12, 7.0)   # sneller, max 7
-        for _ in range(aantal):
-            soort = rng.choice(soorten)
-            mx = rng.randint(links, rechts)
-            my = rng.choice([130, 170, 200]) if soort in vlieg_soorten else 40
-            snel = round(basis_snelheid + rng.uniform(-0.3, 0.5), 1)
-            vijanden.append(soort(mx, my, links, rechts, snel))
+        # ===== GEWOON VECHT-LEVEL: precies ÉÉN monster =====
+        # Dat ene monster wordt steeds sterker en krijgt steeds meer krachten.
+        snel = min(1.5 + nummer * 0.1, 6.5)
+        mx = rng.randint(links + 100, rechts - 100)
+        vijanden.append(ArenaVechter(mx, 40, links, rechts, snel, niveau=nummer))
 
         # Af en toe een hartje op een zwevend platform
         if nummer % 3 == 0:

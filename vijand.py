@@ -956,7 +956,7 @@ class ArenaBaas(Vijand):
         self.kracht = kracht
         self.breedte = 76
         self.hoogte = 76
-        self.levens = 3 + kracht          # meer levens bij hogere kracht
+        self.levens = 4 + kracht * 2      # flink meer levens bij hogere kracht
         self._grond_y = y
         self._woede = 0                   # knippert na een treffer
         self._adem = 0                    # voor de adem-animatie
@@ -1088,3 +1088,224 @@ class ArenaBaas(Vijand):
 
         # "BAAS"-label erboven
         arcade.draw_text("BAAS", cx - 22, y + h + 44, arcade.color.YELLOW, 14, bold=True)
+
+
+# =============================================
+# 👾 ARENA-VECHTER
+# Het ENE monster van een gewoon arena-level.
+# Hoe hoger 'niveau', hoe sterker: meer levens, sneller, én steeds meer
+# krachten erbij. Ook verandert steeds zijn uiterlijk (nieuwe monsters!).
+# =============================================
+class ArenaVechter(Vijand):
+    """Het ene monster van een arena-level. Krijgt steeds meer krachten
+    naarmate 'niveau' hoger is — oneindig veel moeilijker!"""
+
+    # Vanaf welk niveau een NIEUWE kracht erbij komt
+    NIVEAU_TELEPORT = 3     # kan ineens verspringen
+    NIVEAU_SCHILD = 5       # even onkwetsbaar na een treffer
+    NIVEAU_SPRONG = 8       # springt in het rond
+    NIVEAU_DASH = 11        # schiet naar de speler toe
+    NIVEAU_VLIEGEN = 15     # gaat zweven in de lucht
+
+    def __init__(self, x, y, links_grens, rechts_grens, snelheid=2, niveau=1):
+        super().__init__(x, y, links_grens, rechts_grens, snelheid)
+        self.niveau = niveau
+        self.breedte = 34
+        self.hoogte = 34
+        # Meer levens naarmate je verder komt
+        self.levens = 1 + niveau // 4
+        self.max_levens = self.levens
+        # Welke krachten heeft dit monster?
+        self.kan_teleport = niveau >= self.NIVEAU_TELEPORT
+        self.kan_schild = niveau >= self.NIVEAU_SCHILD
+        self.kan_springen = niveau >= self.NIVEAU_SPRONG
+        self.kan_dashen = niveau >= self.NIVEAU_DASH
+        self.kan_vliegen = niveau >= self.NIVEAU_VLIEGEN
+        # Uiterlijk: elke 2 niveaus een andere gedaante → het lijkt een nieuw monster
+        self.vorm = (niveau // 2) % 5
+        # Kleur wordt feller in hogere 'tiers'
+        self.tier = niveau // 10
+        # Animatie- en kracht-timers
+        self._teller = 0
+        self._woede = 0
+        self._flits = 0
+        self._richting = 1 if snelheid >= 0 else -1
+        self._grond_y = y
+        self._schild = False
+        self._schild_teller = 0
+        self._teleport_teller = 0
+        self._spring_teller = 0
+        self._spring_vy = 0
+        self._dash_teller = 0
+        self._dash_actief = False
+        self._dash_tijd = 0
+        self._dash_richting = 1
+
+    def _teleporteer(self):
+        self.x = random.randint(int(self.links_grens),
+                                int(self.rechts_grens - self.breedte))
+        self._flits = 12
+
+    def word_gestompt(self):
+        """Verliest een leven en zet (als hij dat kan) meteen zijn krachten in."""
+        self.levens -= 1
+        self._woede = 30
+        if self.kan_schild:
+            self._schild = True
+            self._schild_teller = 70
+        if self.kan_teleport and self.levens > 0:
+            self._teleporteer()
+
+    def speler_springt_erop(self, px, py, pw, ph):
+        """Met schild aan kun je hem NIET stompen."""
+        if self._schild:
+            return False
+        return super().speler_springt_erop(px, py, pw, ph)
+
+    def bijwerken(self, speler_x=None):
+        self._teller += 0.2
+        if self._woede > 0:
+            self._woede -= 1
+        if self._flits > 0:
+            self._flits -= 1
+
+        # Schild-timer
+        if self._schild:
+            self._schild_teller -= 1
+            if self._schild_teller <= 0:
+                self._schild = False
+
+        # --- Horizontaal bewegen (dashen of gewoon lopen) ---
+        if self.kan_dashen and self._dash_actief:
+            self.x += self._dash_richting * self.snelheid * 2.5
+            self._dash_tijd -= 1
+            if self._dash_tijd <= 0:
+                self._dash_actief = False
+        else:
+            self.x += self._richting * self.snelheid
+        # Binnen de grenzen blijven
+        if self.x <= self.links_grens:
+            self.x = self.links_grens
+            self._richting = 1
+            self._dash_actief = False
+        if self.x + self.breedte >= self.rechts_grens:
+            self.x = self.rechts_grens - self.breedte
+            self._richting = -1
+            self._dash_actief = False
+
+        # KRACHT: teleporteren
+        if self.kan_teleport:
+            self._teleport_teller += 1
+            if self._teleport_teller >= max(90, 220 - self.niveau * 4):
+                self._teleport_teller = 0
+                self._teleporteer()
+
+        # KRACHT: dashen naar de speler
+        if self.kan_dashen and not self._dash_actief:
+            self._dash_teller += 1
+            if self._dash_teller >= max(120, 260 - self.niveau * 4):
+                self._dash_teller = 0
+                self._dash_actief = True
+                self._dash_tijd = 22
+                doel = speler_x if speler_x is not None else self.x
+                self._dash_richting = 1 if doel > self.x else -1
+
+        # --- Verticaal bewegen (vliegen of springen) ---
+        if self.kan_vliegen:
+            self.y = self._grond_y + 60 + math.sin(self._teller) * 25
+        elif self.kan_springen:
+            self._spring_teller += 1
+            if self._spring_teller >= 70 and self.y <= self._grond_y:
+                self._spring_vy = 11
+                self._spring_teller = 0
+            self._spring_vy -= 0.5
+            self.y += self._spring_vy
+            if self.y <= self._grond_y:
+                self.y = self._grond_y
+                self._spring_vy = 0
+
+    # ---------- Tekenen ----------
+    def _basis_kleur(self):
+        """Kleur per gedaante, feller bij een hoger tier."""
+        kleuren = [(90, 200, 90), (150, 90, 200), (230, 235, 255),
+                   (240, 120, 40), (80, 200, 220)]
+        r, g, b = kleuren[self.vorm]
+        # Feller maken bij hogere tiers
+        extra = min(self.tier * 15, 60)
+        return (min(r + extra, 255), min(g + extra, 255), min(b + extra, 255))
+
+    def teken(self):
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w // 2
+        cy = y + h // 2
+
+        # Gloed rondom (groter bij meer krachten)
+        krachten = sum([self.kan_teleport, self.kan_schild, self.kan_springen,
+                        self.kan_dashen, self.kan_vliegen])
+        if krachten > 0:
+            arcade.draw_circle_filled(cx, cy, w / 2 + 4 + krachten * 2,
+                                      (255, 240, 120, 40))
+
+        # Kleur: wit bij teleport-flits, oranje bij woede, anders zijn eigen kleur
+        if self._flits > 0:
+            kleur = (255, 255, 255)
+        elif self._woede > 0 and self._woede % 6 < 3:
+            kleur = (255, 140, 0)
+        else:
+            kleur = self._basis_kleur()
+
+        # De gedaante (5 verschillende uiterlijken)
+        if self.vorm == 0:
+            # Ronde blob
+            arcade.draw_ellipse_filled(cx, cy, w, h, kleur)
+            arcade.draw_ellipse_outline(cx, cy, w, h, OOG_KLEUR, 2)
+        elif self.vorm == 1:
+            # Stekelbal
+            for i in range(8):
+                hoek = math.radians(i * 45)
+                arcade.draw_triangle_filled(
+                    cx + math.cos(hoek) * (w / 2 - 2) - 3, cy + math.sin(hoek) * (h / 2 - 2),
+                    cx + math.cos(hoek) * (w / 2 - 2) + 3, cy + math.sin(hoek) * (h / 2 - 2),
+                    cx + math.cos(hoek) * (w / 2 + 8), cy + math.sin(hoek) * (h / 2 + 8), kleur)
+            arcade.draw_circle_filled(cx, cy, w / 2 - 2, kleur)
+        elif self.vorm == 2:
+            # Spookachtig
+            arcade.draw_ellipse_filled(cx, cy + 3, w, h - 3, kleur)
+            for i in range(4):
+                arcade.draw_circle_filled(x + i * (w // 3) + 5, y + 2, 5, kleur)
+        elif self.vorm == 3:
+            # Vlam
+            arcade.draw_ellipse_filled(cx, cy, w, h + 6, kleur)
+            arcade.draw_ellipse_filled(cx, cy - 2, w - 10, h - 8, (255, 230, 120))
+        else:
+            # Kristal/robot (hoekig)
+            arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, kleur)
+            arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, OOG_KLEUR, 2)
+
+        # Boze ogen (bij alle vormen)
+        arcade.draw_circle_filled(cx - 7, cy + 3, 4, OOG_KLEUR)
+        arcade.draw_circle_filled(cx + 7, cy + 3, 4, OOG_KLEUR)
+        arcade.draw_circle_filled(cx - 6, cy + 4, 1, arcade.color.WHITE)
+        arcade.draw_circle_filled(cx + 8, cy + 4, 1, arcade.color.WHITE)
+
+        # Schild-bubbel als hij beschermd is
+        if self._schild:
+            straal = w / 1.4 + math.sin(self._teller * 4) * 2
+            arcade.draw_circle_filled(cx, cy, straal, (120, 210, 255, 50))
+            arcade.draw_circle_outline(cx, cy, straal, (80, 200, 255), 2)
+
+        # Levens-stipjes boven het monster
+        if self.max_levens > 1:
+            for i in range(self.levens):
+                arcade.draw_circle_filled(cx - (self.levens - 1) * 5 + i * 10,
+                                          y + h + 12, 3, arcade.color.RED)
+
+        # Kleine gekleurde puntjes: één per kracht die hij heeft
+        krachten_kleuren = []
+        if self.kan_teleport: krachten_kleuren.append((255, 100, 255))
+        if self.kan_schild:   krachten_kleuren.append((80, 200, 255))
+        if self.kan_springen: krachten_kleuren.append((120, 255, 120))
+        if self.kan_dashen:   krachten_kleuren.append((255, 160, 40))
+        if self.kan_vliegen:  krachten_kleuren.append((255, 255, 255))
+        for i, kk in enumerate(krachten_kleuren):
+            arcade.draw_circle_filled(x - 6 + i * 6, y + h + 2, 2, kk)
