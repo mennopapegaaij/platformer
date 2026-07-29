@@ -201,10 +201,16 @@ class PlatformerSpel(arcade.View):
                                  185, 210, arcade.color.WHITE, 18)
         elif self.dood:
             arcade.draw_lrbt_rectangle_filled(100, 700, 160, 340, arcade.color.DARK_RED)
-            arcade.draw_text("Oeps! Probeer het opnieuw.",
-                             195, 270, arcade.color.WHITE, 26, bold=True)
-            arcade.draw_text("Druk op R om dit level opnieuw te spelen",
-                             190, 210, arcade.color.WHITE, 18)
+            arcade.draw_text("Oeps! Je ging af!",
+                             240, 270, arcade.color.WHITE, 26, bold=True)
+            if self.arena:
+                arcade.draw_text("Maar je verliest GEEN leven! 😎",
+                                 220, 240, arcade.color.YELLOW, 16, bold=True)
+                arcade.draw_text("Druk op R om dit monster-level opnieuw te doen",
+                                 175, 205, arcade.color.WHITE, 16)
+            else:
+                arcade.draw_text("Druk op R om dit level opnieuw te spelen",
+                                 190, 210, arcade.color.WHITE, 18)
 
     def _teken_vlag(self, x, y):
         """Teken een vlag op de gegeven positie."""
@@ -392,8 +398,11 @@ class PlatformerSpel(arcade.View):
 
     def _speler_geraakt(self):
         """Verwerk dat de speler geraakt wordt: leven aftrekken of game over."""
-        # In de vechtmodus heb je ONEINDIG levens — je gaat daar nooit dood!
+        # In de vechtmodus ga je wel 'af' (level opnieuw), maar je verliest
+        # GEEN leven en het is nooit game-over.
         if self.arena:
+            geluid_manager.speel_geraakt()  # 🎵 Bonk!
+            self.dood = True
             return
         self.speler.levens -= 1
         geluid_manager.speel_geraakt()  # 🎵 Bonk!
