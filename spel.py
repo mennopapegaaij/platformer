@@ -40,6 +40,8 @@ class PlatformerSpel(arcade.View):
     # Klik-vlakken voor de arena-pijltjes bovenin: (links, rechts, onder, boven)
     ARENA_PIJL_LINKS = (322, 356, 458, 486)
     ARENA_PIJL_RECHTS = (444, 478, 458, 486)
+    # Klik-vlak voor de reset-knop rechtsboven
+    ARENA_RESET_KNOP = (700, 792, 430, 456)
 
     def on_show_view(self):
         """Wordt aangeroepen als dit scherm zichtbaar wordt."""
@@ -296,6 +298,13 @@ class PlatformerSpel(arcade.View):
         arcade.draw_text(f"Level {self.huidig_level}", 400, lb + 7,
                          arcade.color.WHITE, 13, bold=True, anchor_x="center")
 
+        # Reset-knop rechtsboven: begin helemaal opnieuw bij level 1
+        pl, pr, pb, pt = self.ARENA_RESET_KNOP
+        arcade.draw_lrbt_rectangle_filled(pl, pr, pb, pt, (180, 60, 40))
+        arcade.draw_lrbt_rectangle_outline(pl, pr, pb, pt, (255, 220, 150), 2)
+        arcade.draw_text("🔄 Reset", (pl + pr) / 2, pb + 6,
+                         arcade.color.WHITE, 13, bold=True, anchor_x="center")
+
     def on_update(self, delta_time):
         """Werk het spel bij — dit wordt heel snel herhaald."""
 
@@ -521,15 +530,29 @@ class PlatformerSpel(arcade.View):
                 self.maak_level(self.huidig_level) # Zelfde level opnieuw (levens blijven!)
 
     def on_mouse_press(self, x, y, knop, modifiers):
-        """In de vechtmodus: klik op de pijltjes bovenin om van level te wisselen."""
+        """In de vechtmodus: klik op de pijltjes of de reset-knop bovenin."""
         if not self.arena:
             return
         ll, lr, lb, lt = self.ARENA_PIJL_LINKS
         rl, rr, rb, rt = self.ARENA_PIJL_RECHTS
+        pl, pr, pb, pt = self.ARENA_RESET_KNOP
         if ll <= x <= lr and lb <= y <= lt:
             self._ga_naar_arena_level(self.huidig_level - 1)   # ◀ vorige level
         elif rl <= x <= rr and rb <= y <= rt:
             self._ga_naar_arena_level(self.huidig_level + 1)   # ▶ volgende level
+        elif pl <= x <= pr and pb <= y <= pt:
+            self._arena_reset()                                 # 🔄 helemaal opnieuw
+
+    def _arena_reset(self):
+        """Begin de vechtmodus helemaal opnieuw bij level 1.
+
+        Ook je hoogste-bereikte level gaat terug naar 1, dus met ▶ kun je
+        niet meer naar de hogere levels springen — die moet je opnieuw winnen.
+        """
+        self.huidig_level = 1
+        self._arena_top = 1
+        voortgang_module.reset_arena_record()   # record ook terug naar 0
+        self.maak_level(1)
 
     def on_key_release(self, toets, modifiers):
         """Wordt aangeroepen als je een toets loslaat."""

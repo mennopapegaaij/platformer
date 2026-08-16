@@ -68,3 +68,12 @@ def sla_arena_record_op(record):
     data = laad_voortgang()
     if record > data.get("arena_record", 0):
         sla_voortgang_op(data["voltooid"], data["punten"], data["levens"], record)
+
+
+def reset_arena_record():
+    """Zet het vechtmodus-record terug op 0 (helemaal opnieuw beginnen).
+
+    De gewone voortgang (voltooide levels, punten, levens) blijft ongewijzigd.
+    """
+    data = laad_voortgang()
+    sla_voortgang_op(data["voltooid"], data["punten"], data["levens"], 0)
