@@ -299,8 +299,9 @@ class PlatformerSpel(arcade.View):
                          arcade.color.WHITE, 13, bold=True, anchor_x="center")
 
         # Reset-knop rechtsboven: begin helemaal opnieuw bij level 1
+        # (dezelfde rode kleur als het hartje)
         pl, pr, pb, pt = self.ARENA_RESET_KNOP
-        arcade.draw_lrbt_rectangle_filled(pl, pr, pb, pt, (180, 60, 40))
+        arcade.draw_lrbt_rectangle_filled(pl, pr, pb, pt, arcade.color.RED)
         arcade.draw_lrbt_rectangle_outline(pl, pr, pb, pt, (255, 220, 150), 2)
         arcade.draw_text("🔄 Reset", (pl + pr) / 2, pb + 6,
                          arcade.color.WHITE, 13, bold=True, anchor_x="center")
