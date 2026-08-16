@@ -307,8 +307,14 @@ class PlatformerSpel(arcade.View):
                 nieuwe_vijanden.extend(vijand.nieuwe_monsters)
                 vijand.nieuwe_monsters = []
 
-            # Springt de speler van bovenaf op de vijand?
-            if (self.speler.snelheid_y < 0 and
+            # Landt de speler van bovenaf op de vijand?
+            # Eerlijk: het telt als een stomp zodra je naar beneden valt,
+            # OF als je voeten in de bovenste helft van het monster zitten.
+            # Zo ga je niet meer 'af' als een monster omhoog in je springt.
+            speler_voeten = self.speler.y
+            vijand_midden = vijand.y + vijand.hoogte / 2
+            van_boven = (self.speler.snelheid_y < 0) or (speler_voeten >= vijand_midden)
+            if (van_boven and
                     vijand.speler_springt_erop(self.speler.x, self.speler.y,
                                                self.speler.breedte, self.speler.hoogte)):
                 if hasattr(vijand, 'word_gestompt'):
