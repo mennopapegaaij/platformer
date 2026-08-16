@@ -55,13 +55,19 @@ class Vijand:
                 py + ph > self.y)
 
     def speler_springt_erop(self, px, py, pw, ph):
-        """Controleer of de speler van bovenaf op de vijand springt."""
-        speler_onder = py
-        vijand_boven = self.y + self.hoogte
-        return (px + pw > self.x + 4 and
-                px < self.x + self.breedte - 4 and
-                speler_onder <= vijand_boven and
-                speler_onder >= vijand_boven - 12)
+        """Controleer of de speler van bovenaf op de vijand landt.
+
+        Ruimhartig: zolang je voeten ergens binnen (of net boven) de vijand
+        komen, telt het als een stomp — ook als de vijand omhoog beweegt
+        (vliegt of springt). In spel.py telt dit alleen als je NAAR BENEDEN
+        valt, dus van bovenaf erop landen kan altijd.
+        """
+        speler_onder = py                      # de voeten van de speler
+        vijand_boven = self.y + self.hoogte    # de bovenkant van de vijand
+        horizontaal = (px + pw > self.x + 2 and px < self.x + self.breedte - 2)
+        # Voeten binnen de vijand, of tot 8px erboven (ruim genoeg om nooit te missen)
+        op_hoogte = (self.y <= speler_onder <= vijand_boven + 8)
+        return horizontaal and op_hoogte
 
 
 # =============================================
