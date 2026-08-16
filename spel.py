@@ -34,6 +34,12 @@ class PlatformerSpel(arcade.View):
         # Maak een camera aan die de speler volgt
         self.camera = arcade.camera.Camera2D()
         self.speler = Speler()
+        # Hoogste arena-level dat je mag kiezen met de pijltjes (groeit als je wint)
+        self._arena_top = 1
+
+    # Klik-vlakken voor de arena-pijltjes bovenin: (links, rechts, onder, boven)
+    ARENA_PIJL_LINKS = (322, 356, 458, 486)
+    ARENA_PIJL_RECHTS = (444, 478, 458, 486)
 
     def on_show_view(self):
         """Wordt aangeroepen als dit scherm zichtbaar wordt."""
@@ -51,6 +57,10 @@ class PlatformerSpel(arcade.View):
         bonus = 0 if self.arena else self.punten // 10
         self.speler.snelheid_bonus = bonus
         self.speler.sprong_bonus = bonus
+        # In de arena: met de pijltjes mag je tot je hoogste bereikte level terug/vooruit
+        if self.arena:
+            record = voortgang_module.laad_voortgang().get("arena_record", 0)
+            self._arena_top = max(self.start_level, record)
         self.maak_level(self.start_level)
 
     def maak_level(self, nummer):
@@ -135,14 +145,18 @@ class PlatformerSpel(arcade.View):
 
         # --- Teken de berichten buiten de camera (altijd midden op het scherm) ---
 
-        # Levelnaam altijd bovenin (arena en oneindige levels krijgen een eigen naam)
+        # Levelnaam altijd bovenin (arena krijgt een korte naam + pijltjes in het midden)
         if self.arena:
-            naam_tekst = f"⚔️ Arena — Level {self.huidig_level}  (versla alle monsters!)"
+            naam_tekst = "⚔️ Vechtmodus"
         else:
             naam = LEVEL_NAMEN.get(self.huidig_level) or f"Oneindig Level {self.huidig_level}"
             naam_tekst = f"Level {self.huidig_level}: {naam}"
         arcade.draw_text(naam_tekst,
                          10, SCHERM_HOOGTE - 30, arcade.color.WHITE, 16, bold=True)
+
+        # Pijltjes bovenin het midden om van monster-level te wisselen (alleen arena)
+        if self.arena:
+            self._teken_arena_pijltjes()
 
         # Punten rechtsboven
         snelheid_extra = self.speler.snelheid_bonus
@@ -256,6 +270,31 @@ class PlatformerSpel(arcade.View):
             x += 30
         if self.speler.schiet_timer > 0:
             arcade.draw_text("🔫", x, y, arcade.color.WHITE, 18)
+
+    def _teken_arena_pijltjes(self):
+        """Teken de klikbare pijltjes ◀ ▶ bovenin het midden (alleen vechtmodus)."""
+        ll, lr, lb, lt = self.ARENA_PIJL_LINKS
+        rl, rr, rb, rt = self.ARENA_PIJL_RECHTS
+        lcy = (lb + lt) / 2
+        rcy = (rb + rt) / 2
+        kan_links = self.huidig_level > 1
+        kan_rechts = self.huidig_level < self._arena_top
+
+        # Knop-achtergrondjes
+        arcade.draw_lrbt_rectangle_filled(ll, lr, lb, lt, (0, 0, 0, 150))
+        arcade.draw_lrbt_rectangle_filled(rl, rr, rb, rt, (0, 0, 0, 150))
+
+        # Linker pijl (wijst naar links) — grijs als je al op level 1 bent
+        kleur_l = arcade.color.WHITE if kan_links else (110, 110, 110)
+        arcade.draw_triangle_filled(ll + 8, lcy, lr - 7, lt - 6, lr - 7, lb + 6, kleur_l)
+
+        # Rechter pijl (wijst naar rechts) — grijs als je al op je hoogste level bent
+        kleur_r = arcade.color.WHITE if kan_rechts else (110, 110, 110)
+        arcade.draw_triangle_filled(rr - 8, rcy, rl + 7, rt - 6, rl + 7, rb + 6, kleur_r)
+
+        # Het levelnummer tussen de pijltjes
+        arcade.draw_text(f"Level {self.huidig_level}", 400, lb + 7,
+                         arcade.color.WHITE, 13, bold=True, anchor_x="center")
 
     def on_update(self, delta_time):
         """Werk het spel bij — dit wordt heel snel herhaald."""
@@ -481,6 +520,17 @@ class PlatformerSpel(arcade.View):
             elif self.dood:
                 self.maak_level(self.huidig_level) # Zelfde level opnieuw (levens blijven!)
 
+    def on_mouse_press(self, x, y, knop, modifiers):
+        """In de vechtmodus: klik op de pijltjes bovenin om van level te wisselen."""
+        if not self.arena:
+            return
+        ll, lr, lb, lt = self.ARENA_PIJL_LINKS
+        rl, rr, rb, rt = self.ARENA_PIJL_RECHTS
+        if ll <= x <= lr and lb <= y <= lt:
+            self._ga_naar_arena_level(self.huidig_level - 1)   # ◀ vorige level
+        elif rl <= x <= rr and rb <= y <= rt:
+            self._ga_naar_arena_level(self.huidig_level + 1)   # ▶ volgende level
+
     def on_key_release(self, toets, modifiers):
         """Wordt aangeroepen als je een toets loslaat."""
         if toets == arcade.key.LEFT:
@@ -504,7 +554,16 @@ class PlatformerSpel(arcade.View):
     def _volgende_arena_level(self):
         """Ga naar het volgende monster-level (punten en levens blijven behouden)."""
         self.huidig_level += 1
+        # Onthoud dat je nu zo hoog bent geweest (zodat je met ▶ hier terug kunt)
+        self._arena_top = max(self._arena_top, self.huidig_level)
         self.maak_level(self.huidig_level)
+
+    def _ga_naar_arena_level(self, nummer):
+        """Spring naar een ander arena-level met de pijltjes (tussen 1 en je hoogste)."""
+        nummer = max(1, min(nummer, self._arena_top))
+        if nummer != self.huidig_level:
+            self.huidig_level = nummer
+            self.maak_level(nummer)
 
     def _verlaat_arena(self):
         """Verlaat de vechtmodus en ga terug naar de kaart.
