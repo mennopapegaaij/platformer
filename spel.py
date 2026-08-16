@@ -47,7 +47,8 @@ class PlatformerSpel(arcade.View):
         if self.start_levens is not None:
             self.speler.levens = self.start_levens
         # Herstel de snelheids- en sprongbonus die je met punten verdiend had
-        bonus = self.punten // 10
+        # (in de vechtmodus geen bonus: daar speel je gewoon normaal)
+        bonus = 0 if self.arena else self.punten // 10
         self.speler.snelheid_bonus = bonus
         self.speler.sprong_bonus = bonus
         self.maak_level(self.start_level)
@@ -392,9 +393,12 @@ class PlatformerSpel(arcade.View):
     def _voeg_punt_toe(self):
         """Geef de speler 1 punt. Elke 10 punten: sneller én hoger springen!"""
         self.punten += 1
-        bonus = self.punten // 10
-        self.speler.snelheid_bonus = bonus
-        self.speler.sprong_bonus = bonus  # Elke 10 punten ook iets hoger springen
+        # In de vechtmodus GEEN extra snelheid/sprong — daar speel je gewoon
+        # met je normale snelheid en sprongkracht.
+        if not self.arena:
+            bonus = self.punten // 10
+            self.speler.snelheid_bonus = bonus
+            self.speler.sprong_bonus = bonus  # Elke 10 punten ook iets hoger springen
         # Sla voortgang op (updates punten) — in de arena NIET, want die telt apart
         if not self.arena:
             try:
