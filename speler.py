@@ -2,6 +2,7 @@
 # De Speler klasse — alles over het poppetje dat jij bestuurt.
 
 import arcade
+import math
 from instellingen import (SPELER_SNELHEID, SPRING_KRACHT, ZWAARTEKRACHT,
                            SPELER_KLEUR, OOG_KLEUR)
 
@@ -51,6 +52,9 @@ class Speler:
         # Knippercyclus voor als de speler onkwetsbaar is
         self._knippering = 0
 
+        # Draai-stand (graden) — voor de tollende kubus in de racemodus
+        self.rotatie = 0
+
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
         self.x = 50
@@ -66,6 +70,7 @@ class Speler:
         self.dubbel_sprong_timer = 0
         self.schiet_timer = 0
         self.heeft_dubbel_gesprongen = False
+        self.rotatie = 0
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -156,6 +161,11 @@ class Speler:
         if self.onkwetsbaar_timer > 0 and self._knippering < 3:
             return  # Niet tekenen = onzichtbaar in de knippercyclus
 
+        # In de racemodus tolt het blokje door de lucht → teken het gedraaid
+        if self.rotatie != 0:
+            self._teken_gedraaid()
+            return
+
         x = self.x
         y = self.y
         w = self.breedte
@@ -180,3 +190,27 @@ class Speler:
         arcade.draw_circle_filled(x + w - 9, y + h - 10, 4, OOG_KLEUR)
         # Lachend mondje
         arcade.draw_arc_outline(x + w // 2, y + 9, 10, 6, OOG_KLEUR, 200, 340, 2)
+
+    def _teken_gedraaid(self):
+        """Teken het blokje gedraaid (de tollende kubus van Geometry Dash)."""
+        cx = self.x + self.breedte / 2
+        cy = self.y + self.hoogte / 2
+        hoek = math.radians(self.rotatie)
+        cos_h, sin_h = math.cos(hoek), math.sin(hoek)
+
+        def draai(dx, dy):
+            # Draai een punt (dx, dy) rond het midden van het blokje
+            return (cx + dx * cos_h - dy * sin_h, cy + dx * sin_h + dy * cos_h)
+
+        hw, hh = self.breedte / 2, self.hoogte / 2
+        hoeken = [draai(-hw, -hh), draai(hw, -hh), draai(hw, hh), draai(-hw, hh)]
+
+        # Lijf (geel, of goudgeel bij snelheidsboost)
+        lijf_kleur = (255, 220, 0) if self.snelheid_boost_timer > 0 else SPELER_KLEUR
+        arcade.draw_polygon_filled(hoeken, lijf_kleur)
+        arcade.draw_polygon_outline(hoeken, arcade.color.ORANGE, 3)
+
+        # Oogjes draaien mee
+        for ox in (-7, 7):
+            ex, ey = draai(ox, 5)
+            arcade.draw_circle_filled(ex, ey, 3, OOG_KLEUR)

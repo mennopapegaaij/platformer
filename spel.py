@@ -340,6 +340,15 @@ class PlatformerSpel(arcade.View):
         # Laat de speler bewegen en botsingen controleren
         self.speler.bijwerken(self.level_breedte, self.platforms)
 
+        # Racemodus: laat het blokje tollen in de lucht (Geometry Dash-stijl!)
+        if self.race:
+            if self.speler.staat_op_grond:
+                # Op de grond ligt de kubus recht: snap naar het dichtstbijzijnde kwart
+                self.speler.rotatie = round(self.speler.rotatie / 90) * 90 % 360
+            else:
+                # In de lucht draait de kubus rond
+                self.speler.rotatie = (self.speler.rotatie + 8) % 360
+
         # Waarschuwingstimer aftellen
         if self._waarschuwing_teller > 0:
             self._waarschuwing_teller -= 1
