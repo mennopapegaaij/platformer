@@ -3,6 +3,7 @@
 # De PlatformerSpel klasse beheert de game loop: tekenen, bijwerken, toetsen.
 
 import arcade
+import copy   # om bij een herstart verse kopieën van je eigen level te maken
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
@@ -89,7 +90,9 @@ class PlatformerSpel(arcade.View):
 
         # Haal de level-gegevens op: eigen level, racebaan, arena of gewone levels
         if self.eigen:
-            data = self.eigen_level_data
+            # Verse kopie, zodat verslagen monsters en opgepakte hartjes bij een
+            # herstart weer terug zijn (het opgeslagen level blijft ongewijzigd).
+            data = copy.deepcopy(self.eigen_level_data)
             if self.race:
                 # Een zelfgebouwde racebaan: je rent vanzelf op een rustige snelheid
                 self.speler.snelheid_bonus = 1
