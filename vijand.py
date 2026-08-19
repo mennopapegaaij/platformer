@@ -1377,3 +1377,40 @@ class ArenaVechter(Vijand):
         start_x = cx - (len(aanwezig) - 1) * 3
         for i, k in enumerate(aanwezig):
             arcade.draw_circle_filled(start_x + i * 6, y - 6, 2.5, kleur_per_kracht[k])
+
+
+# =============================================
+# ⚠️ SPIKES
+# Scherpe punten die je NIET kunt doden. Erop springen doet pijn —
+# je moet er dus OVERHEEN springen! Kunnen in elk level staan.
+# =============================================
+class Spikes(Vijand):
+    """Scherpe punten: niet te doden en niet te stompen. Spring eroverheen!"""
+
+    def __init__(self, x, y, aantal=3):
+        breedte = aantal * 16
+        super().__init__(x, y, x, x + breedte, 0)   # snelheid 0: staat helemaal stil
+        self.breedte = breedte
+        self.hoogte = 18
+        self.aantal = aantal
+        self.is_spike = True        # zo weet het spel: dit is een spike (niet te doden)
+        self.levens = 999999        # gaat nooit dood
+
+    def bijwerken(self, speler_x=None):
+        pass                        # spikes bewegen niet
+
+    def speler_springt_erop(self, px, py, pw, ph):
+        return False                # je kunt er niet op stompen — het doet juist pijn!
+
+    def teken(self):
+        x, y, w = self.x, self.y, self.breedte
+        # Donkere voet onderaan
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + 5, (70, 70, 80))
+        # Rij scherpe punten
+        for i in range(self.aantal):
+            sx = x + i * 16
+            arcade.draw_triangle_filled(sx, y + 3, sx + 16, y + 3, sx + 8, y + self.hoogte,
+                                        (185, 185, 200))
+            # Lichtglimp op elke punt zodat hij scherp glimt
+            arcade.draw_triangle_filled(sx + 5, y + 3, sx + 9, y + 3, sx + 8, y + self.hoogte - 3,
+                                        (235, 235, 245))

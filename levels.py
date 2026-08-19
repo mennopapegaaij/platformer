@@ -8,7 +8,7 @@ from vijand import (Vijand, VliegendVijand, SpringendVijand, GroteVijand, GeestV
                     JagerVijand, EindBaas,
                     SlijmVijand, StekelVijand, VuurVijand, IJsVijand, BomVijand,
                     VleermuisVijand, SlangVijand, RobotVijand, KraaiVijand, PaddenstoelVijand,
-                    ArenaBaas, ArenaVechter)
+                    ArenaBaas, ArenaVechter, Spikes)
 from powerup import ExtraLevenPowerUp
 
 
@@ -577,6 +577,14 @@ def _genereer_oneindig_level(nummer):
     if len(vijanden) > 45:
         vijanden = vijanden[:45]
 
+    # --- Spikes: scherpe punten waar je OVERHEEN moet springen (niet te doden) ---
+    for (ex, ebr) in eilanden[1:-1]:        # niet op het start- en eindeiland
+        if rng.random() < 0.4:
+            aantal_punten = rng.randint(2, 4)
+            sw = aantal_punten * 16
+            sx = ex + rng.randint(30, max(30, ebr - sw - 30))
+            vijanden.append(Spikes(sx, 40, aantal_punten))
+
     # --- 4. Power-ups op sommige zwevende platforms (alleen nog hartjes!) ---
     zwevend = [p for p in platforms if p.y > 40]   # alleen de hoge platforms
     rng.shuffle(zwevend)
@@ -646,6 +654,15 @@ def maak_arena(nummer):
         # Af en toe een hartje op een zwevend platform
         if nummer % 3 == 0:
             powerups.append(ExtraLevenPowerUp(230, 172))
+
+    # --- Spikes op de vloer: spring eroverheen tijdens het gevecht! ---
+    # (niet in het allereerste level, zodat dat lekker rustig blijft)
+    if nummer > 1:
+        for _ in range(rng.randint(0, 2)):
+            aantal_punten = rng.randint(2, 3)
+            sw = aantal_punten * 16
+            sx = rng.randint(250, ARENA_BREEDTE - 250 - sw)
+            vijanden.append(Spikes(sx, 40, aantal_punten))
 
     # Geen vlag in de arena — je wint door ALLE monsters te verslaan!
     return platforms, vijanden, powerups, -999, -999, ARENA_BREEDTE

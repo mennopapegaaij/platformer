@@ -395,6 +395,8 @@ class PlatformerSpel(arcade.View):
         for kogel in self.kogels:
             kogel.bijwerken(self.level_breedte)
             for vijand in self.vijanden[:]:
+                if getattr(vijand, 'is_spike', False):
+                    continue   # spikes kun je niet kapotschieten
                 if kogel.actief and kogel.raakt_vijand(vijand):
                     kogel.actief = False
                     if hasattr(vijand, 'word_gestompt'):
@@ -411,8 +413,10 @@ class PlatformerSpel(arcade.View):
         self.kogels = [k for k in self.kogels if k.actief]
 
         # --- Arena/vechtmodus: win als ALLE monsters verslagen zijn ---
+        # (spikes tellen niet mee — die kun je toch niet doden!)
         if self.arena:
-            if len(self.vijanden) == 0 and not self.level_gehaald:
+            levende = [v for v in self.vijanden if not getattr(v, 'is_spike', False)]
+            if len(levende) == 0 and not self.level_gehaald:
                 self.level_gehaald = True
                 geluid_manager.speel_level_gehaald()
                 # Bewaar het record (hoogste gehaalde arena-level)
