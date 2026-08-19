@@ -86,8 +86,8 @@ class PlatformerSpel(arcade.View):
         # Haal de level-gegevens op: racebaan, arena of gewone levels
         if self.race:
             data = levels_module.maak_race(nummer)
-            # In de racemodus ren je vanzelf steeds sneller (maar niet oneindig snel)
-            self.speler.snelheid_bonus = min(1 + nummer * 0.3, 6)
+            # In de racemodus ren je vanzelf steeds sneller (past bij de blok-afstanden)
+            self.speler.snelheid_bonus = levels_module.race_snelheid_bonus(nummer)
             self.speler.sprong_bonus = 0
         elif self.arena:
             data = levels_module.maak_arena(nummer)

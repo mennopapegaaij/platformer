@@ -673,6 +673,43 @@ def maak_arena(nummer):
 # Je rent VANZELF vooruit en springt over gaten, spikes en blokken.
 # Haal de finishvlag! Elke baan wordt langer en een beetje sneller.
 # =================================================================
+def race_snelheid_bonus(nummer):
+    """Hoeveel extra snelheid je in de racemodus hebt (bovenop de basissnelheid).
+    Wordt zowel door het spel als door de baan-generator gebruikt, zodat de
+    sprongen precies passen bij de snelheid."""
+    return min(0.5 + nummer * 0.15, 3)
+
+
+def _race_spikebrug(x, rng, nummer, platforms, obstakels):
+    """Bouw een 'spike-brug': een strook vol spikes met stapsteen-blokken
+    erboven. Je moet van blok naar blok springen om eroverheen te komen.
+    Geeft de nieuwe x terug (het einde van de brug)."""
+    n = 2 if nummer < 6 else rng.choice([2, 2, 3])   # 2 (soms 3) stapstenen
+
+    # Reken uit hoe ver je ongeveer springt (zodat de blokken landbaar zijn)
+    snelheid = 4 + race_snelheid_bonus(nummer)       # 4 = basissnelheid van de speler
+    step = int(snelheid * 42)                         # afstand tot je op blok-hoogte landt
+    bw = 150                                          # extra brede blokken = makkelijker landen
+
+    # Blok-middens: het eerste na een korte aanloop, de rest steeds 'step' verder
+    blok_centers = [x + 70 + step + i * step for i in range(n)]
+    for bcx in blok_centers:
+        platforms.append(BlokPlatform(bcx - bw // 2, 84, bw, 22))
+
+    # De grond onder de brug (met veilige aanloop en veilige landing)
+    laatste_rechts = blok_centers[-1] + bw // 2
+    seg = (laatste_rechts + 150) - x
+    platforms.append(Platform(x, 0, seg, 40))
+
+    # Spikes op de grond, van net na de aanloop tot onder het laatste blok
+    sx = x + 55
+    while sx + 48 <= laatste_rechts:
+        obstakels.append(Spikes(sx, 40, 3))
+        sx += 48
+
+    return x + seg
+
+
 def maak_race(nummer):
     """Maak een racebaan (auto-run): grond met gaten, spikes en zweefblokken
     (waar je OP kunt staan) en zwevende spikes. Finishvlag aan het eind.
@@ -690,8 +727,13 @@ def maak_race(nummer):
     # Moeilijkheid loopt langzaam op
     gat_kans = min(0.30 + nummer * 0.02, 0.55)
     max_gat = 150 + min(nummer * 4, 60)
+    brug_kans = min(0.15 + nummer * 0.02, 0.35)
 
     while x < lengte - 600:
+        # Soms een spike-brug: op de blokken springen om over de spikes te komen
+        if x > 1000 and rng.random() < brug_kans:
+            x = _race_spikebrug(x, rng, nummer, platforms, obstakels)
+            continue
         # Soms een gat vóór het volgende stuk grond
         if rng.random() < gat_kans:
             x += rng.randint(120, max_gat)
