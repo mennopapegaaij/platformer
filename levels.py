@@ -3,6 +3,7 @@
 # Wil je een nieuw level toevoegen? Voeg hier een nieuw blok toe!
 
 import random  # nodig om automatisch oneindige levels te maken
+import math    # voor het uitrekenen van de sprong-afstanden
 from platforms import Platform, BlokPlatform
 from vijand import (Vijand, VliegendVijand, SpringendVijand, GroteVijand, GeestVijand,
                     JagerVijand, EindBaas,
@@ -683,25 +684,41 @@ def race_snelheid_bonus(nummer):
 def _race_spikebrug(x, rng, nummer, platforms, obstakels):
     """Bouw een 'spike-brug': een strook vol spikes met stapsteen-blokken
     erboven. Je moet van blok naar blok springen om eroverheen te komen.
-    Geeft de nieuwe x terug (het einde van de brug)."""
-    n = 2 if nummer < 6 else rng.choice([2, 2, 3])   # 2 (soms 3) stapstenen
-
-    # Reken uit hoe ver je ongeveer springt (zodat de blokken landbaar zijn)
+    Soms KLIMT de brug omhoog: de blokken staan steeds hoger! Geeft de
+    nieuwe x terug (het einde van de brug)."""
     snelheid = 4 + race_snelheid_bonus(nummer)       # 4 = basissnelheid van de speler
-    step = int(snelheid * 42)                         # afstand tot je op blok-hoogte landt
-    bw = 150                                          # extra brede blokken = makkelijker landen
+    n = 2 if nummer < 5 else rng.choice([2, 3, 3, 4])
+    bw = 150                                          # brede blokken = makkelijker landen
+    bh = 22
 
-    # Blok-middens: het eerste na een korte aanloop, de rest steeds 'step' verder
-    blok_centers = [x + 70 + step + i * step for i in range(n)]
-    for bcx in blok_centers:
-        platforms.append(BlokPlatform(bcx - bw // 2, 84, bw, 22))
+    # Soms een 'hoge' klim-brug (de kans wordt groter in latere banen)
+    hoog = rng.random() < min(0.35 + nummer * 0.05, 0.85)
 
-    # De grond onder de brug (met veilige aanloop en veilige landing)
-    laatste_rechts = blok_centers[-1] + bw // 2
-    seg = (laatste_rechts + 150) - x
+    prev_top = 40.0          # je begint op de grond (bovenkant = 40)
+    prev_x = x + 45          # ongeveer waar je van de grond af springt
+    blok_data = []
+    for i in range(n):
+        if hoog:
+            stijging = rng.randint(55, 115)          # elk blok flink hoger
+        else:
+            stijging = rng.randint(-15, 45)          # ongeveer gelijke hoogte
+        # Nieuwe hoogte: hoger, maar nooit meer dan je kunt springen (~120 omhoog)
+        top = max(70.0, min(prev_top + stijging, prev_top + 120, 260.0))
+        # Reken uit hoe ver dit blok mag staan om er (dalend) op te landen
+        onder_wortel = max(576 - 4 * (top - prev_top), 16)
+        t_land = 24 + math.sqrt(onder_wortel)
+        bcx = prev_x + snelheid * t_land
+        platforms.append(BlokPlatform(bcx - bw // 2, top - bh, bw, bh))
+        blok_data.append((bcx, top))
+        prev_top = top
+        prev_x = bcx
+
+    # De grond onder de brug (veilige aanloop + genoeg landingsruimte om af te dalen)
+    laatste_rechts = blok_data[-1][0] + bw // 2
+    seg = int(laatste_rechts + 240) - x
     platforms.append(Platform(x, 0, seg, 40))
 
-    # Spikes op de grond, van net na de aanloop tot onder het laatste blok
+    # Spikes op de grond onder de blokken (aanloop en landing blijven vrij)
     sx = x + 55
     while sx + 48 <= laatste_rechts:
         obstakels.append(Spikes(sx, 40, 3))
