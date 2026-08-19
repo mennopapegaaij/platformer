@@ -732,7 +732,7 @@ def maak_race(nummer):
     (waar je OP kunt staan) en zwevende spikes. Finishvlag aan het eind.
     Deterministisch per baannummer."""
     rng = random.Random(5000 + nummer)
-    lengte = 3200 + nummer * 500          # elke baan wordt langer
+    lengte = (3200 + nummer * 500) * 5    # 5x zo lang! (elke baan wordt ook langer)
 
     platforms = []                        # grond + blokken waar je op kunt staan
     obstakels = []                        # spikes (die doen pijn) -> gaan in 'vijanden'

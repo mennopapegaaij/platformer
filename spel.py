@@ -169,13 +169,17 @@ class PlatformerSpel(arcade.View):
         if self.arena:
             self._teken_arena_pijltjes()
 
-        # Punten rechtsboven
-        snelheid_extra = self.speler.snelheid_bonus
-        punten_tekst = f"⭐ {self.punten} punten"
-        if snelheid_extra > 0:
-            punten_tekst += f"  💨 +{snelheid_extra} snelheid"
-        arcade.draw_text(punten_tekst, SCHERM_BREEDTE - 280, SCHERM_HOOGTE - 30,
-                         arcade.color.YELLOW, 16, bold=True)
+        # Racemodus: voortgangsbalk bovenin (zoals in Geometry Dash!)
+        if self.race:
+            self._teken_voortgangsbalk()
+        else:
+            # Punten rechtsboven (niet in de racemodus)
+            snelheid_extra = self.speler.snelheid_bonus
+            punten_tekst = f"⭐ {self.punten} punten"
+            if snelheid_extra > 0:
+                punten_tekst += f"  💨 +{snelheid_extra} snelheid"
+            arcade.draw_text(punten_tekst, SCHERM_BREEDTE - 280, SCHERM_HOOGTE - 30,
+                             arcade.color.YELLOW, 16, bold=True)
 
         # Levens weergeven (hartjes)
         self._teken_levens_hud()
@@ -320,6 +324,22 @@ class PlatformerSpel(arcade.View):
         arcade.draw_lrbt_rectangle_outline(pl, pr, pb, pt, (255, 220, 150), 2)
         arcade.draw_text("🔄 Reset", (pl + pr) / 2, pb + 6,
                          arcade.color.WHITE, 13, bold=True, anchor_x="center")
+
+    def _teken_voortgangsbalk(self):
+        """Teken bovenin een balk die laat zien hoe ver je in de baan bent."""
+        doel = self.vlag_x if self.vlag_x > 0 else self.level_breedte
+        voortgang = max(0.0, min(self.speler.x / doel, 1.0))
+        l, r, b, t = 200, 720, 476, 491
+        # Achtergrond van de balk
+        arcade.draw_lrbt_rectangle_filled(l, r, b, t, (40, 40, 55))
+        # Het groene gevulde deel (hoe ver je bent)
+        if voortgang > 0:
+            arcade.draw_lrbt_rectangle_filled(l, l + (r - l) * voortgang, b, t, (80, 220, 90))
+        # Wit randje
+        arcade.draw_lrbt_rectangle_outline(l, r, b, t, arcade.color.WHITE, 2)
+        # Percentage in het midden
+        arcade.draw_text(f"{int(voortgang * 100)}%", (l + r) / 2, b,
+                         arcade.color.WHITE, 11, bold=True, anchor_x="center")
 
     def on_update(self, delta_time):
         """Werk het spel bij — dit wordt heel snel herhaald."""
