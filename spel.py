@@ -124,21 +124,34 @@ class PlatformerSpel(arcade.View):
         # --- Teken eerst de achtergrond (altijd op vaste plek, schuift niet mee) ---
         achtergrond_module.teken_achtergrond(self.huidig_level, SCHERM_BREEDTE, SCHERM_HOOGTE)
 
+        # --- Alleen tekenen wat in beeld is (scheelt heel veel bij lange banen!) ---
+        cam_x = max(SCHERM_BREEDTE / 2,
+                    min(self.speler.x + self.speler.breedte / 2,
+                        self.level_breedte - SCHERM_BREEDTE / 2))
+        links_zicht = cam_x - SCHERM_BREEDTE / 2 - 60
+        rechts_zicht = cam_x + SCHERM_BREEDTE / 2 + 60
+
+        def in_beeld(obj, breedte=0):
+            # Staat dit object (deels) in het zichtbare stuk?
+            return obj.x + breedte >= links_zicht and obj.x <= rechts_zicht
+
         # --- Teken de spelwereld met de camera ---
         # Alles binnen dit blok beweegt mee met de camera
         with self.camera.activate():
 
-            # Teken alle platforms
+            # Teken alleen de platforms die in beeld zijn
             for platform in self.platforms:
-                platform.teken()
+                if in_beeld(platform, platform.breedte):
+                    platform.teken()
 
-            # Teken alle vijanden
+            # Teken alleen de vijanden die in beeld zijn
             for vijand in self.vijanden:
-                vijand.teken()
+                if in_beeld(vijand, vijand.breedte):
+                    vijand.teken()
 
-            # Teken de power-ups die nog niet opgepakt zijn
+            # Teken de power-ups die nog niet opgepakt zijn en in beeld zijn
             for powerup in self.powerups:
-                if not powerup.opgepakt:
+                if not powerup.opgepakt and in_beeld(powerup, powerup.breedte):
                     powerup.teken()
 
             # Teken de vlag (in de arena is er geen vlag)
