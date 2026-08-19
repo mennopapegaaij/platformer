@@ -69,6 +69,7 @@ class BouwerView(arcade.View):
 
         self.grid = {}                 # (kol, rij) -> soort
         self.gekozen = "grond"         # welk item je nu plaatst
+        self.race_type = False         # False = gewoon level, True = racebaan (auto-run)
         self.scroll = 0                # hoe ver je naar rechts hebt geschoven
         self._scroll_richting = 0      # -1 links, +1 rechts (met pijltjestoetsen)
         self._melding = ""             # kort berichtje (bv. "Opgeslagen!")
@@ -80,10 +81,11 @@ class BouwerView(arcade.View):
             l = 8 + i * 50
             self.palet_knoppen[soort] = (l, l + 46)
         self.actie_knoppen = {         # naam -> (l, r)
-            "spelen": (368, 452),
-            "opslaan": (456, 560),
-            "wissen": (564, 648),
-            "kaart": (652, 736),
+            "spelen": (356, 428),
+            "opslaan": (432, 512),
+            "wissen": (516, 584),
+            "kaart": (588, 650),
+            "type": (656, 792),
         }
 
         self._laad()
@@ -95,7 +97,12 @@ class BouwerView(arcade.View):
             try:
                 with open(BESTAND, encoding="utf-8") as f:
                     data = json.load(f)
-                self.grid = {(int(k), int(r)): s for k, r, s in data}
+                if isinstance(data, dict):
+                    tiles = data.get("tiles", [])
+                    self.race_type = bool(data.get("race", False))
+                else:
+                    tiles = data   # oud formaat (alleen een lijst met vakjes)
+                self.grid = {(int(k), int(r)): s for k, r, s in tiles}
                 return
             except Exception:
                 pass
@@ -105,7 +112,8 @@ class BouwerView(arcade.View):
         self.grid[(12, 1)] = "vlag"
 
     def _opslaan(self):
-        data = [[k, r, s] for (k, r), s in self.grid.items()]
+        data = {"tiles": [[k, r, s] for (k, r), s in self.grid.items()],
+                "race": self.race_type}
         with open(BESTAND, "w", encoding="utf-8") as f:
             json.dump(data, f)
         self._melding = "💾 Opgeslagen!"
@@ -166,23 +174,31 @@ class BouwerView(arcade.View):
 
         # Actie-knoppen
         kleuren = {"spelen": (40, 160, 60), "opslaan": (40, 110, 180),
-                   "wissen": (170, 60, 60), "kaart": (100, 100, 120)}
+                   "wissen": (170, 60, 60), "kaart": (100, 100, 120),
+                   "type": (40, 110, 180) if self.race_type else (150, 100, 30)}
         teksten = {"spelen": "▶ Spelen", "opslaan": "💾 Opslaan",
-                   "wissen": "🗑 Wissen", "kaart": "🗺 Kaart"}
+                   "wissen": "🗑 Wissen", "kaart": "🗺 Kaart",
+                   "type": "🏁 Race" if self.race_type else "🚶 Gewoon"}
         for naam, (l, r) in self.actie_knoppen.items():
             arcade.draw_lrbt_rectangle_filled(l, r, BALK_Y + 8, SCHERM_HOOGTE - 8, kleuren[naam])
             arcade.draw_lrbt_rectangle_outline(l, r, BALK_Y + 8, SCHERM_HOOGTE - 8, arcade.color.WHITE, 2)
-            arcade.draw_text(teksten[naam], (l + r) // 2, BALK_Y + 20,
-                             arcade.color.WHITE, 11, bold=True, anchor_x="center")
+            if naam == "type":
+                arcade.draw_text("Type:", (l + r) // 2, SCHERM_HOOGTE - 20,
+                                 arcade.color.WHITE, 9, anchor_x="center")
+                arcade.draw_text(teksten[naam], (l + r) // 2, BALK_Y + 14,
+                                 arcade.color.WHITE, 12, bold=True, anchor_x="center")
+            else:
+                arcade.draw_text(teksten[naam], (l + r) // 2, BALK_Y + 20,
+                                 arcade.color.WHITE, 11, bold=True, anchor_x="center")
 
         # Uitleg / melding onderin het bouwgebied
         if self._melding_teller > 0:
             arcade.draw_text(self._melding, SCHERM_BREEDTE // 2, 10,
                              arcade.color.YELLOW, 16, bold=True, anchor_x="center")
         else:
-            arcade.draw_text("Kies bovenin een blokje en klik in het veld om te plaatsen. "
-                             "←→ = schuiven.", SCHERM_BREEDTE // 2, 8,
-                             arcade.color.WHITE, 11, anchor_x="center")
+            arcade.draw_text("Kies een blokje en klik om te plaatsen  •  ←→ = schuiven  •  "
+                             "Type-knop: gewoon of race (auto-run)", SCHERM_BREEDTE // 2, 8,
+                             arcade.color.WHITE, 10, anchor_x="center")
 
     # ---------- Muis ----------
     def on_mouse_press(self, x, y, knop, modifiers):
@@ -217,6 +233,8 @@ class BouwerView(arcade.View):
                     self.grid = {}
                 elif naam == "kaart":
                     self._naar_kaart()
+                elif naam == "type":
+                    self.race_type = not self.race_type   # wissel gewoon/race
                 return
 
     # ---------- Toetsen ----------
@@ -283,8 +301,8 @@ class BouwerView(arcade.View):
         from spel import PlatformerSpel
         data = self._bouw_level()
         spel = PlatformerSpel(1, self.voltooid, punten=0, levens=None,
-                              eigen_level=data, kaart_punten=self.punten,
-                              kaart_levens=self.levens)
+                              eigen_level=data, race=self.race_type,
+                              kaart_punten=self.punten, kaart_levens=self.levens)
         self.window.show_view(spel)
 
     def _naar_kaart(self):

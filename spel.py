@@ -90,6 +90,10 @@ class PlatformerSpel(arcade.View):
         # Haal de level-gegevens op: eigen level, racebaan, arena of gewone levels
         if self.eigen:
             data = self.eigen_level_data
+            if self.race:
+                # Een zelfgebouwde racebaan: je rent vanzelf op een rustige snelheid
+                self.speler.snelheid_bonus = 1
+                self.speler.sprong_bonus = 0
         elif self.race:
             data = levels_module.maak_race(nummer)
             # In de racemodus ren je vanzelf steeds sneller (past bij de blok-afstanden)
