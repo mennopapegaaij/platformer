@@ -498,6 +498,11 @@ class PlatformerSpel(arcade.View):
                            else self.speler.x - 4)
                 kogel_y = self.speler.y + self.speler.hoogte // 2
                 self.kogels.append(Kogel(kogel_x, kogel_y, richting))
+        elif toets == arcade.key.KEY_2 and self.arena:
+            # Geheime sprong-toets: spring meteen naar level 250 (om te proberen!)
+            self.huidig_level = 250
+            self._arena_top = max(self._arena_top, 250)
+            self.maak_level(250)
         elif toets == arcade.key.K:
             # K = terug naar de kaart (altijd beschikbaar)
             if self.arena:
