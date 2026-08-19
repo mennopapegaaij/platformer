@@ -1414,3 +1414,36 @@ class Spikes(Vijand):
             # Lichtglimp op elke punt zodat hij scherp glimt
             arcade.draw_triangle_filled(sx + 5, y + 3, sx + 9, y + 3, sx + 8, y + self.hoogte - 3,
                                         (235, 235, 245))
+
+
+# =============================================
+# 🧱 BLOK
+# Een stevig blok waar je OVERHEEN moet springen. Niet te doden.
+# (Handig voor de racemodus.)
+# =============================================
+class Blok(Vijand):
+    """Een blok-obstakel: niet te doden, spring eroverheen!"""
+
+    def __init__(self, x, y, breedte=40, hoogte=44):
+        super().__init__(x, y, x, x + breedte, 0)   # snelheid 0: staat stil
+        self.breedte = breedte
+        self.hoogte = hoogte
+        self.is_spike = True        # onkwetsbaar obstakel (net als spikes)
+        self.levens = 999999        # gaat nooit dood
+
+    def bijwerken(self, speler_x=None):
+        pass                        # blokken bewegen niet
+
+    def speler_springt_erop(self, px, py, pw, ph):
+        return False                # je kunt er niet op stompen
+
+    def teken(self):
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        # Stenen blok
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (150, 110, 80))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (90, 60, 40), 3)
+        # Voegen (streepjes) voor een bakstenen-look
+        arcade.draw_line(x, y + h // 2, x + w, y + h // 2, (90, 60, 40), 2)
+        arcade.draw_line(x + w // 2, y, x + w // 2, y + h // 2, (90, 60, 40), 2)
+        arcade.draw_line(x + w // 4, y + h // 2, x + w // 4, y + h, (90, 60, 40), 2)
+        arcade.draw_line(x + 3 * w // 4, y + h // 2, x + 3 * w // 4, y + h, (90, 60, 40), 2)

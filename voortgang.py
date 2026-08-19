@@ -29,22 +29,28 @@ def laad_voortgang():
                     "punten": int(data.get("punten", 0)),
                     "levens": data.get("levens", None),
                     "arena_record": int(data.get("arena_record", 0)),
+                    "race_record": int(data.get("race_record", 0)),
                 }
         except Exception:
             pass  # Als het bestand kapot is, begin dan opnieuw
-    return {"voltooid": set(), "punten": 0, "levens": None, "arena_record": 0}
+    return {"voltooid": set(), "punten": 0, "levens": None,
+            "arena_record": 0, "race_record": 0}
 
 
-def sla_voortgang_op(voltooid, punten=0, levens=None, arena_record=None):
-    """Sla voortgang op (voltooide levels, punten, levens en arena-record)."""
-    # Behoud het arena-record als het niet wordt meegegeven
+def sla_voortgang_op(voltooid, punten=0, levens=None, arena_record=None, race_record=None):
+    """Sla voortgang op (voltooide levels, punten, levens, arena- en race-record)."""
+    # Behoud de records die niet worden meegegeven
+    huidig = laad_voortgang()
     if arena_record is None:
-        arena_record = laad_voortgang().get("arena_record", 0)
+        arena_record = huidig.get("arena_record", 0)
+    if race_record is None:
+        race_record = huidig.get("race_record", 0)
     data = {
         "voltooid": sorted(list(voltooid)),
         "punten": int(punten),
         "levens": (int(levens) if levens is not None else None),
         "arena_record": int(arena_record),
+        "race_record": int(race_record),
     }
     with open(BESTAND, "w", encoding="utf-8") as f:
         json.dump(data, f)
@@ -77,3 +83,11 @@ def reset_arena_record():
     """
     data = laad_voortgang()
     sla_voortgang_op(data["voltooid"], data["punten"], data["levens"], 0)
+
+
+def sla_race_record_op(record):
+    """Bewaar de hoogste race-baan die je haalde (alleen als het een record is)."""
+    data = laad_voortgang()
+    if record > data.get("race_record", 0):
+        sla_voortgang_op(data["voltooid"], data["punten"], data["levens"],
+                         data["arena_record"], record)

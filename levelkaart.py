@@ -41,15 +41,17 @@ def _basis_positie(nummer):
 class LevelKaartView(arcade.View):
     """De levelkaart — hier kies je welk level je wilt spelen."""
 
-    # De knop voor de vechtmodus (arena) aan de rechterkant: (links, rechts, onder, boven)
-    ARENA_KNOP = (648, 792, 175, 315)
+    # Knoppen aan de rechterkant: (links, rechts, onder, boven)
+    ARENA_KNOP = (648, 792, 250, 355)   # vechtmodus (bovenste knop)
+    RACE_KNOP = (648, 792, 120, 225)    # racemodus (onderste knop)
 
-    def __init__(self, voltooid_levels, punten=0, levens=None, arena_record=0):
+    def __init__(self, voltooid_levels, punten=0, levens=None, arena_record=0, race_record=0):
         super().__init__()
         self.voltooid = voltooid_levels  # Set met voltooide level-nummers
         self.punten = punten             # Punten uit het vorige level
         self.levens = levens             # Levens uit het vorige level (None = standaard)
         self.arena_record = arena_record # Hoogste vechtmodus-level dat je haalde
+        self.race_record = race_record   # Hoogste race-baan die je haalde
 
         # Begin bij het eerste level dat nog niet gehaald is
         self.geselecteerd = self._bereken_start()
@@ -157,26 +159,29 @@ class LevelKaartView(arcade.View):
                          SCHERM_BREEDTE // 2, 16,
                          tekst_kleur, 15, bold=True, anchor_x="center")
 
-        # --- De knop voor de vechtmodus (arena) ---
-        self._teken_arena_knop()
+        # --- De knoppen voor de vecht- en racemodus ---
+        arena_record = f"record: level {self.arena_record}" if self.arena_record > 0 else ""
+        self._teken_zij_knop(self.ARENA_KNOP, (180, 40, 40), (210, 70, 40),
+                             "⚔️", "VECHT-", "MODUS", arena_record, "(klik of V)")
+        race_record = f"record: baan {self.race_record}" if self.race_record > 0 else ""
+        self._teken_zij_knop(self.RACE_KNOP, (40, 110, 180), (40, 150, 210),
+                             "🏁", "RACE-", "MODUS", race_record, "(klik of R)")
 
-    def _teken_arena_knop(self):
-        """Teken de knop aan de zijkant waarmee je de vechtmodus start."""
-        l, r, b, t = self.ARENA_KNOP
+    def _teken_zij_knop(self, rect, hoofd_kleur, top_kleur, emoji, regel1, regel2,
+                        record_tekst, hint):
+        """Teken een knop aan de zijkant (voor vecht- of racemodus)."""
+        l, r, b, t = rect
         cx = (l + r) // 2
-        # Rood/oranje knop met een randje
-        arcade.draw_lrbt_rectangle_filled(l, r, b, t, (180, 40, 40))
-        arcade.draw_lrbt_rectangle_filled(l, r, b, t - 6, (210, 70, 40))
+        arcade.draw_lrbt_rectangle_filled(l, r, b, t, hoofd_kleur)
+        arcade.draw_lrbt_rectangle_filled(l, r, b, t - 6, top_kleur)
         arcade.draw_lrbt_rectangle_outline(l, r, b, t, (255, 220, 120), 3)
-        # Zwaardjes en tekst
-        arcade.draw_text("⚔️", cx, t - 40, arcade.color.WHITE, 30, anchor_x="center")
-        arcade.draw_text("VECHT-", cx, t - 72, arcade.color.WHITE, 15, bold=True, anchor_x="center")
-        arcade.draw_text("MODUS", cx, t - 90, arcade.color.WHITE, 15, bold=True, anchor_x="center")
-        arcade.draw_text("versla de monsters!", cx, b + 42, arcade.color.WHITE, 9, anchor_x="center")
-        if self.arena_record > 0:
-            arcade.draw_text(f"record: level {self.arena_record}", cx, b + 26,
-                             arcade.color.YELLOW, 10, bold=True, anchor_x="center")
-        arcade.draw_text("(klik of druk V)", cx, b + 8, (255, 230, 180), 9, anchor_x="center")
+        arcade.draw_text(emoji, cx, t - 34, arcade.color.WHITE, 26, anchor_x="center")
+        arcade.draw_text(regel1, cx, t - 60, arcade.color.WHITE, 14, bold=True, anchor_x="center")
+        arcade.draw_text(regel2, cx, t - 76, arcade.color.WHITE, 14, bold=True, anchor_x="center")
+        if record_tekst:
+            arcade.draw_text(record_tekst, cx, b + 22, arcade.color.YELLOW, 10,
+                             bold=True, anchor_x="center")
+        arcade.draw_text(hint, cx, b + 7, (255, 230, 180), 9, anchor_x="center")
 
     def _teken_level_knoop(self, nummer, x, y):
         """Teken één level-bolletje op de kaart."""
@@ -264,12 +269,18 @@ class LevelKaartView(arcade.View):
         elif toets == arcade.key.V:
             # V = start de vechtmodus (arena)
             self._start_arena()
+        elif toets == arcade.key.R:
+            # R = start de racemodus
+            self._start_race()
 
     def on_mouse_press(self, x, y, knop, modifiers):
-        """Start de vechtmodus als je op de knop aan de zijkant klikt."""
-        l, r, b, t = self.ARENA_KNOP
-        if l <= x <= r and b <= y <= t:
+        """Start de vecht- of racemodus als je op een knop aan de zijkant klikt."""
+        al, ar, ab, at = self.ARENA_KNOP
+        rl, rr, rb, rt = self.RACE_KNOP
+        if al <= x <= ar and ab <= y <= at:
             self._start_arena()
+        elif rl <= x <= rr and rb <= y <= rt:
+            self._start_race()
 
     def _start_level(self, nummer):
         """Start het gekozen level — met de huidige punten en levens."""
@@ -281,5 +292,12 @@ class LevelKaartView(arcade.View):
         """Start de vechtmodus (arena) bij level 1 — begint helemaal fris."""
         from spel import PlatformerSpel
         spel = PlatformerSpel(1, self.voltooid, punten=0, levens=None, arena=True,
+                              kaart_punten=self.punten, kaart_levens=self.levens)
+        self.window.show_view(spel)
+
+    def _start_race(self):
+        """Start de racemodus bij baan 1 — je rent vanzelf vooruit!"""
+        from spel import PlatformerSpel
+        spel = PlatformerSpel(1, self.voltooid, punten=0, levens=None, race=True,
                               kaart_punten=self.punten, kaart_levens=self.levens)
         self.window.show_view(spel)
