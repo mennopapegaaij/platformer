@@ -42,8 +42,9 @@ class LevelKaartView(arcade.View):
     """De levelkaart — hier kies je welk level je wilt spelen."""
 
     # Knoppen aan de rechterkant: (links, rechts, onder, boven)
-    ARENA_KNOP = (648, 792, 250, 355)   # vechtmodus (bovenste knop)
-    RACE_KNOP = (648, 792, 120, 225)    # racemodus (onderste knop)
+    ARENA_KNOP = (648, 792, 285, 385)   # vechtmodus (bovenste knop)
+    RACE_KNOP = (648, 792, 178, 278)    # racemodus (middelste knop)
+    BOUWER_KNOP = (648, 792, 71, 171)   # bouwmodus (onderste knop)
 
     def __init__(self, voltooid_levels, punten=0, levens=None, arena_record=0, race_record=0):
         super().__init__()
@@ -166,6 +167,8 @@ class LevelKaartView(arcade.View):
         race_record = f"record: baan {self.race_record}" if self.race_record > 0 else ""
         self._teken_zij_knop(self.RACE_KNOP, (40, 110, 180), (40, 150, 210),
                              "🏁", "RACE-", "MODUS", race_record, "(klik of R)")
+        self._teken_zij_knop(self.BOUWER_KNOP, (150, 100, 30), (190, 140, 40),
+                             "🔨", "BOUW-", "MODUS", "maak je eigen level!", "(klik of B)")
 
     def _teken_zij_knop(self, rect, hoofd_kleur, top_kleur, emoji, regel1, regel2,
                         record_tekst, hint):
@@ -272,15 +275,21 @@ class LevelKaartView(arcade.View):
         elif toets == arcade.key.R:
             # R = start de racemodus
             self._start_race()
+        elif toets == arcade.key.B:
+            # B = start de bouwmodus
+            self._start_bouwer()
 
     def on_mouse_press(self, x, y, knop, modifiers):
-        """Start de vecht- of racemodus als je op een knop aan de zijkant klikt."""
+        """Start de vecht-, race- of bouwmodus als je op een knop aan de zijkant klikt."""
         al, ar, ab, at = self.ARENA_KNOP
         rl, rr, rb, rt = self.RACE_KNOP
+        bl, br, bb, bt = self.BOUWER_KNOP
         if al <= x <= ar and ab <= y <= at:
             self._start_arena()
         elif rl <= x <= rr and rb <= y <= rt:
             self._start_race()
+        elif bl <= x <= br and bb <= y <= bt:
+            self._start_bouwer()
 
     def _start_level(self, nummer):
         """Start het gekozen level — met de huidige punten en levens."""
@@ -301,3 +310,10 @@ class LevelKaartView(arcade.View):
         spel = PlatformerSpel(1, self.voltooid, punten=0, levens=None, race=True,
                               kaart_punten=self.punten, kaart_levens=self.levens)
         self.window.show_view(spel)
+
+    def _start_bouwer(self):
+        """Open de bouwmodus om je eigen level te maken."""
+        from bouwer import BouwerView
+        b = BouwerView(self.voltooid, self.punten, self.levens,
+                       self.arena_record, self.race_record)
+        self.window.show_view(b)
