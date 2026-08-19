@@ -63,3 +63,19 @@ class Platform:
                 py < platform_onder):
             return True
         return False
+
+
+class BlokPlatform(Platform):
+    """Een blok waar je gewoon OP kunt staan (net als een platform),
+    maar het ziet eruit als een stenen blok. Handig voor de racemodus."""
+
+    def teken(self):
+        """Teken het blok als een bruin bakstenen blok."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (150, 110, 80))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (90, 60, 40), 3)
+        # Voegen (streepjes) voor een bakstenen-look
+        arcade.draw_line(x, y + h / 2, x + w, y + h / 2, (90, 60, 40), 2)
+        arcade.draw_line(x + w / 2, y, x + w / 2, y + h / 2, (90, 60, 40), 2)
+        arcade.draw_line(x + w / 4, y + h / 2, x + w / 4, y + h, (90, 60, 40), 2)
+        arcade.draw_line(x + 3 * w / 4, y + h / 2, x + 3 * w / 4, y + h, (90, 60, 40), 2)

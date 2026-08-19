@@ -3,12 +3,12 @@
 # Wil je een nieuw level toevoegen? Voeg hier een nieuw blok toe!
 
 import random  # nodig om automatisch oneindige levels te maken
-from platforms import Platform
+from platforms import Platform, BlokPlatform
 from vijand import (Vijand, VliegendVijand, SpringendVijand, GroteVijand, GeestVijand,
                     JagerVijand, EindBaas,
                     SlijmVijand, StekelVijand, VuurVijand, IJsVijand, BomVijand,
                     VleermuisVijand, SlangVijand, RobotVijand, KraaiVijand, PaddenstoelVijand,
-                    ArenaBaas, ArenaVechter, Spikes, Blok)
+                    ArenaBaas, ArenaVechter, Spikes)
 from powerup import ExtraLevenPowerUp
 
 
@@ -674,13 +674,14 @@ def maak_arena(nummer):
 # Haal de finishvlag! Elke baan wordt langer en een beetje sneller.
 # =================================================================
 def maak_race(nummer):
-    """Maak een racebaan (auto-run): grond met gaten, spikes en blokken,
-    en een finishvlag aan het eind. Deterministisch per baannummer."""
+    """Maak een racebaan (auto-run): grond met gaten, spikes en zweefblokken
+    (waar je OP kunt staan) en zwevende spikes. Finishvlag aan het eind.
+    Deterministisch per baannummer."""
     rng = random.Random(5000 + nummer)
     lengte = 3200 + nummer * 500          # elke baan wordt langer
 
-    platforms = []
-    obstakels = []                        # spikes en blokken (gaan in 'vijanden')
+    platforms = []                        # grond + blokken waar je op kunt staan
+    obstakels = []                        # spikes (die doen pijn) -> gaan in 'vijanden'
 
     # Veilige start: de eerste 700px zonder gaten of obstakels
     platforms.append(Platform(0, 0, 700, 40))
@@ -688,7 +689,6 @@ def maak_race(nummer):
 
     # Moeilijkheid loopt langzaam op
     gat_kans = min(0.30 + nummer * 0.02, 0.55)
-    obstakel_kans = min(0.55 + nummer * 0.03, 0.9)
     max_gat = 150 + min(nummer * 4, 60)
 
     while x < lengte - 600:
@@ -698,14 +698,21 @@ def maak_race(nummer):
         # Een stuk grond
         seg = rng.randint(320, 520)
         platforms.append(Platform(x, 0, seg, 40))
-        # Misschien een obstakel in het midden (met ruimte aan de randen om te landen/springen)
-        if rng.random() < obstakel_kans:
+        mid = x + seg // 2
+        keuze = rng.random()
+        if keuze < 0.40:
+            # Grond-spikes: spring eroverheen
             obst_x = x + rng.randint(120, seg - 160)
-            if rng.random() < 0.5:
-                obstakels.append(Spikes(obst_x, 40, rng.randint(2, 3)))   # spikes (laag)
-            else:
-                obstakels.append(Blok(obst_x, 40, rng.randint(36, 54),
-                                      rng.randint(34, 52)))               # blok (hoger)
+            obstakels.append(Spikes(obst_x, 40, rng.randint(2, 3)))
+        elif keuze < 0.68:
+            # Een zweefblok in de lucht — spring erop en sta erop!
+            bw = rng.randint(64, 90)
+            hoogte = rng.choice([70, 100, 130])
+            platforms.append(BlokPlatform(mid - bw // 2, hoogte, bw, 24))
+        elif keuze < 0.82:
+            # Zwevende spikes op sprong-hoogte: niet erin springen!
+            obstakels.append(Spikes(mid - 24, rng.choice([95, 125]), 3))
+        # anders: een rustig stuk zonder obstakels
         x += seg
 
     # Eind-stuk met de finishvlag (veilig, geen obstakels)
