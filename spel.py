@@ -12,6 +12,7 @@ from instellingen import (SCHERM_BREEDTE, SCHERM_HOOGTE,
                            VLAG_DOEK_KLEUR, LEVEL_NAMEN, AANTAL_LEVELS)
 from speler import Speler
 from powerup import Kogel
+from platforms import BlokPlatform
 import voortgang as voortgang_module
 
 
@@ -108,6 +109,9 @@ class PlatformerSpel(arcade.View):
             data = levels_module.maak_level(nummer)
         platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte = data
         self.platforms = platforms
+        # Onthoud welke platforms "blokken" zijn (bakstenen). Als je tegen de
+        # ZIJKANT van zo'n blok aan botst, ga je dood (net als Geometry Dash).
+        self._blokken = [p for p in platforms if isinstance(p, BlokPlatform)]
         self.vijanden = vijanden
         self.powerups = powerups
         self.vlag_x = vlag_x
@@ -406,6 +410,10 @@ class PlatformerSpel(arcade.View):
                 # In de lucht draait de kubus rond
                 self.speler.rotatie = (self.speler.rotatie + 8) % 360
 
+        # Botste de speler tegen de zijkant van een blok? Dan ga je dood.
+        if self._check_blok_zijkant():
+            return
+
         # Waarschuwingstimer aftellen
         if self._waarschuwing_teller > 0:
             self._waarschuwing_teller -= 1
@@ -558,6 +566,29 @@ class PlatformerSpel(arcade.View):
                 voortgang_module.sla_voortgang_op(self.voltooid, self.punten, self.speler.levens)
             except Exception:
                 pass
+
+    def _check_blok_zijkant(self):
+        """Ga dood als je tegen de ZIJKANT van een blok aan botst (Geometry Dash!).
+
+        We kijken alleen naar echte blokken (bakstenen). Je gaat NIET dood als je
+        bovenop een blok staat of eraf loopt — alleen als je met je zijkant tegen
+        de linker- of rechterkant van een blok aan knalt.
+        """
+        sp = self.speler
+        for p in self._blokken:
+            top = p.y + p.hoogte
+            # Overlapt de speler verticaal met het blok, maar staat hij er niet bovenop?
+            # (sp.y < top - 6) zorgt dat "bovenop staan" veilig is.
+            if not (sp.y + sp.hoogte > p.y + 4 and sp.y < top - 6):
+                continue
+            # Ren je naar rechts en raak je de LINKERkant van het blok?
+            raakt_links = (sp.snelheid_x > 0 and sp.x < p.x and sp.x + sp.breedte > p.x)
+            # Ren je naar links en raak je de RECHTERkant van het blok?
+            raakt_rechts = (sp.snelheid_x < 0 and sp.x + sp.breedte > p.x + p.breedte and sp.x < p.x + p.breedte)
+            if raakt_links or raakt_rechts:
+                self._speler_geraakt()
+                return True
+        return False
 
     def _speler_geraakt(self):
         """Verwerk dat de speler geraakt wordt: leven aftrekken of game over."""
