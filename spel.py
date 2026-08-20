@@ -12,7 +12,6 @@ from instellingen import (SCHERM_BREEDTE, SCHERM_HOOGTE,
                            VLAG_DOEK_KLEUR, LEVEL_NAMEN, AANTAL_LEVELS)
 from speler import Speler
 from powerup import Kogel
-from platforms import BlokPlatform
 import voortgang as voortgang_module
 
 
@@ -109,9 +108,14 @@ class PlatformerSpel(arcade.View):
             data = levels_module.maak_level(nummer)
         platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte = data
         self.platforms = platforms
-        # Onthoud welke platforms "blokken" zijn (bakstenen). Als je tegen de
-        # ZIJKANT van zo'n blok aan botst, ga je dood (net als Geometry Dash).
-        self._blokken = [p for p in platforms if isinstance(p, BlokPlatform)]
+        # Onthoud welke blokken je kunnen doden als je tegen de ZIJKANT aan botst
+        # (net als Geometry Dash). In de race- en bouwmodus tellen ALLE blokken mee
+        # (ook de grasblokken); in de gewone levels doen we dit niet, anders zou
+        # springen op zwevende platforms ineens dodelijk zijn.
+        if self.race or self.eigen:
+            self._blokken = list(platforms)          # alle blokken, ook gras
+        else:
+            self._blokken = []                       # gewone levels: geen zijkant-dood
         self.vijanden = vijanden
         self.powerups = powerups
         self.vlag_x = vlag_x
