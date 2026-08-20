@@ -59,17 +59,19 @@ class BouwerView(arcade.View):
 
     # Knoppen in de bovenbalk: naam -> (links, rechts)
     def __init__(self, voltooid_levels, punten=0, levens=None,
-                 arena_record=0, race_record=0):
+                 arena_record=0, race_record=0, vlucht_record=0):
         super().__init__()
         self.voltooid = voltooid_levels
         self.punten = punten
         self.levens = levens
         self.arena_record = arena_record
         self.race_record = race_record
+        self.vlucht_record = vlucht_record
 
         self.grid = {}                 # (kol, rij) -> soort
         self.gekozen = "grond"         # welk item je nu plaatst
-        self.race_type = False         # False = gewoon level, True = racebaan (auto-run)
+        # Type van je level: "gewoon" (lopen), "race" (auto-run), "vlucht" (vliegen)
+        self.mode = "gewoon"
         self.scroll = 0                # hoe ver je naar rechts hebt geschoven
         self._scroll_richting = 0      # -1 links, +1 rechts (met pijltjestoetsen)
         self._melding = ""             # kort berichtje (bv. "Opgeslagen!")
@@ -99,7 +101,13 @@ class BouwerView(arcade.View):
                     data = json.load(f)
                 if isinstance(data, dict):
                     tiles = data.get("tiles", [])
-                    self.race_type = bool(data.get("race", False))
+                    # Nieuw formaat heeft "mode"; oud formaat had alleen "race" (True/False)
+                    if "mode" in data:
+                        self.mode = data["mode"]
+                    elif data.get("race", False):
+                        self.mode = "race"
+                    else:
+                        self.mode = "gewoon"
                 else:
                     tiles = data   # oud formaat (alleen een lijst met vakjes)
                 self.grid = {(int(k), int(r)): s for k, r, s in tiles}
@@ -113,7 +121,7 @@ class BouwerView(arcade.View):
 
     def _opslaan(self):
         data = {"tiles": [[k, r, s] for (k, r), s in self.grid.items()],
-                "race": self.race_type}
+                "mode": self.mode}
         with open(BESTAND, "w", encoding="utf-8") as f:
             json.dump(data, f)
         self._melding = "💾 Opgeslagen!"
@@ -172,13 +180,18 @@ class BouwerView(arcade.View):
             arcade.draw_text(ITEM_NAAM[soort], (l + r) // 2, BALK_Y + 1,
                              arcade.color.WHITE, 8, anchor_x="center")
 
+        # Kleur en tekst van de Type-knop hangen af van het gekozen type
+        type_kleur = {"gewoon": (150, 100, 30), "race": (40, 110, 180),
+                      "vlucht": (120, 60, 170)}[self.mode]
+        type_tekst = {"gewoon": "🚶 Gewoon", "race": "🏁 Race",
+                      "vlucht": "✈️ Vliegen"}[self.mode]
         # Actie-knoppen
         kleuren = {"spelen": (40, 160, 60), "opslaan": (40, 110, 180),
                    "wissen": (170, 60, 60), "kaart": (100, 100, 120),
-                   "type": (40, 110, 180) if self.race_type else (150, 100, 30)}
+                   "type": type_kleur}
         teksten = {"spelen": "▶ Spelen", "opslaan": "💾 Opslaan",
                    "wissen": "🗑 Wissen", "kaart": "🗺 Kaart",
-                   "type": "🏁 Race" if self.race_type else "🚶 Gewoon"}
+                   "type": type_tekst}
         for naam, (l, r) in self.actie_knoppen.items():
             arcade.draw_lrbt_rectangle_filled(l, r, BALK_Y + 8, SCHERM_HOOGTE - 8, kleuren[naam])
             arcade.draw_lrbt_rectangle_outline(l, r, BALK_Y + 8, SCHERM_HOOGTE - 8, arcade.color.WHITE, 2)
@@ -197,7 +210,7 @@ class BouwerView(arcade.View):
                              arcade.color.YELLOW, 16, bold=True, anchor_x="center")
         else:
             arcade.draw_text("Kies een blokje en klik om te plaatsen  •  ←→ = schuiven  •  "
-                             "Type-knop: gewoon of race (auto-run)", SCHERM_BREEDTE // 2, 8,
+                             "Type-knop: gewoon, race of vliegen", SCHERM_BREEDTE // 2, 8,
                              arcade.color.WHITE, 10, anchor_x="center")
 
     # ---------- Muis ----------
@@ -234,7 +247,9 @@ class BouwerView(arcade.View):
                 elif naam == "kaart":
                     self._naar_kaart()
                 elif naam == "type":
-                    self.race_type = not self.race_type   # wissel gewoon/race
+                    # Klik door de types heen: gewoon -> race -> vlucht -> gewoon
+                    volgende = {"gewoon": "race", "race": "vlucht", "vlucht": "gewoon"}
+                    self.mode = volgende[self.mode]
                 return
 
     # ---------- Toetsen ----------
@@ -301,12 +316,13 @@ class BouwerView(arcade.View):
         from spel import PlatformerSpel
         data = self._bouw_level()
         spel = PlatformerSpel(1, self.voltooid, punten=0, levens=None,
-                              eigen_level=data, race=self.race_type,
+                              eigen_level=data, race=(self.mode == "race"),
+                              vlucht=(self.mode == "vlucht"),
                               kaart_punten=self.punten, kaart_levens=self.levens)
         self.window.show_view(spel)
 
     def _naar_kaart(self):
         from levelkaart import LevelKaartView
         kaart = LevelKaartView(self.voltooid, self.punten, self.levens,
-                               self.arena_record, self.race_record)
+                               self.arena_record, self.race_record, self.vlucht_record)
         self.window.show_view(kaart)

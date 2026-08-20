@@ -30,27 +30,32 @@ def laad_voortgang():
                     "levens": data.get("levens", None),
                     "arena_record": int(data.get("arena_record", 0)),
                     "race_record": int(data.get("race_record", 0)),
+                    "vlucht_record": int(data.get("vlucht_record", 0)),
                 }
         except Exception:
             pass  # Als het bestand kapot is, begin dan opnieuw
     return {"voltooid": set(), "punten": 0, "levens": None,
-            "arena_record": 0, "race_record": 0}
+            "arena_record": 0, "race_record": 0, "vlucht_record": 0}
 
 
-def sla_voortgang_op(voltooid, punten=0, levens=None, arena_record=None, race_record=None):
-    """Sla voortgang op (voltooide levels, punten, levens, arena- en race-record)."""
+def sla_voortgang_op(voltooid, punten=0, levens=None, arena_record=None,
+                     race_record=None, vlucht_record=None):
+    """Sla voortgang op (voltooide levels, punten, levens en de records)."""
     # Behoud de records die niet worden meegegeven
     huidig = laad_voortgang()
     if arena_record is None:
         arena_record = huidig.get("arena_record", 0)
     if race_record is None:
         race_record = huidig.get("race_record", 0)
+    if vlucht_record is None:
+        vlucht_record = huidig.get("vlucht_record", 0)
     data = {
         "voltooid": sorted(list(voltooid)),
         "punten": int(punten),
         "levens": (int(levens) if levens is not None else None),
         "arena_record": int(arena_record),
         "race_record": int(race_record),
+        "vlucht_record": int(vlucht_record),
     }
     with open(BESTAND, "w", encoding="utf-8") as f:
         json.dump(data, f)
@@ -91,3 +96,11 @@ def sla_race_record_op(record):
     if record > data.get("race_record", 0):
         sla_voortgang_op(data["voltooid"], data["punten"], data["levens"],
                          data["arena_record"], record)
+
+
+def sla_vlucht_record_op(record):
+    """Bewaar de hoogste vliegtuig-baan die je haalde (alleen als het een record is)."""
+    data = laad_voortgang()
+    if record > data.get("vlucht_record", 0):
+        sla_voortgang_op(data["voltooid"], data["punten"], data["levens"],
+                         data["arena_record"], data["race_record"], record)

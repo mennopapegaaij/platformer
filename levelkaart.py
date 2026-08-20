@@ -41,18 +41,21 @@ def _basis_positie(nummer):
 class LevelKaartView(arcade.View):
     """De levelkaart — hier kies je welk level je wilt spelen."""
 
-    # Knoppen aan de rechterkant: (links, rechts, onder, boven)
-    ARENA_KNOP = (648, 792, 285, 385)   # vechtmodus (bovenste knop)
-    RACE_KNOP = (648, 792, 178, 278)    # racemodus (middelste knop)
-    BOUWER_KNOP = (648, 792, 71, 171)   # bouwmodus (onderste knop)
+    # Knoppen aan de rechterkant: (links, rechts, onder, boven) — vier stuks
+    ARENA_KNOP = (648, 792, 347, 433)   # vechtmodus (bovenste knop)
+    VLUCHT_KNOP = (648, 792, 253, 339)  # vliegtuig-modus
+    RACE_KNOP = (648, 792, 159, 245)    # racemodus
+    BOUWER_KNOP = (648, 792, 65, 151)   # bouwmodus (onderste knop)
 
-    def __init__(self, voltooid_levels, punten=0, levens=None, arena_record=0, race_record=0):
+    def __init__(self, voltooid_levels, punten=0, levens=None, arena_record=0,
+                 race_record=0, vlucht_record=0):
         super().__init__()
         self.voltooid = voltooid_levels  # Set met voltooide level-nummers
         self.punten = punten             # Punten uit het vorige level
         self.levens = levens             # Levens uit het vorige level (None = standaard)
         self.arena_record = arena_record # Hoogste vechtmodus-level dat je haalde
         self.race_record = race_record   # Hoogste race-baan die je haalde
+        self.vlucht_record = vlucht_record  # Hoogste vliegtuig-baan die je haalde
 
         # Begin bij het eerste level dat nog niet gehaald is
         self.geselecteerd = self._bereken_start()
@@ -160,31 +163,33 @@ class LevelKaartView(arcade.View):
                          SCHERM_BREEDTE // 2, 16,
                          tekst_kleur, 15, bold=True, anchor_x="center")
 
-        # --- De knoppen voor de vecht- en racemodus ---
-        arena_record = f"record: level {self.arena_record}" if self.arena_record > 0 else ""
+        # --- De vier knoppen (vechten, vliegen, racen, bouwen) ---
+        arena_record = f"record: lvl {self.arena_record}" if self.arena_record > 0 else ""
         self._teken_zij_knop(self.ARENA_KNOP, (180, 40, 40), (210, 70, 40),
-                             "⚔️", "VECHT-", "MODUS", arena_record, "(klik of V)")
+                             "⚔️", "VECHTEN", arena_record, "(klik of V)")
+        vlucht_record = f"record: baan {self.vlucht_record}" if self.vlucht_record > 0 else ""
+        self._teken_zij_knop(self.VLUCHT_KNOP, (120, 60, 170), (150, 90, 200),
+                             "✈️", "VLIEGEN", vlucht_record, "(klik of F)")
         race_record = f"record: baan {self.race_record}" if self.race_record > 0 else ""
         self._teken_zij_knop(self.RACE_KNOP, (40, 110, 180), (40, 150, 210),
-                             "🏁", "RACE-", "MODUS", race_record, "(klik of R)")
+                             "🏁", "RACEN", race_record, "(klik of R)")
         self._teken_zij_knop(self.BOUWER_KNOP, (150, 100, 30), (190, 140, 40),
-                             "🔨", "BOUW-", "MODUS", "maak je eigen level!", "(klik of B)")
+                             "🔨", "BOUWEN", "", "(klik of B)")
 
-    def _teken_zij_knop(self, rect, hoofd_kleur, top_kleur, emoji, regel1, regel2,
+    def _teken_zij_knop(self, rect, hoofd_kleur, top_kleur, emoji, naam,
                         record_tekst, hint):
-        """Teken een knop aan de zijkant (voor vecht- of racemodus)."""
+        """Teken een knop aan de zijkant (voor vecht-, vlucht-, race- of bouwmodus)."""
         l, r, b, t = rect
         cx = (l + r) // 2
         arcade.draw_lrbt_rectangle_filled(l, r, b, t, hoofd_kleur)
         arcade.draw_lrbt_rectangle_filled(l, r, b, t - 6, top_kleur)
         arcade.draw_lrbt_rectangle_outline(l, r, b, t, (255, 220, 120), 3)
-        arcade.draw_text(emoji, cx, t - 34, arcade.color.WHITE, 26, anchor_x="center")
-        arcade.draw_text(regel1, cx, t - 60, arcade.color.WHITE, 14, bold=True, anchor_x="center")
-        arcade.draw_text(regel2, cx, t - 76, arcade.color.WHITE, 14, bold=True, anchor_x="center")
+        arcade.draw_text(emoji, cx, t - 32, arcade.color.WHITE, 24, anchor_x="center")
+        arcade.draw_text(naam, cx, t - 56, arcade.color.WHITE, 14, bold=True, anchor_x="center")
         if record_tekst:
-            arcade.draw_text(record_tekst, cx, b + 22, arcade.color.YELLOW, 10,
+            arcade.draw_text(record_tekst, cx, b + 20, arcade.color.YELLOW, 9,
                              bold=True, anchor_x="center")
-        arcade.draw_text(hint, cx, b + 7, (255, 230, 180), 9, anchor_x="center")
+        arcade.draw_text(hint, cx, b + 6, (255, 230, 180), 9, anchor_x="center")
 
     def _teken_level_knoop(self, nummer, x, y):
         """Teken één level-bolletje op de kaart."""
@@ -275,17 +280,23 @@ class LevelKaartView(arcade.View):
         elif toets == arcade.key.R:
             # R = start de racemodus
             self._start_race()
+        elif toets == arcade.key.F:
+            # F = start de vliegtuig-modus
+            self._start_vlucht()
         elif toets == arcade.key.B:
             # B = start de bouwmodus
             self._start_bouwer()
 
     def on_mouse_press(self, x, y, knop, modifiers):
-        """Start de vecht-, race- of bouwmodus als je op een knop aan de zijkant klikt."""
+        """Start de vecht-, vlucht-, race- of bouwmodus bij een klik op een zij-knop."""
         al, ar, ab, at = self.ARENA_KNOP
+        vl, vr, vb, vt = self.VLUCHT_KNOP
         rl, rr, rb, rt = self.RACE_KNOP
         bl, br, bb, bt = self.BOUWER_KNOP
         if al <= x <= ar and ab <= y <= at:
             self._start_arena()
+        elif vl <= x <= vr and vb <= y <= vt:
+            self._start_vlucht()
         elif rl <= x <= rr and rb <= y <= rt:
             self._start_race()
         elif bl <= x <= br and bb <= y <= bt:
@@ -311,9 +322,16 @@ class LevelKaartView(arcade.View):
                               kaart_punten=self.punten, kaart_levens=self.levens)
         self.window.show_view(spel)
 
+    def _start_vlucht(self):
+        """Start de vliegtuig-modus bij baan 1 — je vliegt vanzelf vooruit!"""
+        from spel import PlatformerSpel
+        spel = PlatformerSpel(1, self.voltooid, punten=0, levens=None, vlucht=True,
+                              kaart_punten=self.punten, kaart_levens=self.levens)
+        self.window.show_view(spel)
+
     def _start_bouwer(self):
         """Open de bouwmodus om je eigen level te maken."""
         from bouwer import BouwerView
         b = BouwerView(self.voltooid, self.punten, self.levens,
-                       self.arena_record, self.race_record)
+                       self.arena_record, self.race_record, self.vlucht_record)
         self.window.show_view(b)

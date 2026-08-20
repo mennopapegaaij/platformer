@@ -727,6 +727,63 @@ def _race_spikebrug(x, rng, nummer, platforms, obstakels):
     return x + seg
 
 
+def vlucht_snelheid_bonus(nummer):
+    """Hoe snel je vooruit vliegt per vlucht-baan (iets rustiger dan de race)."""
+    return min(0.5 + nummer * 0.12, 2.5)
+
+
+def maak_vlucht(nummer):
+    """Maak een vliegtuig-baan (auto-run + vliegen): je houdt de knop vast om
+    omhoog te gaan en laat los om te zakken (net als de raket in Geometry Dash).
+
+    Er is een doorlopende vloer (je valt dus niet zomaar dood), met daarboven
+    spikes en zweefblokken waar je omheen en doorheen moet vliegen. Aan het eind
+    staat de finishvlag. Deterministisch per baannummer."""
+    rng = random.Random(7000 + nummer)
+    lengte = (3000 + nummer * 400) * 3     # lekker lang
+
+    # Doorlopende vloer over de hele baan
+    platforms = [Platform(0, 0, lengte + 400, 40)]
+    obstakels = []                          # spikes -> gaan in 'vijanden'
+
+    plafond = 440                           # net onder de balk bovenin
+    x = 700                                 # veilige start (eerst even rustig)
+
+    # Hoe verder je komt, hoe dichter de obstakels op elkaar staan
+    afstand_min = max(150, 260 - nummer * 4)
+    afstand_max = max(220, 340 - nummer * 4)
+
+    while x < lengte - 400:
+        keuze = rng.random()
+        if keuze < 0.32:
+            # Vloer-spikes: vlieg eroverheen
+            obstakels.append(Spikes(x, 40, rng.randint(2, 3)))
+        elif keuze < 0.55:
+            # Zwevend blok hoog in de lucht: blijf laag vliegen
+            bh = rng.randint(60, 100)
+            by = rng.randint(190, 320)
+            platforms.append(BlokPlatform(x, by, rng.randint(70, 110), bh))
+        elif keuze < 0.80:
+            # Een muur met een gat: vlieg precies door de opening!
+            gat_onder = rng.randint(90, 230)      # onderkant van de opening
+            opening = rng.randint(110, 140)       # hoe groot de opening is
+            # Onderste stuk muur: van de vloer tot aan de opening
+            if gat_onder - 40 > 10:
+                platforms.append(BlokPlatform(x, 40, 60, gat_onder - 40))
+            # Bovenste stuk muur: van boven de opening tot aan het plafond
+            boven_start = gat_onder + opening
+            if plafond - boven_start > 10:
+                platforms.append(BlokPlatform(x, boven_start, 60, plafond - boven_start))
+        # anders: een rustig stukje zonder obstakels
+        x += rng.randint(afstand_min, afstand_max)
+
+    # Finishvlag aan het eind (rustig, geen obstakels)
+    vlag_x = lengte + 100
+    vlag_y = 40
+    level_breedte = lengte + 400
+    return platforms, obstakels, [], vlag_x, vlag_y, level_breedte
+
+
 def maak_race(nummer):
     """Maak een racebaan (auto-run): grond met gaten, spikes en zweefblokken
     (waar je OP kunt staan) en zwevende spikes. Finishvlag aan het eind.

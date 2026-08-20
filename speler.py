@@ -8,6 +8,12 @@ from instellingen import (SPELER_SNELHEID, SPRING_KRACHT, ZWAARTEKRACHT,
 
 LEVENS_BEGIN = 3  # Hoeveel levens de speler krijgt bij het begin
 
+# --- Vliegtuig-modus (Geometry Dash raket) ---
+VLIEG_STUW = 0.9       # Hoeveel duw omhoog als je de knop vasthoudt
+VLIEG_ZWAARTE = 0.45   # Hoe hard je zakt als je loslaat
+VLIEG_MAX = 6          # Hoogste omhoog/omlaag snelheid (zo blijft het bestuurbaar)
+VLIEG_PLAFOND = 460    # Zo hoog mag je maximaal vliegen (net onder de balk bovenin)
+
 
 class Speler:
     """Het poppetje dat de speler bestuurt: een geel vierkantje met een gezichtje."""
@@ -55,6 +61,10 @@ class Speler:
         # Draai-stand (graden) — voor de tollende kubus in de racemodus
         self.rotatie = 0
 
+        # --- Vliegtuig-modus ---
+        self.vliegt = False        # True = de speler is een vliegtuig/raket
+        self.vlieg_omhoog = False  # True = de speler houdt de knop vast (stuwt omhoog)
+
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
         self.x = 50
@@ -71,6 +81,7 @@ class Speler:
         self.schiet_timer = 0
         self.heeft_dubbel_gesprongen = False
         self.rotatie = 0
+        self.vlieg_omhoog = False   # knop-vasthouden reset (of je vliegt bepaalt het spel)
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -119,8 +130,20 @@ class Speler:
         if self.x + self.breedte > level_breedte:
             self.x = level_breedte - self.breedte
 
-        # Zwaartekracht
-        self.snelheid_y -= ZWAARTEKRACHT
+        # Verticale beweging: vliegen of vallen?
+        if self.vliegt:
+            # Vliegtuig-modus: knop vasthouden = stuw omhoog, anders zak je langzaam
+            if self.vlieg_omhoog:
+                self.snelheid_y += VLIEG_STUW
+            self.snelheid_y -= VLIEG_ZWAARTE
+            # Snelheid begrenzen zodat het lekker bestuurbaar blijft
+            if self.snelheid_y > VLIEG_MAX:
+                self.snelheid_y = VLIEG_MAX
+            elif self.snelheid_y < -VLIEG_MAX:
+                self.snelheid_y = -VLIEG_MAX
+        else:
+            # Gewone zwaartekracht (lopen/springen)
+            self.snelheid_y -= ZWAARTEKRACHT
         self.y += self.snelheid_y
         self.staat_op_grond = False
 
@@ -136,6 +159,12 @@ class Speler:
             elif (self.snelheid_y > 0 and
                   platform.raakt_van_onder(self.x, self.y, self.breedte, self.hoogte)):
                 self.y = platform.y - self.hoogte
+                self.snelheid_y = 0
+
+        # In de vliegtuig-modus: niet door het plafond bovenin vliegen
+        if self.vliegt and self.y + self.hoogte > VLIEG_PLAFOND:
+            self.y = VLIEG_PLAFOND - self.hoogte
+            if self.snelheid_y > 0:
                 self.snelheid_y = 0
 
     def spring(self):
