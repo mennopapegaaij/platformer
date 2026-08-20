@@ -114,9 +114,17 @@ class PlatformerSpel(arcade.View):
             data = levels_module.maak_arena(nummer)
         else:
             data = levels_module.maak_level(nummer)
-        platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte = data
+        platforms = data[0]
+        vijanden = data[1]
+        powerups = data[2]
+        vlag_x = data[3]
+        vlag_y = data[4]
+        level_breedte = data[5]
+        # Portalen zijn optioneel (een 7e onderdeel); niet elk level heeft ze
+        self.portalen = list(data[6]) if len(data) > 6 else []
         self.platforms = platforms
-        # Zet de speler wel/niet in de vliegtuig-stand (vliegen i.p.v. springen)
+        # Zet de speler wel/niet in de vliegtuig-stand (vliegen i.p.v. springen).
+        # Portalen kunnen dit tijdens het spelen nog omzetten!
         self.speler.vliegt = self.vlucht
         # Onthoud welke blokken je kunnen doden als je tegen de ZIJKANT aan botst
         # (net als Geometry Dash). In de race-, vlucht- en bouwmodus tellen ALLE
@@ -188,6 +196,11 @@ class PlatformerSpel(arcade.View):
             # Teken de vlag (in de arena is er geen vlag)
             if not self.arena:
                 self._teken_vlag(self.vlag_x, self.vlag_y)
+
+            # Teken de portalen die in beeld zijn (vorm-wissel poortjes)
+            for portaal in self.portalen:
+                if in_beeld(portaal, portaal.breedte):
+                    portaal.teken()
 
             # Teken de kogels
             for kogel in self.kogels:
@@ -419,24 +432,28 @@ class PlatformerSpel(arcade.View):
             self.speler.rechts_ingedrukt = True
             self.speler.links_ingedrukt = False
 
-        # Vliegtuig-modus: geef door of de speler de knop vasthoudt (stuw omhoog)
-        if self.vlucht:
+        # Vlieg je op dit moment? (kan door een portaal zijn veranderd!)
+        # Zo ja: geef door of de speler de knop vasthoudt (stuw omhoog)
+        if self.speler.vliegt:
             self.speler.vlieg_omhoog = self._vlieg_omhoog
 
         # Laat de speler bewegen en botsingen controleren
         self.speler.bijwerken(self.level_breedte, self.platforms)
 
-        # Racemodus: laat het blokje tollen in de lucht (Geometry Dash-stijl!)
-        if self.race:
+        # Ging de speler door een portaal? Dan wisselt zijn vorm (vliegtuig <-> blok)
+        self._check_portalen()
+
+        # Draaien: als je vliegt kantelt de neus, anders tolt de kubus (in auto-run)
+        if self.speler.vliegt:
+            # Vliegtuig: kantel de neus op basis van stijgen/dalen
+            self.speler.rotatie = max(-35, min(35, self.speler.snelheid_y * 5))
+        elif self.race or self.vlucht:
             if self.speler.staat_op_grond:
                 # Op de grond ligt de kubus recht: snap naar het dichtstbijzijnde kwart
                 self.speler.rotatie = round(self.speler.rotatie / 90) * 90 % 360
             else:
                 # In de lucht draait de kubus rond
                 self.speler.rotatie = (self.speler.rotatie + 8) % 360
-        # Vliegtuig-modus: kantel de neus op basis van stijgen/dalen
-        elif self.vlucht:
-            self.speler.rotatie = max(-35, min(35, self.speler.snelheid_y * 5))
 
         # Botste de speler tegen de zijkant van een blok? Dan ga je dood.
         if self._check_blok_zijkant():
@@ -604,6 +621,20 @@ class PlatformerSpel(arcade.View):
             except Exception:
                 pass
 
+    def _check_portalen(self):
+        """Ga je door een portaal? Dan verander je van vorm (vliegtuig <-> blok)."""
+        sp = self.speler
+        for portaal in self.portalen:
+            if portaal.raakt_speler(sp.x, sp.y, sp.breedte, sp.hoogte):
+                wil_vliegen = (portaal.soort == "vlucht")
+                if sp.vliegt != wil_vliegen:
+                    sp.vliegt = wil_vliegen
+                    sp.snelheid_y = 0        # netjes overschakelen (geen wilde sprong)
+                    sp.vlieg_omhoog = False
+                    if not wil_vliegen:
+                        sp.rotatie = 0        # weer recht als blokje
+                    geluid_manager.speel_powerup()   # 🎵 vorm-wissel geluidje
+
     def _check_blok_zijkant(self):
         """Ga dood als je tegen de ZIJKANT van een blok aan botst (Geometry Dash!).
 
@@ -657,8 +688,8 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.RIGHT:
             self.speler.rechts_ingedrukt = True
         elif toets == arcade.key.UP or toets == arcade.key.SPACE:
-            if self.vlucht:
-                # Vliegtuig-modus: knop vasthouden = omhoog stuwen
+            if self.speler.vliegt:
+                # Vliegtuig-stand: knop vasthouden = omhoog stuwen
                 self._vlieg_omhoog = True
             else:
                 voor_sprong = self.speler.staat_op_grond or (

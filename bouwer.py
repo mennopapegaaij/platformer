@@ -12,10 +12,12 @@ CEL = 40                       # grootte van één raster-vakje
 BESTAND = "eigen_level.json"   # hier wordt je level opgeslagen
 
 # De dingen die je kunt plaatsen (op volgorde in het palet)
-ITEMS = ["grond", "blok", "spike", "vijand", "hart", "vlag", "gum"]
+ITEMS = ["grond", "blok", "spike", "vijand", "hart", "vlag",
+         "portaal_vlucht", "portaal_blok", "gum"]
 ITEM_NAAM = {
     "grond": "Grond", "blok": "Blok", "spike": "Spike", "vijand": "Vijand",
-    "hart": "Hartje", "vlag": "Finish", "gum": "Gum",
+    "hart": "Hartje", "vlag": "Finish",
+    "portaal_vlucht": "→Vlieg", "portaal_blok": "→Blok", "gum": "Gum",
 }
 
 # Waar de bovenbalk (met knoppen) begint
@@ -49,6 +51,14 @@ def teken_item(soort, x, y, grootte):
         arcade.draw_line(x + 8, y + 4, x + 8, y + g - 2, arcade.color.WHITE, 3)
         arcade.draw_triangle_filled(x + 8, y + g - 2, x + g - 4, y + g - 8,
                                     x + 8, y + g - 16, arcade.color.GREEN)
+    elif soort == "portaal_vlucht":
+        cx, cy = x + g // 2, y + g // 2
+        arcade.draw_ellipse_outline(cx, cy, g - 10, g - 4, (150, 90, 220), 3)
+        arcade.draw_triangle_filled(cx - 6, cy - 6, cx - 6, cy + 6, cx + 8, cy, arcade.color.WHITE)
+    elif soort == "portaal_blok":
+        cx, cy = x + g // 2, y + g // 2
+        arcade.draw_ellipse_outline(cx, cy, g - 10, g - 4, (60, 170, 90), 3)
+        arcade.draw_lrbt_rectangle_filled(cx - 6, cx + 6, cy - 6, cy + 6, (240, 230, 90))
     elif soort == "gum":
         arcade.draw_lrbt_rectangle_filled(x + 5, x + g - 5, y + 8, y + g - 8, (255, 180, 200))
         arcade.draw_lrbt_rectangle_outline(x + 5, x + g - 5, y + 8, y + g - 8, (200, 100, 130), 2)
@@ -80,14 +90,14 @@ class BouwerView(arcade.View):
         # Palet-knoppen (links) en actie-knoppen (rechts) uitrekenen
         self.palet_knoppen = {}        # soort -> (l, r)
         for i, soort in enumerate(ITEMS):
-            l = 8 + i * 50
-            self.palet_knoppen[soort] = (l, l + 46)
+            l = 8 + i * 44
+            self.palet_knoppen[soort] = (l, l + 42)
         self.actie_knoppen = {         # naam -> (l, r)
-            "spelen": (356, 428),
-            "opslaan": (432, 512),
-            "wissen": (516, 584),
-            "kaart": (588, 650),
-            "type": (656, 792),
+            "spelen": (406, 470),
+            "opslaan": (474, 548),
+            "wissen": (552, 616),
+            "kaart": (620, 680),
+            "type": (684, 792),
         }
 
         self._laad()
@@ -176,7 +186,7 @@ class BouwerView(arcade.View):
             rand = arcade.color.YELLOW if gekozen else (90, 90, 110)
             arcade.draw_lrbt_rectangle_filled(l, r, BALK_Y + 6, SCHERM_HOOGTE - 18, (60, 60, 80))
             arcade.draw_lrbt_rectangle_outline(l, r, BALK_Y + 6, SCHERM_HOOGTE - 18, rand, 3 if gekozen else 1)
-            teken_item(soort, l + 3, BALK_Y + 10, 40)
+            teken_item(soort, l + 2, BALK_Y + 10, 38)
             arcade.draw_text(ITEM_NAAM[soort], (l + r) // 2, BALK_Y + 1,
                              arcade.color.WHITE, 8, anchor_x="center")
 
@@ -281,10 +291,12 @@ class BouwerView(arcade.View):
         from platforms import Platform, BlokPlatform
         from vijand import Vijand, Spikes
         from powerup import ExtraLevenPowerUp
+        from portaal import Portaal
 
         platforms = [Platform(0, 0, 100, 40)]   # altijd een klein startstukje grond
         vijanden = []
         powerups = []
+        portalen = []
         vlag_x, vlag_y = None, None
         max_x = 300
 
@@ -301,6 +313,10 @@ class BouwerView(arcade.View):
                 vijanden.append(Vijand(wx, wy, wx - 80, wx + CEL + 80, 2))
             elif soort == "hart":
                 powerups.append(ExtraLevenPowerUp(wx + 6, wy + 6))
+            elif soort == "portaal_vlucht":
+                portalen.append(Portaal(wx + 5, wy, "vlucht"))
+            elif soort == "portaal_blok":
+                portalen.append(Portaal(wx + 5, wy, "blok"))
             elif soort == "vlag":
                 vlag_x, vlag_y = wx, wy
 
@@ -308,7 +324,7 @@ class BouwerView(arcade.View):
             vlag_x, vlag_y = max_x + 60, 40
             max_x += 200
         level_breedte = max_x + 200
-        return platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte
+        return platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte, portalen
 
     def _speel(self):
         """Sla het level op en speel het."""
