@@ -14,6 +14,9 @@ VLIEG_ZWAARTE = 0.45   # Hoe hard je zakt als je loslaat
 VLIEG_MAX = 6          # Hoogste omhoog/omlaag snelheid (zo blijft het bestuurbaar)
 VLIEG_PLAFOND = 460    # Zo hoog mag je maximaal vliegen (net onder de balk bovenin)
 
+# --- UFO-modus: bij elke tik een sprongetje omhoog (zoals Flappy Bird) ---
+FLAP_KRACHT = 7        # Hoe groot het sprongetje is bij een tik
+
 
 class Speler:
     """Het poppetje dat de speler bestuurt: een geel vierkantje met een gezichtje."""
@@ -61,9 +64,10 @@ class Speler:
         # Draai-stand (graden) — voor de tollende kubus in de racemodus
         self.rotatie = 0
 
-        # --- Vliegtuig-modus ---
-        self.vliegt = False        # True = de speler is een vliegtuig/raket
-        self.vlieg_omhoog = False  # True = de speler houdt de knop vast (stuwt omhoog)
+        # --- Speciale modi (Geometry Dash): "blok" / "vliegtuig" / "ufo" / "bal" / "golf" ---
+        self.modus = "blok"              # in welke vorm ben je nu?
+        self.vlieg_omhoog = False        # knop-vasthouden (voor vliegtuig en golf)
+        self.zwaartekracht_richting = 1  # 1 = omlaag, -1 = omhoog (voor de bal-modus)
 
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
@@ -81,7 +85,9 @@ class Speler:
         self.schiet_timer = 0
         self.heeft_dubbel_gesprongen = False
         self.rotatie = 0
-        self.vlieg_omhoog = False   # knop-vasthouden reset (of je vliegt bepaalt het spel)
+        self.vlieg_omhoog = False           # knop-vasthouden reset
+        self.modus = "blok"                 # begin weer als gewoon blokje
+        self.zwaartekracht_richting = 1     # zwaartekracht weer gewoon omlaag
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -130,19 +136,22 @@ class Speler:
         if self.x + self.breedte > level_breedte:
             self.x = level_breedte - self.breedte
 
-        # Verticale beweging: vliegen of vallen?
-        if self.vliegt:
-            # Vliegtuig-modus: knop vasthouden = stuw omhoog, anders zak je langzaam
+        # Verticale beweging hangt af van de modus
+        if self.modus == "vliegtuig":
+            # Vliegtuig: knop vasthouden = stuw omhoog, anders zak je langzaam
             if self.vlieg_omhoog:
                 self.snelheid_y += VLIEG_STUW
             self.snelheid_y -= VLIEG_ZWAARTE
-            # Snelheid begrenzen zodat het lekker bestuurbaar blijft
-            if self.snelheid_y > VLIEG_MAX:
-                self.snelheid_y = VLIEG_MAX
-            elif self.snelheid_y < -VLIEG_MAX:
-                self.snelheid_y = -VLIEG_MAX
+            self.snelheid_y = max(-VLIEG_MAX, min(VLIEG_MAX, self.snelheid_y))
+        elif self.modus == "golf":
+            # Golf: schuin omhoog als je vasthoudt, anders schuin omlaag (45 graden)
+            self.snelheid_y = snelheid if self.vlieg_omhoog else -snelheid
+        elif self.modus == "bal":
+            # Bal: zwaartekracht in de huidige richting (kan omgedraaid zijn met een tik)
+            self.snelheid_y -= ZWAARTEKRACHT * 1.3 * self.zwaartekracht_richting
+            self.snelheid_y = max(-11, min(11, self.snelheid_y))
         else:
-            # Gewone zwaartekracht (lopen/springen)
+            # Blok en UFO: gewone zwaartekracht (bij de UFO spring je met een tik)
             self.snelheid_y -= ZWAARTEKRACHT
         self.y += self.snelheid_y
         self.staat_op_grond = False
@@ -160,12 +169,25 @@ class Speler:
                   platform.raakt_van_onder(self.x, self.y, self.breedte, self.hoogte)):
                 self.y = platform.y - self.hoogte
                 self.snelheid_y = 0
+                # In de bal-modus met omgekeerde zwaartekracht 'sta' je ONDER een platform
+                if self.modus == "bal" and self.zwaartekracht_richting == -1:
+                    self.staat_op_grond = True
 
-        # In de vliegtuig-modus: niet door het plafond bovenin vliegen
-        if self.vliegt and self.y + self.hoogte > VLIEG_PLAFOND:
+        # In de speciale modi: niet door het plafond bovenin gaan
+        if self.modus in ("vliegtuig", "ufo", "bal", "golf") and self.y + self.hoogte > VLIEG_PLAFOND:
             self.y = VLIEG_PLAFOND - self.hoogte
             if self.snelheid_y > 0:
                 self.snelheid_y = 0
+                if self.modus == "bal":
+                    self.staat_op_grond = True   # de bal 'ligt' tegen het plafond
+
+    def flap(self):
+        """UFO-modus: geef een klein sprongetje omhoog (bij elke tik)."""
+        self.snelheid_y = FLAP_KRACHT
+
+    def flip_zwaartekracht(self):
+        """Bal-modus: draai de zwaartekracht om (van vloer naar plafond en terug)."""
+        self.zwaartekracht_richting *= -1
 
     def spring(self):
         """Laat de speler springen — hoger naarmate je meer punten hebt!"""

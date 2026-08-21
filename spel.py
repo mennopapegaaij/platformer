@@ -123,9 +123,10 @@ class PlatformerSpel(arcade.View):
         # Portalen zijn optioneel (een 7e onderdeel); niet elk level heeft ze
         self.portalen = list(data[6]) if len(data) > 6 else []
         self.platforms = platforms
-        # Zet de speler wel/niet in de vliegtuig-stand (vliegen i.p.v. springen).
-        # Portalen kunnen dit tijdens het spelen nog omzetten!
-        self.speler.vliegt = self.vlucht
+        # Zet de begin-modus: vliegtuig in de vluchtmodus, anders het gewone blokje.
+        # Portalen kunnen dit tijdens het spelen nog omzetten (ufo/bal/golf)!
+        self.speler.modus = "vliegtuig" if self.vlucht else "blok"
+        self.speler.zwaartekracht_richting = 1
         # Onthoud welke blokken je kunnen doden als je tegen de ZIJKANT aan botst
         # (net als Geometry Dash). In de race-, vlucht- en bouwmodus tellen ALLE
         # blokken mee (ook de grasblokken); in de gewone levels doen we dit niet,
@@ -432,27 +433,35 @@ class PlatformerSpel(arcade.View):
             self.speler.rechts_ingedrukt = True
             self.speler.links_ingedrukt = False
 
-        # Vlieg je op dit moment? (kan door een portaal zijn veranderd!)
-        # Zo ja: geef door of de speler de knop vasthoudt (stuw omhoog)
-        if self.speler.vliegt:
+        # In de vasthoud-modi (vliegtuig en golf): geef door of de knop vastgehouden wordt
+        if self.speler.modus in ("vliegtuig", "golf"):
             self.speler.vlieg_omhoog = self._vlieg_omhoog
 
         # Laat de speler bewegen en botsingen controleren
         self.speler.bijwerken(self.level_breedte, self.platforms)
 
-        # Ging de speler door een portaal? Dan wisselt zijn vorm (vliegtuig <-> blok)
+        # Ging de speler door een portaal? Dan wisselt zijn vorm (blok/vliegtuig/ufo/bal/golf)
         self._check_portalen()
 
-        # Draaien: als je vliegt kantelt de neus, anders tolt de kubus (in auto-run)
-        if self.speler.vliegt:
+        # Draaien hangt af van de modus
+        modus = self.speler.modus
+        if modus == "vliegtuig":
             # Vliegtuig: kantel de neus op basis van stijgen/dalen
             self.speler.rotatie = max(-35, min(35, self.speler.snelheid_y * 5))
+        elif modus == "golf":
+            # Golf: kantel schuin omhoog of omlaag (45 graden)
+            self.speler.rotatie = 35 if self.speler.vlieg_omhoog else -35
+        elif modus == "bal":
+            # Bal: rol lekker rond
+            self.speler.rotatie = (self.speler.rotatie - 7) % 360
+        elif modus == "ufo":
+            # UFO: blijf recht
+            self.speler.rotatie = 0
         elif self.race or self.vlucht:
+            # Gewoon blokje in een auto-run baan: tol als een Geometry Dash kubus
             if self.speler.staat_op_grond:
-                # Op de grond ligt de kubus recht: snap naar het dichtstbijzijnde kwart
                 self.speler.rotatie = round(self.speler.rotatie / 90) * 90 % 360
             else:
-                # In de lucht draait de kubus rond
                 self.speler.rotatie = (self.speler.rotatie + 8) % 360
 
         # Botste de speler tegen de zijkant van een blok? Dan ga je dood.
@@ -621,18 +630,23 @@ class PlatformerSpel(arcade.View):
             except Exception:
                 pass
 
+    # Welke modus hoort bij welk portaal-soort
+    PORTAAL_MODUS = {"vlucht": "vliegtuig", "blok": "blok",
+                     "ufo": "ufo", "bal": "bal", "golf": "golf"}
+
     def _check_portalen(self):
-        """Ga je door een portaal? Dan verander je van vorm (vliegtuig <-> blok)."""
+        """Ga je door een portaal? Dan verander je van vorm (blok/vliegtuig/ufo/bal/golf)."""
         sp = self.speler
         for portaal in self.portalen:
             if portaal.raakt_speler(sp.x, sp.y, sp.breedte, sp.hoogte):
-                wil_vliegen = (portaal.soort == "vlucht")
-                if sp.vliegt != wil_vliegen:
-                    sp.vliegt = wil_vliegen
-                    sp.snelheid_y = 0        # netjes overschakelen (geen wilde sprong)
+                nieuwe_modus = self.PORTAAL_MODUS.get(portaal.soort, "blok")
+                if sp.modus != nieuwe_modus:
+                    sp.modus = nieuwe_modus
+                    sp.snelheid_y = 0                # netjes overschakelen (geen wilde sprong)
                     sp.vlieg_omhoog = False
-                    if not wil_vliegen:
-                        sp.rotatie = 0        # weer recht als blokje
+                    sp.zwaartekracht_richting = 1    # zwaartekracht weer gewoon omlaag
+                    if nieuwe_modus != "vliegtuig":
+                        sp.rotatie = 0               # weer recht (behalve vliegtuig kantelt)
                     geluid_manager.speel_powerup()   # 🎵 vorm-wissel geluidje
 
     def _check_blok_zijkant(self):
@@ -688,10 +702,20 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.RIGHT:
             self.speler.rechts_ingedrukt = True
         elif toets == arcade.key.UP or toets == arcade.key.SPACE:
-            if self.speler.vliegt:
-                # Vliegtuig-stand: knop vasthouden = omhoog stuwen
+            modus = self.speler.modus
+            if modus in ("vliegtuig", "golf"):
+                # Vasthoud-modi: knop ingedrukt = omhoog (stuwen of schuin omhoog)
                 self._vlieg_omhoog = True
+            elif modus == "ufo":
+                # UFO: elke tik een sprongetje omhoog
+                self.speler.flap()
+                geluid_manager.speel_sprong()
+            elif modus == "bal":
+                # Bal: elke tik draait de zwaartekracht om
+                self.speler.flip_zwaartekracht()
+                geluid_manager.speel_sprong()
             else:
+                # Gewoon blokje: springen
                 voor_sprong = self.speler.staat_op_grond or (
                     self.speler.dubbel_sprong_timer > 0 and not self.speler.heeft_dubbel_gesprongen)
                 self.speler.spring()
