@@ -16,6 +16,8 @@ PORTAAL_KLEUREN = {
     "ufo":    ((40, 150, 210), (150, 210, 255)),   # blauw = UFO
     "bal":    ((230, 140, 40), (255, 200, 120)),   # oranje = bal
     "golf":   ((220, 60, 120), (255, 150, 190)),   # roze = golf
+    "robot":  ((90, 140, 70), (170, 210, 130)),    # groen = robot
+    "spin":   ((150, 40, 40), (220, 110, 110)),    # donkerrood = spin
 }
 
 
@@ -69,3 +71,15 @@ def teken_portaal_icoon(soort, cx, cy):
         arcade.draw_line(cx - 10, cy - 6, cx - 3, cy + 6, arcade.color.WHITE, 3)
         arcade.draw_line(cx - 3, cy + 6, cx + 4, cy - 6, arcade.color.WHITE, 3)
         arcade.draw_line(cx + 4, cy - 6, cx + 11, cy + 6, arcade.color.WHITE, 3)
+    elif soort == "robot":
+        # Robotkopje (vierkant met een antenne)
+        arcade.draw_lrbt_rectangle_filled(cx - 8, cx + 8, cy - 7, cy + 7, arcade.color.WHITE)
+        arcade.draw_circle_filled(cx - 3, cy, 2, (90, 100, 120))
+        arcade.draw_circle_filled(cx + 3, cy, 2, (90, 100, 120))
+        arcade.draw_line(cx, cy + 7, cx, cy + 11, arcade.color.WHITE, 2)
+    elif soort == "spin":
+        # Spinnetje (rondje met pootjes)
+        for dx in (-10, 10):
+            arcade.draw_line(cx, cy, cx + dx, cy + 8, arcade.color.WHITE, 2)
+            arcade.draw_line(cx, cy, cx + dx, cy - 8, arcade.color.WHITE, 2)
+        arcade.draw_circle_filled(cx, cy, 7, arcade.color.WHITE)

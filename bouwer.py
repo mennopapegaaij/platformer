@@ -19,8 +19,9 @@ ITEM_NAAM = {
 }
 
 # De soorten portalen waar je met de Portaal-knop doorheen klikt
-PORTAAL_SOORTEN = ["vlucht", "blok", "ufo", "bal", "golf"]
-PORTAAL_NAAM = {"vlucht": "Vlieg", "blok": "Blok", "ufo": "UFO", "bal": "Bal", "golf": "Golf"}
+PORTAAL_SOORTEN = ["vlucht", "blok", "ufo", "bal", "golf", "robot", "spin"]
+PORTAAL_NAAM = {"vlucht": "Vlieg", "blok": "Blok", "ufo": "UFO", "bal": "Bal",
+                "golf": "Golf", "robot": "Robot", "spin": "Spin"}
 
 # Waar de bovenbalk (met knoppen) begint
 BALK_Y = 442

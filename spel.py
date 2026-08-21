@@ -10,7 +10,7 @@ from geluid import geluid as geluid_manager
 from instellingen import (SCHERM_BREEDTE, SCHERM_HOOGTE,
                            SPRING_KRACHT, LUCHT_KLEUR, VLAG_KLEUR,
                            VLAG_DOEK_KLEUR, LEVEL_NAMEN, AANTAL_LEVELS)
-from speler import Speler
+from speler import Speler, VLIEG_PLAFOND
 from powerup import Kogel
 import voortgang as voortgang_module
 
@@ -433,8 +433,8 @@ class PlatformerSpel(arcade.View):
             self.speler.rechts_ingedrukt = True
             self.speler.links_ingedrukt = False
 
-        # In de vasthoud-modi (vliegtuig en golf): geef door of de knop vastgehouden wordt
-        if self.speler.modus in ("vliegtuig", "golf"):
+        # In de vasthoud-modi (vliegtuig, golf, robot): geef door of de knop vastgehouden wordt
+        if self.speler.modus in ("vliegtuig", "golf", "robot"):
             self.speler.vlieg_omhoog = self._vlieg_omhoog
 
         # Laat de speler bewegen en botsingen controleren
@@ -454,8 +454,8 @@ class PlatformerSpel(arcade.View):
         elif modus == "bal":
             # Bal: rol lekker rond
             self.speler.rotatie = (self.speler.rotatie - 7) % 360
-        elif modus == "ufo":
-            # UFO: blijf recht
+        elif modus in ("ufo", "robot", "spin"):
+            # UFO, robot en spin: blijf recht (geen tollen)
             self.speler.rotatie = 0
         elif self.race or self.vlucht:
             # Gewoon blokje in een auto-run baan: tol als een Geometry Dash kubus
@@ -632,7 +632,35 @@ class PlatformerSpel(arcade.View):
 
     # Welke modus hoort bij welk portaal-soort
     PORTAAL_MODUS = {"vlucht": "vliegtuig", "blok": "blok",
-                     "ufo": "ufo", "bal": "bal", "golf": "golf"}
+                     "ufo": "ufo", "bal": "bal", "golf": "golf",
+                     "robot": "robot", "spin": "spin"}
+
+    def _spin_teleport(self):
+        """Spin-modus: draai de zwaartekracht om en teleporteer naar de andere kant.
+
+        Je springt meteen naar het dichtstbijzijnde platform (of naar het plafond/de
+        onderkant van het scherm) in de nieuwe zwaartekracht-richting.
+        """
+        sp = self.speler
+        sp.zwaartekracht_richting *= -1
+        sp.snelheid_y = 0
+        overlap = lambda p: p.x < sp.x + sp.breedte and p.x + p.breedte > sp.x
+        if sp.zwaartekracht_richting == -1:
+            # Zwaartekracht omhoog: zoek een platform boven je (of ga naar het plafond)
+            doel = VLIEG_PLAFOND - sp.hoogte
+            for p in self.platforms:
+                if overlap(p) and p.y >= sp.y + sp.hoogte:
+                    doel = min(doel, p.y - sp.hoogte)
+            sp.y = doel
+        else:
+            # Zwaartekracht omlaag: zoek een platform onder je (of blijf staan)
+            doel = None
+            for p in self.platforms:
+                if overlap(p) and p.y + p.hoogte <= sp.y:
+                    top = p.y + p.hoogte
+                    doel = top if doel is None else max(doel, top)
+            if doel is not None:
+                sp.y = doel
 
     def _check_portalen(self):
         """Ga je door een portaal? Dan verander je van vorm (blok/vliegtuig/ufo/bal/golf)."""
@@ -706,6 +734,11 @@ class PlatformerSpel(arcade.View):
             if modus in ("vliegtuig", "golf"):
                 # Vasthoud-modi: knop ingedrukt = omhoog (stuwen of schuin omhoog)
                 self._vlieg_omhoog = True
+            elif modus == "robot":
+                # Robot: vasthouden = hoger springen; de sprong begint hier
+                self._vlieg_omhoog = True
+                self.speler.robot_sprong()
+                geluid_manager.speel_sprong()
             elif modus == "ufo":
                 # UFO: elke tik een sprongetje omhoog
                 self.speler.flap()
@@ -713,6 +746,10 @@ class PlatformerSpel(arcade.View):
             elif modus == "bal":
                 # Bal: elke tik draait de zwaartekracht om
                 self.speler.flip_zwaartekracht()
+                geluid_manager.speel_sprong()
+            elif modus == "spin":
+                # Spin: elke tik teleporteer je naar de vloer of het plafond
+                self._spin_teleport()
                 geluid_manager.speel_sprong()
             else:
                 # Gewoon blokje: springen

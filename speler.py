@@ -17,6 +17,11 @@ VLIEG_PLAFOND = 460    # Zo hoog mag je maximaal vliegen (net onder de balk bove
 # --- UFO-modus: bij elke tik een sprongetje omhoog (zoals Flappy Bird) ---
 FLAP_KRACHT = 7        # Hoe groot het sprongetje is bij een tik
 
+# --- Robot-modus: hoe langer je vasthoudt, hoe hoger je springt ---
+ROBOT_START = 7        # Beginkracht van de sprong
+ROBOT_EXTRA = 0.7      # Extra duw omhoog per frame terwijl je vasthoudt
+ROBOT_BOOST_FRAMES = 16  # Hoeveel frames je kunt blijven duwen (langer = hoger)
+
 
 class Speler:
     """Het poppetje dat de speler bestuurt: een geel vierkantje met een gezichtje."""
@@ -64,10 +69,11 @@ class Speler:
         # Draai-stand (graden) — voor de tollende kubus in de racemodus
         self.rotatie = 0
 
-        # --- Speciale modi (Geometry Dash): "blok" / "vliegtuig" / "ufo" / "bal" / "golf" ---
+        # --- Speciale modi (Geometry Dash): blok/vliegtuig/ufo/bal/golf/robot/spin ---
         self.modus = "blok"              # in welke vorm ben je nu?
-        self.vlieg_omhoog = False        # knop-vasthouden (voor vliegtuig en golf)
-        self.zwaartekracht_richting = 1  # 1 = omlaag, -1 = omhoog (voor de bal-modus)
+        self.vlieg_omhoog = False        # knop-vasthouden (vliegtuig, golf, robot)
+        self.zwaartekracht_richting = 1  # 1 = omlaag, -1 = omhoog (bal en spin)
+        self._robot_boost = 0            # hoeveel frames de robot nog omhoog mag duwen
 
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
@@ -88,6 +94,7 @@ class Speler:
         self.vlieg_omhoog = False           # knop-vasthouden reset
         self.modus = "blok"                 # begin weer als gewoon blokje
         self.zwaartekracht_richting = 1     # zwaartekracht weer gewoon omlaag
+        self._robot_boost = 0               # robot-duw reset
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -146,10 +153,16 @@ class Speler:
         elif self.modus == "golf":
             # Golf: schuin omhoog als je vasthoudt, anders schuin omlaag (45 graden)
             self.snelheid_y = snelheid if self.vlieg_omhoog else -snelheid
-        elif self.modus == "bal":
-            # Bal: zwaartekracht in de huidige richting (kan omgedraaid zijn met een tik)
+        elif self.modus in ("bal", "spin"):
+            # Bal/spin: zwaartekracht in de huidige richting (kan omgedraaid zijn)
             self.snelheid_y -= ZWAARTEKRACHT * 1.3 * self.zwaartekracht_richting
             self.snelheid_y = max(-11, min(11, self.snelheid_y))
+        elif self.modus == "robot":
+            # Robot: terwijl je vasthoudt blijf je omhoog duwen (langer = hoger)
+            if self.vlieg_omhoog and self._robot_boost > 0 and self.snelheid_y > 0:
+                self.snelheid_y += ROBOT_EXTRA
+                self._robot_boost -= 1
+            self.snelheid_y -= ZWAARTEKRACHT
         else:
             # Blok en UFO: gewone zwaartekracht (bij de UFO spring je met een tik)
             self.snelheid_y -= ZWAARTEKRACHT
@@ -164,22 +177,23 @@ class Speler:
                 self.snelheid_y = 0
                 self.staat_op_grond = True
                 self.heeft_dubbel_gesprongen = False  # Op de grond: extra sprong herlaadbaar
+                self._robot_boost = 0                 # robot mag pas na een nieuwe tik duwen
             # Hoofd stoot tegen onderkant platform
             elif (self.snelheid_y > 0 and
                   platform.raakt_van_onder(self.x, self.y, self.breedte, self.hoogte)):
                 self.y = platform.y - self.hoogte
                 self.snelheid_y = 0
-                # In de bal-modus met omgekeerde zwaartekracht 'sta' je ONDER een platform
-                if self.modus == "bal" and self.zwaartekracht_richting == -1:
+                # In de bal-/spin-modus met omgekeerde zwaartekracht 'sta' je ONDER een platform
+                if self.modus in ("bal", "spin") and self.zwaartekracht_richting == -1:
                     self.staat_op_grond = True
 
         # In de speciale modi: niet door het plafond bovenin gaan
-        if self.modus in ("vliegtuig", "ufo", "bal", "golf") and self.y + self.hoogte > VLIEG_PLAFOND:
+        if self.modus in ("vliegtuig", "ufo", "bal", "golf", "spin") and self.y + self.hoogte > VLIEG_PLAFOND:
             self.y = VLIEG_PLAFOND - self.hoogte
             if self.snelheid_y > 0:
                 self.snelheid_y = 0
-                if self.modus == "bal":
-                    self.staat_op_grond = True   # de bal 'ligt' tegen het plafond
+                if self.modus in ("bal", "spin"):
+                    self.staat_op_grond = True   # de bal/spin 'ligt' tegen het plafond
 
     def flap(self):
         """UFO-modus: geef een klein sprongetje omhoog (bij elke tik)."""
@@ -188,6 +202,12 @@ class Speler:
     def flip_zwaartekracht(self):
         """Bal-modus: draai de zwaartekracht om (van vloer naar plafond en terug)."""
         self.zwaartekracht_richting *= -1
+
+    def robot_sprong(self):
+        """Robot-modus: begin een sprong (vasthouden maakt hem hoger)."""
+        if self.staat_op_grond:
+            self.snelheid_y = ROBOT_START
+            self._robot_boost = ROBOT_BOOST_FRAMES
 
     def spring(self):
         """Laat de speler springen — hoger naarmate je meer punten hebt!"""
@@ -224,6 +244,12 @@ class Speler:
             return
         if self.modus == "golf":
             self._teken_golf()
+            return
+        if self.modus == "robot":
+            self._teken_robot()
+            return
+        if self.modus == "spin":
+            self._teken_spin()
             return
 
         # Gewoon blokje: in de racemodus tolt het door de lucht → teken het gedraaid
@@ -339,3 +365,41 @@ class Speler:
         # Puntje aan de voorkant
         px, py = self._draai(15, 0)
         arcade.draw_circle_filled(px, py, 3, (255, 150, 190))
+
+    def _teken_robot(self):
+        """Teken een klein robotje: pootjes, een lijf en een kop met antenne (grijs)."""
+        x = self.x
+        y = self.y
+        w = self.breedte
+        cx = x + w / 2
+        romp = (120, 190, 90)   # groen-grijs lijf
+        metaal = (90, 100, 120)
+        # Pootjes
+        arcade.draw_lrbt_rectangle_filled(x + 4, x + 12, y, y + 8, metaal)
+        arcade.draw_lrbt_rectangle_filled(x + w - 12, x + w - 4, y, y + 8, metaal)
+        # Lijf
+        arcade.draw_lrbt_rectangle_filled(x + 3, x + w - 3, y + 7, y + 24, SPELER_KLEUR)
+        arcade.draw_lrbt_rectangle_outline(x + 3, x + w - 3, y + 7, y + 24, metaal, 2)
+        # Kop
+        arcade.draw_lrbt_rectangle_filled(x + 6, x + w - 6, y + 24, y + 32, romp)
+        arcade.draw_lrbt_rectangle_outline(x + 6, x + w - 6, y + 24, y + 32, metaal, 2)
+        # Oogje en antenne
+        arcade.draw_circle_filled(cx, y + 28, 3, OOG_KLEUR)
+        arcade.draw_line(cx, y + 32, cx, y + 37, metaal, 2)
+        arcade.draw_circle_filled(cx, y + 38, 2, (255, 80, 80))
+
+    def _teken_spin(self):
+        """Teken een spinnetje: een rond lijf met acht pootjes (donkerrood)."""
+        cx = self.x + self.breedte / 2
+        cy = self.y + self.hoogte / 2
+        poot = (60, 30, 40)
+        # Acht pootjes
+        for dx in (-15, -11, 11, 15):
+            arcade.draw_line(cx, cy, cx + dx, cy + 12, poot, 2)
+            arcade.draw_line(cx, cy, cx + dx, cy - 12, poot, 2)
+        # Lijf
+        arcade.draw_circle_filled(cx, cy, 11, SPELER_KLEUR)
+        arcade.draw_circle_outline(cx, cy, 11, (150, 40, 40), 3)
+        # Twee oogjes
+        arcade.draw_circle_filled(cx - 4, cy + 3, 2, OOG_KLEUR)
+        arcade.draw_circle_filled(cx + 4, cy + 3, 2, OOG_KLEUR)
