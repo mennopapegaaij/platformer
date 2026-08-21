@@ -207,12 +207,26 @@ class Speler:
         return self.onkwetsbaar_timer > 0
 
     def teken(self):
-        """Teken het speler-vierkantje met een gezichtje."""
+        """Teken de speler — elke modus heeft zijn eigen poppetje!"""
         # Knipperen als de speler onkwetsbaar is
         if self.onkwetsbaar_timer > 0 and self._knippering < 3:
             return  # Niet tekenen = onzichtbaar in de knippercyclus
 
-        # In de racemodus tolt het blokje door de lucht → teken het gedraaid
+        # Elke speciale modus heeft zijn eigen vorm
+        if self.modus == "vliegtuig":
+            self._teken_vliegtuig()
+            return
+        if self.modus == "ufo":
+            self._teken_ufo()
+            return
+        if self.modus == "bal":
+            self._teken_bal()
+            return
+        if self.modus == "golf":
+            self._teken_golf()
+            return
+
+        # Gewoon blokje: in de racemodus tolt het door de lucht → teken het gedraaid
         if self.rotatie != 0:
             self._teken_gedraaid()
             return
@@ -265,3 +279,63 @@ class Speler:
         for ox in (-7, 7):
             ex, ey = draai(ox, 5)
             arcade.draw_circle_filled(ex, ey, 3, OOG_KLEUR)
+
+    def _draai(self, dx, dy):
+        """Hulpje: draai een punt (dx, dy) rond het midden van de speler.
+
+        Gebruikt de huidige rotatie (voor het vliegtuig, de bal en de golf).
+        """
+        cx = self.x + self.breedte / 2
+        cy = self.y + self.hoogte / 2
+        hoek = math.radians(self.rotatie)
+        c, s = math.cos(hoek), math.sin(hoek)
+        return (cx + dx * c - dy * s, cy + dx * s + dy * c)
+
+    def _teken_vliegtuig(self):
+        """Teken een raket/vliegtuigje dat mee kantelt met de neus (paars)."""
+        romp = [self._draai(*p) for p in [(-14, -8), (8, -8), (18, 0), (8, 8), (-14, 8)]]
+        arcade.draw_polygon_filled(romp, SPELER_KLEUR)
+        arcade.draw_polygon_outline(romp, (150, 90, 220), 3)
+        # Vinnen achteraan
+        arcade.draw_polygon_filled([self._draai(*p) for p in [(-14, 6), (-22, 13), (-10, 2)]],
+                                   (150, 90, 220))
+        arcade.draw_polygon_filled([self._draai(*p) for p in [(-14, -6), (-22, -13), (-10, -2)]],
+                                   (150, 90, 220))
+        # Raampje
+        rx, ry = self._draai(3, 1)
+        arcade.draw_circle_filled(rx, ry, 4, (150, 220, 255))
+
+    def _teken_ufo(self):
+        """Teken een UFO: een schotel met een koepel en lichtjes (blauw)."""
+        cx = self.x + self.breedte / 2
+        cy = self.y + self.hoogte / 2
+        # Schotel
+        arcade.draw_ellipse_filled(cx, cy - 2, 34, 14, SPELER_KLEUR)
+        arcade.draw_ellipse_outline(cx, cy - 2, 34, 14, (40, 150, 210), 3)
+        # Koepel bovenop
+        arcade.draw_ellipse_filled(cx, cy + 4, 18, 14, (150, 210, 255))
+        # Lichtjes eronder
+        for dx in (-10, 0, 10):
+            arcade.draw_circle_filled(cx + dx, cy - 8, 2.5, (255, 240, 120))
+
+    def _teken_bal(self):
+        """Teken een bal die rolt (oranje strepen die meedraaien)."""
+        cx = self.x + self.breedte / 2
+        cy = self.y + self.hoogte / 2
+        r = 15
+        arcade.draw_circle_filled(cx, cy, r, SPELER_KLEUR)
+        arcade.draw_circle_outline(cx, cy, r, (230, 140, 40), 3)
+        # Twee strepen die meedraaien -> je ziet hem rollen
+        a, b = self._draai(-r + 2, 0), self._draai(r - 2, 0)
+        arcade.draw_line(a[0], a[1], b[0], b[1], (230, 140, 40), 3)
+        c, d = self._draai(0, -r + 2), self._draai(0, r - 2)
+        arcade.draw_line(c[0], c[1], d[0], d[1], (230, 140, 40), 2)
+
+    def _teken_golf(self):
+        """Teken een pijltje/ruit dat schuin omhoog of omlaag wijst (roze)."""
+        ruit = [self._draai(*p) for p in [(15, 0), (0, 10), (-12, 0), (0, -10)]]
+        arcade.draw_polygon_filled(ruit, SPELER_KLEUR)
+        arcade.draw_polygon_outline(ruit, (220, 60, 120), 3)
+        # Puntje aan de voorkant
+        px, py = self._draai(15, 0)
+        arcade.draw_circle_filled(px, py, 3, (255, 150, 190))
