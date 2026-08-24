@@ -11,6 +11,7 @@ from vijand import (Vijand, VliegendVijand, SpringendVijand, GroteVijand, GeestV
                     VleermuisVijand, SlangVijand, RobotVijand, KraaiVijand, PaddenstoelVijand,
                     ArenaBaas, ArenaVechter, Spikes)
 from powerup import ExtraLevenPowerUp
+from portaal import Portaal
 
 
 def maak_level(nummer):
@@ -784,7 +785,170 @@ def maak_vlucht(nummer):
     return platforms, obstakels, [], vlag_x, vlag_y, level_breedte
 
 
+# ==========================================================================
+#  NAMAAK van de echte Geometry Dash-levels (Stereo Madness, enz.)
+#  We bouwen ze op uit veilige stukjes (segmenten), net als in het echte spel.
+# ==========================================================================
+
+class _RaceBouwer:
+    """Handig hulpje om een racebaan op te bouwen uit veilige stukjes.
+
+    Je zet stukje voor stukje neer (vlak, spike, muur, gat, schip...) en het
+    hulpje onthoudt hoe ver je al bent. Alle afstanden zijn ruim genoeg gekozen
+    zodat je er met de vaste sprong (auto-run) overheen kunt.
+    """
+
+    def __init__(self):
+        self.x = 0
+        self.platforms = []
+        self.spikes = []
+        self.portalen = []
+        self.grond(500)          # veilige start
+
+    def grond(self, lengte):
+        """Leg een stuk vloer neer en schuif vooruit."""
+        self.platforms.append(Platform(self.x, 0, lengte, 40))
+        self.x += lengte
+
+    def vlak(self, lengte=240):
+        """Een rustig stukje vloer (ruimte tussen obstakels)."""
+        self.grond(lengte)
+
+    def spike(self, n=1):
+        """Een stukje vloer met n spikes erop (max 2, zodat je er goed overheen komt)."""
+        n = min(n, 2)
+        seg = 200
+        self.platforms.append(Platform(self.x, 0, seg, 40))
+        sx = self.x + seg // 2 - (n * 16) // 2
+        self.spikes.append(Spikes(sx, 40, n))
+        self.x += seg
+
+    def muur(self, hoogte=30):
+        """Een laag blok-muurtje om overheen te springen (max 32 hoog = eerlijk)."""
+        hoogte = min(hoogte, 32)
+        seg = 200
+        self.platforms.append(Platform(self.x, 0, seg, 40))
+        self.platforms.append(BlokPlatform(self.x + seg // 2 - 20, 40, 40, hoogte))
+        self.x += seg
+
+    def gat(self, breedte=120):
+        """Een gat in de vloer om overheen te springen (max 130 breed)."""
+        self.x += min(breedte, 130)
+
+    def snel(self, soort):
+        """Een snelheid-portaal (x0.5 / x2 / ...)."""
+        self.portalen.append(Portaal(self.x + 5, 40, soort))
+        self.grond(120)
+
+    def schip(self, lengte=1400):
+        """Een raket-stuk: schip-portaal in, muren met ruime openingen, blok-portaal uit."""
+        self.portalen.append(Portaal(self.x + 5, 40, "vlucht"))
+        start = self.x
+        self.grond(lengte)                 # doorlopende vloer eronder (je valt niet dood)
+        mx = start + 340                   # eerst even rustig na het portaal
+        beurt = 0
+        while mx < start + lengte - 320:
+            gat_onder = 110 + (beurt % 3) * 35     # opening zit steeds iets anders
+            opening = 170                           # ruime opening om door te vliegen
+            self.platforms.append(BlokPlatform(mx, 40, 46, gat_onder - 40))
+            boven = gat_onder + opening
+            if 440 - boven > 12:
+                self.platforms.append(BlokPlatform(mx, boven, 46, 440 - boven))
+            mx += 340
+            beurt += 1
+        # Uitgang-portaal is superhoog, zodat je het ook raakt als je hoog vliegt
+        self.portalen.append(Portaal(self.x + 5, 40, "blok", hoogte=400))
+        self.grond(200)
+
+    def klaar(self):
+        """Sluit de baan af met een finishvlag en geef de level-gegevens terug."""
+        self.grond(500)
+        vlag_x = self.x - 200
+        level_breedte = self.x
+        return (self.platforms, self.spikes, [], vlag_x, 40, level_breedte, self.portalen)
+
+
+def _stereo_madness(nummer):
+    """Namaak van 'Stereo Madness' — het eerste, rustige level."""
+    b = _RaceBouwer()
+    b.spike(1); b.vlak()
+    b.spike(1); b.vlak()
+    b.gat(120); b.vlak()
+    b.spike(2); b.vlak()
+    b.muur(50); b.vlak()
+    b.gat(130); b.vlak()
+    b.spike(1); b.vlak()
+    b.schip(1400)
+    b.vlak()
+    b.spike(2); b.vlak()
+    b.gat(120); b.vlak()
+    b.muur(50); b.vlak()
+    b.spike(1); b.vlak()
+    return b.klaar()
+
+
+def _back_on_track(nummer):
+    """Namaak van 'Back on Track' — iets drukker met spikes en muurtjes."""
+    b = _RaceBouwer()
+    b.spike(2); b.vlak()
+    b.muur(50); b.vlak()
+    b.spike(2); b.vlak()
+    b.gat(130); b.vlak()
+    b.spike(3); b.vlak()
+    b.muur(70); b.vlak()
+    b.gat(140); b.vlak()
+    b.spike(2); b.vlak()
+    b.schip(1500)
+    b.vlak()
+    b.spike(3); b.vlak()
+    b.muur(50); b.vlak()
+    b.spike(2); b.vlak()
+    b.gat(130); b.vlak()
+    b.muur(70); b.vlak()
+    return b.klaar()
+
+
+def _polargeist(nummer):
+    """Namaak van 'Polargeist' — nog een tikje pittiger, met een lang raket-stuk."""
+    b = _RaceBouwer()
+    b.spike(2); b.vlak()
+    b.gat(130); b.vlak()
+    b.spike(3); b.vlak()
+    b.muur(70); b.vlak()
+    b.spike(2); b.vlak()
+    b.muur(50); b.vlak()
+    b.gat(140); b.vlak()
+    b.spike(3); b.vlak()
+    b.schip(1700)
+    b.vlak()
+    b.spike(3); b.vlak()
+    b.gat(140); b.vlak()
+    b.muur(70); b.vlak()
+    b.spike(2); b.vlak()
+    b.muur(50); b.vlak()
+    b.spike(3); b.vlak()
+    return b.klaar()
+
+
+# De namaak-levels op hun baannummer, met hun echte naam
+GD_LEVELS = {1: _stereo_madness, 2: _back_on_track, 3: _polargeist}
+GD_NAMEN = {1: "Stereo Madness", 2: "Back on Track", 3: "Polargeist"}
+
+
+def race_naam(nummer):
+    """De naam van een racebaan: een echte Geometry Dash-naam of gewoon 'Baan N'."""
+    return GD_NAMEN.get(nummer, f"Baan {nummer}")
+
+
 def maak_race(nummer):
+    """Maak een racebaan. Baan 1 t/m 3 zijn namaak van echte Geometry Dash-levels;
+    daarna komen automatisch gemaakte banen."""
+    if nummer in GD_LEVELS:
+        return GD_LEVELS[nummer](nummer)
+    return _maak_race_willekeurig(nummer)
+
+
+def _maak_race_willekeurig(nummer):
     """Maak een racebaan (auto-run): grond met gaten, spikes en zweefblokken
     (waar je OP kunt staan) en zwevende spikes. Finishvlag aan het eind.
     Deterministisch per baannummer."""

@@ -221,7 +221,7 @@ class PlatformerSpel(arcade.View):
         elif self.vlucht:
             naam_tekst = f"✈️ Vlucht — Baan {self.huidig_level}"
         elif self.race:
-            naam_tekst = f"🏁 Race — Baan {self.huidig_level}"
+            naam_tekst = f"🏁 {levels_module.race_naam(self.huidig_level)}"
         elif self.arena:
             naam_tekst = "⚔️ Vechtmodus"
         else:

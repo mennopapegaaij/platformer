@@ -33,12 +33,12 @@ SNELHEID_FACTOR = {"x0.5": 0.5, "x1": 1.0, "x2": 2.0, "x5": 5.0, "x10": 10.0}
 class Portaal:
     """Een poortje waar je doorheen gaat om van vorm te wisselen."""
 
-    def __init__(self, x, y, soort):
+    def __init__(self, x, y, soort, hoogte=80):
         self.x = x
         self.y = y
         self.breedte = 30
-        self.hoogte = 80          # lekker hoog, zodat je er makkelijk doorheen gaat
-        self.soort = soort        # "vlucht" of "blok"
+        self.hoogte = hoogte      # hoog genoeg om er makkelijk doorheen te gaan
+        self.soort = soort        # "vlucht"/"blok"/"ufo"/... of een snelheid zoals "x2"
 
     def raakt_speler(self, sx, sy, sb, sh):
         """Geeft True als de speler (deels) door het portaal heen gaat."""
