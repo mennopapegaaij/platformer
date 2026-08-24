@@ -74,6 +74,7 @@ class Speler:
         self.vlieg_omhoog = False        # knop-vasthouden (vliegtuig, golf, robot)
         self.zwaartekracht_richting = 1  # 1 = omlaag, -1 = omhoog (bal en spin)
         self._robot_boost = 0            # hoeveel frames de robot nog omhoog mag duwen
+        self.snelheid_factor = 1.0       # snelheid-portaal (x0.5 / x1 / x2 / x5 / x10)
 
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
@@ -95,6 +96,7 @@ class Speler:
         self.modus = "blok"                 # begin weer als gewoon blokje
         self.zwaartekracht_richting = 1     # zwaartekracht weer gewoon omlaag
         self._robot_boost = 0               # robot-duw reset
+        self.snelheid_factor = 1.0          # snelheid weer normaal
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -124,6 +126,7 @@ class Speler:
         snelheid = SPELER_SNELHEID + self.snelheid_bonus
         if self.snelheid_boost_timer > 0:
             snelheid *= 2   # Dubbel bij snelheidsboost power-up
+        snelheid *= self.snelheid_factor   # snelheid-portaal (x0.5 / x2 / x10 ...)
 
         # Horizontale beweging
         if self.links_ingedrukt:

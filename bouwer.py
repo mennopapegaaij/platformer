@@ -12,16 +12,19 @@ CEL = 40                       # grootte van één raster-vakje
 BESTAND = "eigen_level.json"   # hier wordt je level opgeslagen
 
 # De dingen die je kunt plaatsen (op volgorde in het palet)
-ITEMS = ["grond", "blok", "spike", "vijand", "hart", "vlag", "portaal", "gum"]
+ITEMS = ["grond", "blok", "spike", "vijand", "hart", "vlag", "portaal", "snel", "gum"]
 ITEM_NAAM = {
     "grond": "Grond", "blok": "Blok", "spike": "Spike", "vijand": "Vijand",
-    "hart": "Hartje", "vlag": "Finish", "portaal": "Portaal", "gum": "Gum",
+    "hart": "Hartje", "vlag": "Finish", "portaal": "Portaal", "snel": "Snel", "gum": "Gum",
 }
 
-# De soorten portalen waar je met de Portaal-knop doorheen klikt
+# De vorm-portalen waar je met de Portaal-knop doorheen klikt
 PORTAAL_SOORTEN = ["vlucht", "blok", "ufo", "bal", "golf", "robot", "spin"]
 PORTAAL_NAAM = {"vlucht": "Vlieg", "blok": "Blok", "ufo": "UFO", "bal": "Bal",
                 "golf": "Golf", "robot": "Robot", "spin": "Spin"}
+
+# De snelheid-portalen waar je met de Snel-knop doorheen klikt
+SNELHEID_SOORTEN = ["x0.5", "x1", "x2", "x5", "x10"]
 
 # Waar de bovenbalk (met knoppen) begint
 BALK_Y = 442
@@ -83,7 +86,8 @@ class BouwerView(arcade.View):
 
         self.grid = {}                 # (kol, rij) -> soort
         self.gekozen = "grond"         # welk item je nu plaatst
-        self.portaal_soort = "vlucht"  # welk portaal je plaatst (klik op Portaal om te wisselen)
+        self.portaal_soort = "vlucht"  # welk vorm-portaal je plaatst (klik op Portaal)
+        self.snel_soort = "x2"         # welk snelheid-portaal je plaatst (klik op Snel)
         # Type van je level: "gewoon" (lopen), "race" (auto-run), "vlucht" (vliegen)
         self.mode = "gewoon"
         self.scroll = 0                # hoe ver je naar rechts hebt geschoven
@@ -94,8 +98,8 @@ class BouwerView(arcade.View):
         # Palet-knoppen (links) en actie-knoppen (rechts) uitrekenen
         self.palet_knoppen = {}        # soort -> (l, r)
         for i, soort in enumerate(ITEMS):
-            l = 8 + i * 50
-            self.palet_knoppen[soort] = (l, l + 46)
+            l = 8 + i * 44
+            self.palet_knoppen[soort] = (l, l + 42)
         self.actie_knoppen = {         # naam -> (l, r)
             "spelen": (406, 470),
             "opslaan": (474, 548),
@@ -190,12 +194,15 @@ class BouwerView(arcade.View):
             rand = arcade.color.YELLOW if gekozen else (90, 90, 110)
             arcade.draw_lrbt_rectangle_filled(l, r, BALK_Y + 6, SCHERM_HOOGTE - 18, (60, 60, 80))
             arcade.draw_lrbt_rectangle_outline(l, r, BALK_Y + 6, SCHERM_HOOGTE - 18, rand, 3 if gekozen else 1)
-            # De Portaal-knop toont het portaal-soort dat je nu plaatst
+            # De Portaal- en Snel-knop tonen welk soort je nu plaatst
             if soort == "portaal":
-                teken_item("portaal_" + self.portaal_soort, l + 3, BALK_Y + 10, 40)
+                teken_item("portaal_" + self.portaal_soort, l + 2, BALK_Y + 10, 38)
                 naam = "P:" + PORTAAL_NAAM[self.portaal_soort]
+            elif soort == "snel":
+                teken_item("portaal_" + self.snel_soort, l + 2, BALK_Y + 10, 38)
+                naam = self.snel_soort
             else:
-                teken_item(soort, l + 3, BALK_Y + 10, 40)
+                teken_item(soort, l + 2, BALK_Y + 10, 38)
                 naam = ITEM_NAAM[soort]
             arcade.draw_text(naam, (l + r) // 2, BALK_Y + 1,
                              arcade.color.WHITE, 8, anchor_x="center")
@@ -249,9 +256,11 @@ class BouwerView(arcade.View):
                 # Er mag maar één finishvlag zijn
                 for cel in [c for c, s in self.grid.items() if s == "vlag"]:
                     del self.grid[cel]
-            # Bij een portaal onthouden we ook welk soort (vlucht/blok/ufo/bal/golf)
+            # Bij een portaal onthouden we ook welk soort (vorm of snelheid)
             if self.gekozen == "portaal":
                 self.grid[(kol, rij)] = "portaal_" + self.portaal_soort
+            elif self.gekozen == "snel":
+                self.grid[(kol, rij)] = "portaal_" + self.snel_soort
             else:
                 self.grid[(kol, rij)] = self.gekozen
 
@@ -259,9 +268,13 @@ class BouwerView(arcade.View):
         for soort, (l, r) in self.palet_knoppen.items():
             if l <= x <= r:
                 if soort == "portaal" and self.gekozen == "portaal":
-                    # Nog een keer op Portaal klikken: door de soorten heen wisselen
+                    # Nog een keer op Portaal klikken: door de vorm-soorten wisselen
                     i = PORTAAL_SOORTEN.index(self.portaal_soort)
                     self.portaal_soort = PORTAAL_SOORTEN[(i + 1) % len(PORTAAL_SOORTEN)]
+                elif soort == "snel" and self.gekozen == "snel":
+                    # Nog een keer op Snel klikken: door de snelheden wisselen
+                    i = SNELHEID_SOORTEN.index(self.snel_soort)
+                    self.snel_soort = SNELHEID_SOORTEN[(i + 1) % len(SNELHEID_SOORTEN)]
                 self.gekozen = soort
                 return
         for naam, (l, r) in self.actie_knoppen.items():

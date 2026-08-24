@@ -18,7 +18,16 @@ PORTAAL_KLEUREN = {
     "golf":   ((220, 60, 120), (255, 150, 190)),   # roze = golf
     "robot":  ((90, 140, 70), (170, 210, 130)),    # groen = robot
     "spin":   ((150, 40, 40), (220, 110, 110)),    # donkerrood = spin
+    # Snelheid-portalen (veranderen niet je vorm, maar hoe snel je gaat)
+    "x0.5":   ((40, 110, 200), (150, 200, 255)),   # blauw = langzaam
+    "x1":     ((110, 110, 120), (200, 200, 210)),  # grijs = gewoon
+    "x2":     ((60, 170, 90), (150, 230, 170)),    # groen = 2x
+    "x5":     ((230, 140, 40), (255, 200, 120)),   # oranje = 5x
+    "x10":    ((210, 50, 50), (255, 150, 150)),    # rood = 10x (super snel!)
 }
+
+# Snelheid-portalen: welke keer-factor hoort bij welk soort
+SNELHEID_FACTOR = {"x0.5": 0.5, "x1": 1.0, "x2": 2.0, "x5": 5.0, "x10": 10.0}
 
 
 class Portaal:
@@ -83,3 +92,6 @@ def teken_portaal_icoon(soort, cx, cy):
             arcade.draw_line(cx, cy, cx + dx, cy + 8, arcade.color.WHITE, 2)
             arcade.draw_line(cx, cy, cx + dx, cy - 8, arcade.color.WHITE, 2)
         arcade.draw_circle_filled(cx, cy, 7, arcade.color.WHITE)
+    elif soort in SNELHEID_FACTOR:
+        # Snelheid-portaal: laat de keer-factor zien (bv. "x2")
+        arcade.draw_text(soort, cx, cy - 6, arcade.color.WHITE, 11, bold=True, anchor_x="center")

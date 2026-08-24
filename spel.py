@@ -11,6 +11,7 @@ from instellingen import (SCHERM_BREEDTE, SCHERM_HOOGTE,
                            SPRING_KRACHT, LUCHT_KLEUR, VLAG_KLEUR,
                            VLAG_DOEK_KLEUR, LEVEL_NAMEN, AANTAL_LEVELS)
 from speler import Speler, VLIEG_PLAFOND
+from portaal import SNELHEID_FACTOR
 from powerup import Kogel
 import voortgang as voortgang_module
 
@@ -127,6 +128,8 @@ class PlatformerSpel(arcade.View):
         # Portalen kunnen dit tijdens het spelen nog omzetten (ufo/bal/golf)!
         self.speler.modus = "vliegtuig" if self.vlucht else "blok"
         self.speler.zwaartekracht_richting = 1
+        # Onthoud de vorige x van de speler (voor de snelheid-portaal 'sweep'-check)
+        self._vorige_speler_x = self.speler.x
         # Onthoud welke blokken je kunnen doden als je tegen de ZIJKANT aan botst
         # (net als Geometry Dash). In de race-, vlucht- en bouwmodus tellen ALLE
         # blokken mee (ook de grasblokken); in de gewone levels doen we dit niet,
@@ -440,8 +443,9 @@ class PlatformerSpel(arcade.View):
         # Laat de speler bewegen en botsingen controleren
         self.speler.bijwerken(self.level_breedte, self.platforms)
 
-        # Ging de speler door een portaal? Dan wisselt zijn vorm (blok/vliegtuig/ufo/bal/golf)
+        # Ging de speler door een portaal? Dan wisselt zijn vorm of zijn snelheid
         self._check_portalen()
+        self._vorige_speler_x = self.speler.x   # onthouden voor de volgende stap
 
         # Draaien hangt af van de modus
         modus = self.speler.modus
@@ -662,11 +666,33 @@ class PlatformerSpel(arcade.View):
             if doel is not None:
                 sp.y = doel
 
+    def _raakt_portaal(self, portaal):
+        """Ging de speler dit frame door het portaal? (Ook bij hoge snelheid!)
+
+        We kijken niet alleen naar 'staat er nu op', maar ook of de speler er
+        deze stap overheen is 'geveegd'. Zo mis je een portaal niet bij x10.
+        """
+        sp = self.speler
+        links = min(self._vorige_speler_x, sp.x)
+        rechts = max(self._vorige_speler_x, sp.x) + sp.breedte
+        horizontaal = rechts > portaal.x and links < portaal.x + portaal.breedte
+        verticaal = sp.y + sp.hoogte > portaal.y and sp.y < portaal.y + portaal.hoogte
+        return horizontaal and verticaal
+
     def _check_portalen(self):
-        """Ga je door een portaal? Dan verander je van vorm (blok/vliegtuig/ufo/bal/golf)."""
+        """Ga je door een portaal? Dan verander je van vorm OF van snelheid."""
         sp = self.speler
         for portaal in self.portalen:
-            if portaal.raakt_speler(sp.x, sp.y, sp.breedte, sp.hoogte):
+            if not self._raakt_portaal(portaal):
+                continue
+            if portaal.soort in SNELHEID_FACTOR:
+                # Snelheid-portaal: ga langzamer of sneller (x0.5 ... x10)
+                factor = SNELHEID_FACTOR[portaal.soort]
+                if sp.snelheid_factor != factor:
+                    sp.snelheid_factor = factor
+                    geluid_manager.speel_powerup()
+            else:
+                # Vorm-portaal: verander van poppetje
                 nieuwe_modus = self.PORTAAL_MODUS.get(portaal.soort, "blok")
                 if sp.modus != nieuwe_modus:
                     sp.modus = nieuwe_modus
