@@ -839,6 +839,14 @@ class _RaceBouwer:
         self.platforms.append(BlokPlatform(self.x + 90, 0, lengte, hoogte))  # het plateau
         self.x += seg
 
+    def trap(self, stappen=4, stap_h=40, stap_b=70):
+        """Een trap van blokken die je omhoog springt (tap-tap-tap), zoals in Stereo Madness."""
+        seg = stappen * stap_b + 200
+        self.platforms.append(Platform(self.x, 0, seg, 40))          # grond eronder
+        for i in range(stappen):
+            self.platforms.append(BlokPlatform(self.x + 90 + i * stap_b, 0, stap_b, stap_h * (i + 1)))
+        self.x += seg
+
     def gat(self, breedte=120):
         """Een gat in de vloer om overheen te springen (max 130 breed)."""
         self.x += min(breedte, 130)
@@ -882,15 +890,15 @@ def _stereo_madness(nummer):
     raket 85-100%. De exacte plek van elk blokje is niet bekend, dus die stukjes
     zijn zo goed mogelijk nagemaakt (lijkt erop, niet tot op de pixel exact)."""
     b = _RaceBouwer()
-    # --- Blokje 0-29%: eerst 1 spike, dan 2 spikes, blok-pilaren, spikes en een gat ---
+    # --- Blokje 0-29%: 2 spikes, dan een trap van 4 blokken, dan hoge/lage blokken ---
     b.vlak(320)                       # rustige start
-    b.spike(1); b.vlak(240)           # "kruis eerst 1 spike"
-    b.spike(2); b.vlak(260)           # "en dan 2 spikes"
-    b.plateau(60, 120); b.vlak(210)   # blok-pilaar (laag)
-    b.plateau(90, 120); b.vlak(230)   # blok-pilaar (hoger)
+    b.spike(1); b.vlak(230)           # eerste spike
+    b.spike(1); b.vlak(250)           # tweede spike
+    b.trap(4, 40, 70); b.vlak(240)    # trap van 4 blokken omhoog (tap-tap-tap)
+    b.plateau(80, 110); b.vlak(200)   # afwisselend hoog...
+    b.plateau(40, 110); b.vlak(220)   # ...en laag blok
     b.spike(1); b.vlak(220)
-    b.gat(120); b.vlak(240)           # een pit (gat)
-    b.spike(2); b.vlak(260)
+    b.gat(120); b.vlak(260)           # een pit (gat)
     # --- Raket 29-46% ---
     b.schip(1200)
     b.vlak(260)
@@ -900,7 +908,7 @@ def _stereo_madness(nummer):
     b.plateau(80, 140); b.vlak(220)
     b.gat(130); b.vlak(240)
     b.spike(2); b.vlak(240)
-    b.plateau(70, 120); b.vlak(220)
+    b.trap(3, 40, 70); b.vlak(240)
     b.spike(1); b.vlak(260)
     # --- Raket 85-100% ---
     b.schip(900)
