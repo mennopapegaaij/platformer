@@ -877,25 +877,33 @@ class _RaceBouwer:
 
 
 def _stereo_madness(nummer):
-    """Namaak van 'Stereo Madness' — rustige start, losse spikes om overheen te
-    hoppen, blok-plateaus en in het midden een raket-stuk. (Lijkt erop, niet exact.)"""
+    """Namaak van 'Stereo Madness'. De opbouw volgt het echte level (bron: de
+    officiele Geometry Dash-wiki): blokje 0-29%, raket 29-46%, blokje 46-85%,
+    raket 85-100%. De exacte plek van elk blokje is niet bekend, dus die stukjes
+    zijn zo goed mogelijk nagemaakt (lijkt erop, niet tot op de pixel exact)."""
     b = _RaceBouwer()
-    b.vlak(340)                       # rustige, lange start (zoals de echte)
+    # --- Blokje 0-29%: eerst 1 spike, dan 2 spikes, blok-pilaren, spikes en een gat ---
+    b.vlak(320)                       # rustige start
+    b.spike(1); b.vlak(240)           # "kruis eerst 1 spike"
+    b.spike(2); b.vlak(260)           # "en dan 2 spikes"
+    b.plateau(60, 120); b.vlak(210)   # blok-pilaar (laag)
+    b.plateau(90, 120); b.vlak(230)   # blok-pilaar (hoger)
     b.spike(1); b.vlak(220)
-    b.spike(1); b.vlak(220)
-    b.spike(1); b.vlak(260)           # hop, hop, hop over losse spikes
-    b.plateau(80, 140); b.vlak(220)   # op een blok springen
-    b.spike(1); b.vlak(220)
+    b.gat(120); b.vlak(240)           # een pit (gat)
     b.spike(2); b.vlak(260)
-    b.plateau(90, 160); b.vlak(240)
-    b.spike(1); b.vlak(300)
-    b.schip(1300)                     # raket-stuk in het midden
+    # --- Raket 29-46% ---
+    b.schip(1200)
     b.vlak(260)
-    b.spike(1); b.vlak(220)
+    # --- Blokje 46-85%: meer spikes, plateaus en gaten ---
+    b.spike(1); b.vlak(240)
     b.spike(2); b.vlak(240)
     b.plateau(80, 140); b.vlak(220)
-    b.spike(1); b.vlak(240)
+    b.gat(130); b.vlak(240)
+    b.spike(2); b.vlak(240)
+    b.plateau(70, 120); b.vlak(220)
     b.spike(1); b.vlak(260)
+    # --- Raket 85-100% ---
+    b.schip(900)
     return b.klaar()
 
 
