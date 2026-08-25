@@ -831,6 +831,14 @@ class _RaceBouwer:
         self.platforms.append(BlokPlatform(self.x + seg // 2 - 20, 40, 40, hoogte))
         self.x += seg
 
+    def plateau(self, hoogte=80, lengte=140):
+        """Een blok-plateau waar je bovenop springt en overheen loopt (zoals in Stereo Madness)."""
+        hoogte = min(hoogte, 90)
+        seg = lengte + 200
+        self.platforms.append(Platform(self.x, 0, seg, 40))          # grond eronder
+        self.platforms.append(BlokPlatform(self.x + 90, 0, lengte, hoogte))  # het plateau
+        self.x += seg
+
     def gat(self, breedte=120):
         """Een gat in de vloer om overheen te springen (max 130 breed)."""
         self.x += min(breedte, 130)
@@ -869,64 +877,72 @@ class _RaceBouwer:
 
 
 def _stereo_madness(nummer):
-    """Namaak van 'Stereo Madness' — het eerste, rustige level."""
+    """Namaak van 'Stereo Madness' — rustige start, losse spikes om overheen te
+    hoppen, blok-plateaus en in het midden een raket-stuk. (Lijkt erop, niet exact.)"""
     b = _RaceBouwer()
-    b.spike(1); b.vlak()
-    b.spike(1); b.vlak()
-    b.gat(120); b.vlak()
-    b.spike(2); b.vlak()
-    b.muur(50); b.vlak()
-    b.gat(130); b.vlak()
-    b.spike(1); b.vlak()
-    b.schip(1400)
-    b.vlak()
-    b.spike(2); b.vlak()
-    b.gat(120); b.vlak()
-    b.muur(50); b.vlak()
-    b.spike(1); b.vlak()
+    b.vlak(340)                       # rustige, lange start (zoals de echte)
+    b.spike(1); b.vlak(220)
+    b.spike(1); b.vlak(220)
+    b.spike(1); b.vlak(260)           # hop, hop, hop over losse spikes
+    b.plateau(80, 140); b.vlak(220)   # op een blok springen
+    b.spike(1); b.vlak(220)
+    b.spike(2); b.vlak(260)
+    b.plateau(90, 160); b.vlak(240)
+    b.spike(1); b.vlak(300)
+    b.schip(1300)                     # raket-stuk in het midden
+    b.vlak(260)
+    b.spike(1); b.vlak(220)
+    b.spike(2); b.vlak(240)
+    b.plateau(80, 140); b.vlak(220)
+    b.spike(1); b.vlak(240)
+    b.spike(1); b.vlak(260)
     return b.klaar()
 
 
 def _back_on_track(nummer):
-    """Namaak van 'Back on Track' — iets drukker met spikes en muurtjes."""
+    """Namaak van 'Back on Track' — drukker: dubbel-spikes, muurtjes en plateaus."""
     b = _RaceBouwer()
-    b.spike(2); b.vlak()
-    b.muur(50); b.vlak()
-    b.spike(2); b.vlak()
-    b.gat(130); b.vlak()
-    b.spike(3); b.vlak()
-    b.muur(70); b.vlak()
-    b.gat(140); b.vlak()
-    b.spike(2); b.vlak()
-    b.schip(1500)
-    b.vlak()
-    b.spike(3); b.vlak()
-    b.muur(50); b.vlak()
-    b.spike(2); b.vlak()
-    b.gat(130); b.vlak()
-    b.muur(70); b.vlak()
+    b.vlak(300)
+    b.spike(2); b.vlak(240)
+    b.muur(30); b.vlak(220)
+    b.spike(2); b.vlak(240)
+    b.plateau(70, 140); b.vlak(240)
+    b.spike(1); b.vlak(220)
+    b.gat(130); b.vlak(260)
+    b.spike(2); b.vlak(240)
+    b.plateau(80, 160); b.vlak(260)
+    b.schip(1400)
+    b.vlak(260)
+    b.spike(2); b.vlak(240)
+    b.muur(30); b.vlak(220)
+    b.spike(2); b.vlak(240)
+    b.plateau(70, 140); b.vlak(240)
+    b.gat(130); b.vlak(240)
+    b.spike(2); b.vlak(240)
     return b.klaar()
 
 
 def _polargeist(nummer):
-    """Namaak van 'Polargeist' — nog een tikje pittiger, met een lang raket-stuk."""
+    """Namaak van 'Polargeist' — nog pittiger: meer gaten, plateaus en een lang raket-stuk."""
     b = _RaceBouwer()
-    b.spike(2); b.vlak()
-    b.gat(130); b.vlak()
-    b.spike(3); b.vlak()
-    b.muur(70); b.vlak()
-    b.spike(2); b.vlak()
-    b.muur(50); b.vlak()
-    b.gat(140); b.vlak()
-    b.spike(3); b.vlak()
-    b.schip(1700)
-    b.vlak()
-    b.spike(3); b.vlak()
-    b.gat(140); b.vlak()
-    b.muur(70); b.vlak()
-    b.spike(2); b.vlak()
-    b.muur(50); b.vlak()
-    b.spike(3); b.vlak()
+    b.vlak(300)
+    b.spike(2); b.vlak(240)
+    b.gat(130); b.vlak(240)
+    b.spike(2); b.vlak(240)
+    b.plateau(80, 140); b.vlak(240)
+    b.spike(2); b.vlak(240)
+    b.muur(30); b.vlak(220)
+    b.gat(130); b.vlak(260)
+    b.spike(2); b.vlak(240)
+    b.plateau(90, 160); b.vlak(260)
+    b.schip(1600)
+    b.vlak(260)
+    b.spike(2); b.vlak(240)
+    b.gat(130); b.vlak(240)
+    b.plateau(80, 140); b.vlak(240)
+    b.spike(2); b.vlak(240)
+    b.muur(30); b.vlak(220)
+    b.spike(2); b.vlak(260)
     return b.klaar()
 
 
