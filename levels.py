@@ -902,16 +902,18 @@ def _stereo_madness(nummer):
     # --- Raket 29-46% ---
     b.schip(1200)
     b.vlak(260)
-    # --- Blokje 46-85%: meer spikes, plateaus en gaten ---
+    # --- Blokje 46-85% (het 'rode' stuk): spikes (1, 2, 3), plateaus en hoge pilaren ---
     b.spike(1); b.vlak(240)
     b.spike(2); b.vlak(240)
     b.plateau(80, 140); b.vlak(220)
     b.gat(130); b.vlak(240)
     b.spike(2); b.vlak(240)
-    b.trap(3, 40, 70); b.vlak(240)
+    b.trap(3, 40, 70); b.vlak(240)          # pilaren omhoog
+    b.spike(2); b.vlak(240)
+    b.plateau(70, 120); b.vlak(220)
     b.spike(1); b.vlak(260)
-    # --- Raket 85-100% ---
-    b.schip(900)
+    # --- Raket 85-100%: nog een keer vliegen tot de finish ---
+    b.schip(1100)
     return b.klaar()
 
 
