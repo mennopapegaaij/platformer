@@ -1403,6 +1403,26 @@ class Spikes(Vijand):
     def bijwerken(self, speler_x=None):
         pass                        # spikes bewegen niet
 
+    def raakt_speler(self, px, py, pw, ph):
+        """Kleinere hitbox dan het plaatje (net als in het echte Geometry Dash).
+
+        Alleen het onderste-midden van elke punt doet pijn. Zo mag je de scherpe
+        top en de zijkanten schampen zonder meteen dood te gaan."""
+        pb = self.PUNT_BREEDTE
+        onder = self.y
+        boven = self.y + self.hoogte * 0.6      # alleen de onderste ~60% is gevaarlijk
+        # Zit de speler helemaal boven of onder de gevaarlijke zone? Dan veilig.
+        if py >= boven or py + ph <= onder:
+            return False
+        # Raakt de speler het smalle midden van een van de punten?
+        for i in range(self.aantal):
+            sx = self.x + i * pb
+            mid_links = sx + pb * 0.30
+            mid_rechts = sx + pb * 0.70
+            if px < mid_rechts and px + pw > mid_links:
+                return True
+        return False
+
     def speler_springt_erop(self, px, py, pw, ph):
         return False                # je kunt er niet op stompen — het doet juist pijn!
 
