@@ -59,6 +59,7 @@ class LevelKaartView(arcade.View):
         self.arena_record = arena_record # Hoogste vechtmodus-level dat je haalde
         self.race_record = race_record   # Hoogste race-baan die je haalde
         self.vlucht_record = vlucht_record  # Hoogste vliegtuig-baan die je haalde
+        self.twee_aan = False            # staat de 2-spelers-modus aan?
 
         # Begin bij het eerste level dat nog niet gehaald is
         self.geselecteerd = self._bereken_start()
@@ -176,8 +177,15 @@ class LevelKaartView(arcade.View):
         race_record = f"record: baan {self.race_record}" if self.race_record > 0 else ""
         self._teken_zij_knop(self.RACE_KNOP, (40, 110, 180), (40, 150, 210),
                              "🏁", "RACEN", race_record, "(klik of R)")
-        self._teken_zij_knop(self.TWEE_KNOP, (200, 120, 30), (230, 160, 40),
-                             "👬", "2 SPELERS", "samen racen!", "(klik of 2)")
+        # 2-spelers-knop: laat zien of hij AAN of UIT staat (groen = aan)
+        if self.twee_aan:
+            twee_kleuren = ((40, 160, 60), (60, 200, 80))
+            twee_tekst = "staat AAN ✓"
+        else:
+            twee_kleuren = ((110, 110, 120), (140, 140, 150))
+            twee_tekst = "staat uit"
+        self._teken_zij_knop(self.TWEE_KNOP, twee_kleuren[0], twee_kleuren[1],
+                             "👬", "2 SPELERS", twee_tekst, "(klik of 2)")
         self._teken_zij_knop(self.BOUWER_KNOP, (150, 100, 30), (190, 140, 40),
                              "🔨", "BOUWEN", "", "(klik of B)")
 
@@ -289,8 +297,8 @@ class LevelKaartView(arcade.View):
             # F = start de vliegtuig-modus
             self._start_vlucht()
         elif toets == arcade.key.KEY_2:
-            # 2 = start de 2-spelers-modus (split-screen race)
-            self._start_twee()
+            # 2 = zet de 2-spelers-modus aan of uit
+            self.twee_aan = not self.twee_aan
         elif toets == arcade.key.B:
             # B = start de bouwmodus
             self._start_bouwer()
@@ -309,7 +317,7 @@ class LevelKaartView(arcade.View):
         elif rl <= x <= rr and rb <= y <= rt:
             self._start_race()
         elif tl <= x <= tr and tb <= y <= tt:
-            self._start_twee()
+            self.twee_aan = not self.twee_aan     # 2-spelers aan/uit
         elif bl <= x <= br and bb <= y <= bt:
             self._start_bouwer()
 
@@ -323,28 +331,24 @@ class LevelKaartView(arcade.View):
         """Start de vechtmodus (arena) bij level 1 — begint helemaal fris."""
         from spel import PlatformerSpel
         spel = PlatformerSpel(1, self.voltooid, punten=0, levens=None, arena=True,
-                              kaart_punten=self.punten, kaart_levens=self.levens)
+                              kaart_punten=self.punten, kaart_levens=self.levens,
+                              twee=self.twee_aan)
         self.window.show_view(spel)
 
     def _start_race(self):
         """Start de racemodus bij baan 1 — je rent vanzelf vooruit!"""
         from spel import PlatformerSpel
         spel = PlatformerSpel(1, self.voltooid, punten=0, levens=None, race=True,
-                              kaart_punten=self.punten, kaart_levens=self.levens)
+                              kaart_punten=self.punten, kaart_levens=self.levens,
+                              twee=self.twee_aan)
         self.window.show_view(spel)
 
     def _start_vlucht(self):
         """Start de vliegtuig-modus bij baan 1 — je vliegt vanzelf vooruit!"""
         from spel import PlatformerSpel
         spel = PlatformerSpel(1, self.voltooid, punten=0, levens=None, vlucht=True,
-                              kaart_punten=self.punten, kaart_levens=self.levens)
-        self.window.show_view(spel)
-
-    def _start_twee(self):
-        """Start de 2-spelers-modus: het scherm gaat doormidden (split-screen race)."""
-        from spel import PlatformerSpel
-        spel = PlatformerSpel(1, self.voltooid, punten=0, levens=None, twee=True,
-                              kaart_punten=self.punten, kaart_levens=self.levens)
+                              kaart_punten=self.punten, kaart_levens=self.levens,
+                              twee=self.twee_aan)
         self.window.show_view(spel)
 
     def _start_bouwer(self):
