@@ -69,6 +69,9 @@ class Speler:
         # Draai-stand (graden) — voor de tollende kubus in de racemodus
         self.rotatie = 0
 
+        # Kleur van het poppetje (standaard geel; bij 2 spelers blauw/rood)
+        self.kleur = SPELER_KLEUR
+
         # --- Speciale modi (Geometry Dash): blok/vliegtuig/ufo/bal/golf/robot/spin ---
         self.modus = "blok"              # in welke vorm ben je nu?
         self.vlieg_omhoog = False        # knop-vasthouden (vliegtuig, golf, robot)
@@ -266,7 +269,7 @@ class Speler:
         h = self.hoogte
 
         # Lijf (geel, of goudgeel bij snelheidsboost)
-        lijf_kleur = (255, 220, 0) if self.snelheid_boost_timer > 0 else SPELER_KLEUR
+        lijf_kleur = (255, 220, 0) if self.snelheid_boost_timer > 0 else self.kleur
         arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, lijf_kleur)
 
         # Rand: oranje normaal, rood bij dubbel-sprong, lichtblauw bij onkwetsbaar
@@ -300,7 +303,7 @@ class Speler:
         hoeken = [draai(-hw, -hh), draai(hw, -hh), draai(hw, hh), draai(-hw, hh)]
 
         # Lijf (geel, of goudgeel bij snelheidsboost)
-        lijf_kleur = (255, 220, 0) if self.snelheid_boost_timer > 0 else SPELER_KLEUR
+        lijf_kleur = (255, 220, 0) if self.snelheid_boost_timer > 0 else self.kleur
         arcade.draw_polygon_filled(hoeken, lijf_kleur)
         arcade.draw_polygon_outline(hoeken, arcade.color.ORANGE, 3)
 
@@ -323,7 +326,7 @@ class Speler:
     def _teken_vliegtuig(self):
         """Teken een raket/vliegtuigje dat mee kantelt met de neus (paars)."""
         romp = [self._draai(*p) for p in [(-14, -8), (8, -8), (18, 0), (8, 8), (-14, 8)]]
-        arcade.draw_polygon_filled(romp, SPELER_KLEUR)
+        arcade.draw_polygon_filled(romp, self.kleur)
         arcade.draw_polygon_outline(romp, (150, 90, 220), 3)
         # Vinnen achteraan
         arcade.draw_polygon_filled([self._draai(*p) for p in [(-14, 6), (-22, 13), (-10, 2)]],
@@ -339,7 +342,7 @@ class Speler:
         cx = self.x + self.breedte / 2
         cy = self.y + self.hoogte / 2
         # Schotel
-        arcade.draw_ellipse_filled(cx, cy - 2, 34, 14, SPELER_KLEUR)
+        arcade.draw_ellipse_filled(cx, cy - 2, 34, 14, self.kleur)
         arcade.draw_ellipse_outline(cx, cy - 2, 34, 14, (40, 150, 210), 3)
         # Koepel bovenop
         arcade.draw_ellipse_filled(cx, cy + 4, 18, 14, (150, 210, 255))
@@ -352,7 +355,7 @@ class Speler:
         cx = self.x + self.breedte / 2
         cy = self.y + self.hoogte / 2
         r = 15
-        arcade.draw_circle_filled(cx, cy, r, SPELER_KLEUR)
+        arcade.draw_circle_filled(cx, cy, r, self.kleur)
         arcade.draw_circle_outline(cx, cy, r, (230, 140, 40), 3)
         # Twee strepen die meedraaien -> je ziet hem rollen
         a, b = self._draai(-r + 2, 0), self._draai(r - 2, 0)
@@ -363,7 +366,7 @@ class Speler:
     def _teken_golf(self):
         """Teken een pijltje/ruit dat schuin omhoog of omlaag wijst (roze)."""
         ruit = [self._draai(*p) for p in [(15, 0), (0, 10), (-12, 0), (0, -10)]]
-        arcade.draw_polygon_filled(ruit, SPELER_KLEUR)
+        arcade.draw_polygon_filled(ruit, self.kleur)
         arcade.draw_polygon_outline(ruit, (220, 60, 120), 3)
         # Puntje aan de voorkant
         px, py = self._draai(15, 0)
@@ -381,7 +384,7 @@ class Speler:
         arcade.draw_lrbt_rectangle_filled(x + 4, x + 12, y, y + 8, metaal)
         arcade.draw_lrbt_rectangle_filled(x + w - 12, x + w - 4, y, y + 8, metaal)
         # Lijf
-        arcade.draw_lrbt_rectangle_filled(x + 3, x + w - 3, y + 7, y + 24, SPELER_KLEUR)
+        arcade.draw_lrbt_rectangle_filled(x + 3, x + w - 3, y + 7, y + 24, self.kleur)
         arcade.draw_lrbt_rectangle_outline(x + 3, x + w - 3, y + 7, y + 24, metaal, 2)
         # Kop
         arcade.draw_lrbt_rectangle_filled(x + 6, x + w - 6, y + 24, y + 32, romp)
@@ -401,7 +404,7 @@ class Speler:
             arcade.draw_line(cx, cy, cx + dx, cy + 12, poot, 2)
             arcade.draw_line(cx, cy, cx + dx, cy - 12, poot, 2)
         # Lijf
-        arcade.draw_circle_filled(cx, cy, 11, SPELER_KLEUR)
+        arcade.draw_circle_filled(cx, cy, 11, self.kleur)
         arcade.draw_circle_outline(cx, cy, 11, (150, 40, 40), 3)
         # Twee oogjes
         arcade.draw_circle_filled(cx - 4, cy + 3, 2, OOG_KLEUR)
