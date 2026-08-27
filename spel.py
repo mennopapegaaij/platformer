@@ -1026,9 +1026,15 @@ class PlatformerSpel(arcade.View):
                 self.speler2.rechts_ingedrukt = True
             elif toets in (arcade.key.ENTER, arcade.key.NUM_ENTER):
                 if self.winnaar or self.level_gehaald:
-                    self._volgende_twee_baan()
+                    if self.eigen:
+                        self._naar_bouwer()          # terug naar de bouwmodus
+                    else:
+                        self._volgende_twee_baan()
             elif toets == arcade.key.K:
-                self._verlaat_arena()      # terug naar de kaart
+                if self.eigen:
+                    self._naar_bouwer()              # terug naar de bouwmodus
+                else:
+                    self._verlaat_arena()            # terug naar de kaart
             return
         if toets == arcade.key.LEFT:
             self.speler.links_ingedrukt = True
@@ -1188,7 +1194,7 @@ class PlatformerSpel(arcade.View):
         data = voortgang_module.laad_voortgang()
         b = BouwerView(self.voltooid, self.kaart_punten, self.kaart_levens,
                        data.get("arena_record", 0), data.get("race_record", 0),
-                       data.get("vlucht_record", 0))
+                       data.get("vlucht_record", 0), twee=self.twee)
         self.window.show_view(b)
 
     def _volgende_arena_level(self):

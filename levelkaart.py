@@ -363,5 +363,6 @@ class LevelKaartView(arcade.View):
         """Open de bouwmodus om je eigen level te maken."""
         from bouwer import BouwerView
         b = BouwerView(self.voltooid, self.punten, self.levens,
-                       self.arena_record, self.race_record, self.vlucht_record)
+                       self.arena_record, self.race_record, self.vlucht_record,
+                       twee=self.twee_aan)
         self.window.show_view(b)

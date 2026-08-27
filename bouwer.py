@@ -96,7 +96,7 @@ class BouwerView(arcade.View):
 
     # Knoppen in de bovenbalk: naam -> (links, rechts)
     def __init__(self, voltooid_levels, punten=0, levens=None,
-                 arena_record=0, race_record=0, vlucht_record=0):
+                 arena_record=0, race_record=0, vlucht_record=0, twee=False):
         super().__init__()
         self.voltooid = voltooid_levels
         self.punten = punten
@@ -104,6 +104,7 @@ class BouwerView(arcade.View):
         self.arena_record = arena_record
         self.race_record = race_record
         self.vlucht_record = vlucht_record
+        self.twee = twee               # 2-spelers-modus aan? (dan speel je je level samen)
 
         self.grid = {}                 # (kol, rij) -> soort
         self.rotaties = {}             # (kol, rij) -> draai-hoek (0/90/180/270)
@@ -252,8 +253,8 @@ class BouwerView(arcade.View):
         kleuren = {"spelen": (40, 160, 60), "opslaan": (40, 110, 180),
                    "wissen": (170, 60, 60), "kaart": (100, 100, 120),
                    "draai": (150, 110, 40), "type": type_kleur}
-        teksten = {"spelen": "▶ Spelen", "opslaan": "💾 Opslaan",
-                   "wissen": "🗑 Wissen", "kaart": "🗺 Kaart",
+        teksten = {"spelen": "▶ 2P Spelen" if self.twee else "▶ Spelen",
+                   "opslaan": "💾 Opslaan", "wissen": "🗑 Wissen", "kaart": "🗺 Kaart",
                    "draai": "↻ %d°" % self.rotatie, "type": type_tekst}
         for naam, (l, r) in self.actie_knoppen.items():
             arcade.draw_lrbt_rectangle_filled(l, r, BALK_Y + 8, SCHERM_HOOGTE - 8, kleuren[naam])
@@ -424,7 +425,7 @@ class BouwerView(arcade.View):
         data = self._bouw_level()
         spel = PlatformerSpel(1, self.voltooid, punten=0, levens=None,
                               eigen_level=data, race=(self.mode == "race"),
-                              vlucht=(self.mode == "vlucht"),
+                              vlucht=(self.mode == "vlucht"), twee=self.twee,
                               kaart_punten=self.punten, kaart_levens=self.levens)
         self.window.show_view(spel)
 
