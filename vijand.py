@@ -1391,35 +1391,47 @@ class Spikes(Vijand):
     PUNT_BREEDTE = 40
     PUNT_HOOGTE = 45
 
-    def __init__(self, x, y, aantal=3):
+    def __init__(self, x, y, aantal=3, rotatie=0):
         breedte = aantal * self.PUNT_BREEDTE
         super().__init__(x, y, x, x + breedte, 0)   # snelheid 0: staat helemaal stil
         self.breedte = breedte
         self.hoogte = self.PUNT_HOOGTE
         self.aantal = aantal
+        self.rotatie = rotatie % 360    # 0=omhoog, 90/180/270 = opzij / naar beneden
         self.is_spike = True        # zo weet het spel: dit is een spike (niet te doden)
         self.levens = 999999        # gaat nooit dood
 
     def bijwerken(self, speler_x=None):
         pass                        # spikes bewegen niet
 
-    def raakt_speler(self, px, py, pw, ph):
-        """Kleinere hitbox dan het plaatje (net als in het echte Geometry Dash).
+    def _draai(self, px, py):
+        """Draai een punt rond het midden van de spikes (0/90/180/270 graden)."""
+        cx = self.x + self.breedte / 2
+        cy = self.y + self.hoogte / 2
+        dx, dy = px - cx, py - cy
+        r = self.rotatie
+        if r == 90:
+            return (cx - dy, cy + dx)
+        if r == 180:
+            return (cx - dx, cy - dy)
+        if r == 270:
+            return (cx + dy, cy - dx)
+        return (px, py)
 
-        Alleen het onderste-midden van elke punt doet pijn. Zo mag je de scherpe
-        top en de zijkanten schampen zonder meteen dood te gaan."""
+    def raakt_speler(self, px, py, pw, ph):
+        """Kleinere hitbox dan het plaatje (net als in het echte Geometry Dash),
+        die met de spike meedraait als hij gedraaid staat."""
         pb = self.PUNT_BREEDTE
-        onder = self.y
-        boven = self.y + self.hoogte * 0.6      # alleen de onderste ~60% is gevaarlijk
-        # Zit de speler helemaal boven of onder de gevaarlijke zone? Dan veilig.
-        if py >= boven or py + ph <= onder:
-            return False
-        # Raakt de speler het smalle midden van een van de punten?
         for i in range(self.aantal):
             sx = self.x + i * pb
-            mid_links = sx + pb * 0.30
-            mid_rechts = sx + pb * 0.70
-            if px < mid_rechts and px + pw > mid_links:
+            # Het smalle-onderste-midden van deze punt (in de niet-gedraaide stand)
+            hoeken = [self._draai(sx + pb * 0.30, self.y),
+                      self._draai(sx + pb * 0.70, self.y),
+                      self._draai(sx + pb * 0.70, self.y + self.hoogte * 0.6),
+                      self._draai(sx + pb * 0.30, self.y + self.hoogte * 0.6)]
+            bx0 = min(h[0] for h in hoeken); bx1 = max(h[0] for h in hoeken)
+            by0 = min(h[1] for h in hoeken); by1 = max(h[1] for h in hoeken)
+            if px < bx1 and px + pw > bx0 and py < by1 and py + ph > by0:
                 return True
         return False
 
@@ -1427,18 +1439,20 @@ class Spikes(Vijand):
         return False                # je kunt er niet op stompen — het doet juist pijn!
 
     def teken(self):
-        x, y, w = self.x, self.y, self.breedte
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
         pb = self.PUNT_BREEDTE
-        # Donkere voet onderaan
-        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + 12, (70, 70, 80))
-        # Rij scherpe punten
+        d = self._draai
+        # Donkere voet onderaan (draait mee)
+        arcade.draw_polygon_filled([d(x, y), d(x + w, y), d(x + w, y + 12), d(x, y + 12)],
+                                   (70, 70, 80))
+        # Rij scherpe punten (elk driehoekje draait mee)
         for i in range(self.aantal):
             sx = x + i * pb
-            arcade.draw_triangle_filled(sx, y + 7, sx + pb, y + 7, sx + pb / 2, y + self.hoogte,
-                                        (185, 185, 200))
+            arcade.draw_polygon_filled([d(sx, y + 7), d(sx + pb, y + 7), d(sx + pb / 2, y + h)],
+                                       (185, 185, 200))
             # Lichtglimp op elke punt zodat hij scherp glimt
-            arcade.draw_triangle_filled(sx + pb * 0.32, y + 7, sx + pb * 0.55, y + 7,
-                                        sx + pb / 2, y + self.hoogte - 7, (235, 235, 245))
+            arcade.draw_polygon_filled([d(sx + pb * 0.32, y + 7), d(sx + pb * 0.55, y + 7),
+                                        d(sx + pb / 2, y + h - 7)], (235, 235, 245))
 
 
 # =============================================

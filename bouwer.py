@@ -32,9 +32,25 @@ SNELHEID_SOORTEN = ["x0.5", "x1", "x2", "x5", "x10"]
 BALK_Y = 442
 
 
-def teken_item(soort, x, y, grootte):
-    """Teken een klein plaatje van een item in een vakje op scherm (x, y)."""
+def teken_item(soort, x, y, grootte, rotatie=0):
+    """Teken een klein plaatje van een item in een vakje op scherm (x, y).
+
+    rotatie (0/90/180/270) draait spikes en decoratie rond het midden van het vakje.
+    """
     g = grootte
+    mx, my = x + g / 2, y + g / 2
+
+    def d(px, py):
+        dx, dy = px - mx, py - my
+        r = rotatie % 360
+        if r == 90:
+            return (mx - dy, my + dx)
+        if r == 180:
+            return (mx - dx, my - dy)
+        if r == 270:
+            return (mx + dy, my - dx)
+        return (px, py)
+
     if soort == "grond":
         arcade.draw_lrbt_rectangle_filled(x, x + g, y, y + g, (60, 160, 60))
         arcade.draw_lrbt_rectangle_filled(x, x + g, y + g - 5, y + g, (90, 200, 90))
@@ -44,8 +60,8 @@ def teken_item(soort, x, y, grootte):
     elif soort == "spike":
         for i in range(2):
             sx = x + 4 + i * (g // 2)
-            arcade.draw_triangle_filled(sx, y + 3, sx + g // 2 - 4, y + 3,
-                                        sx + g // 4 - 2, y + g - 6, (185, 185, 200))
+            p1, p2, p3 = d(sx, y + 3), d(sx + g // 2 - 4, y + 3), d(sx + g // 4 - 2, y + g - 6)
+            arcade.draw_triangle_filled(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1], (185, 185, 200))
     elif soort == "vijand":
         arcade.draw_lrbt_rectangle_filled(x + 5, x + g - 5, y + 5, y + g - 5, (220, 40, 40))
         arcade.draw_circle_filled(x + g // 2 - 6, y + g - 12, 3, arcade.color.BLACK)
@@ -69,7 +85,7 @@ def teken_item(soort, x, y, grootte):
         teken_portaal_icoon(p_soort, cx, cy)
     elif soort.startswith("deco_"):
         # "deco_bloem", "deco_boom", enz. -> teken de decoratie
-        teken_deco(soort.split("_", 1)[1], x, y, g)
+        teken_deco(soort.split("_", 1)[1], x, y, g, rotatie)
     elif soort == "gum":
         arcade.draw_lrbt_rectangle_filled(x + 5, x + g - 5, y + 8, y + g - 8, (255, 180, 200))
         arcade.draw_lrbt_rectangle_outline(x + 5, x + g - 5, y + 8, y + g - 8, (200, 100, 130), 2)
@@ -90,6 +106,8 @@ class BouwerView(arcade.View):
         self.vlucht_record = vlucht_record
 
         self.grid = {}                 # (kol, rij) -> soort
+        self.rotaties = {}             # (kol, rij) -> draai-hoek (0/90/180/270)
+        self.rotatie = 0               # de draai-stand waarmee je nu plaatst
         self.gekozen = "grond"         # welk item je nu plaatst
         self.portaal_soort = "vlucht"  # welk vorm-portaal je plaatst (klik op Portaal)
         self.snel_soort = "x2"         # welk snelheid-portaal je plaatst (klik op Snel)
@@ -107,11 +125,12 @@ class BouwerView(arcade.View):
             l = 6 + i * 40
             self.palet_knoppen[soort] = (l, l + 38)
         self.actie_knoppen = {         # naam -> (l, r)
-            "spelen": (410, 470),
-            "opslaan": (474, 542),
-            "wissen": (546, 606),
-            "kaart": (610, 666),
-            "type": (670, 792),
+            "spelen": (410, 460),
+            "opslaan": (464, 524),
+            "wissen": (528, 582),
+            "kaart": (586, 628),
+            "draai": (632, 688),
+            "type": (692, 792),
         }
 
         self._laad()
@@ -132,6 +151,8 @@ class BouwerView(arcade.View):
                         self.mode = "race"
                     else:
                         self.mode = "gewoon"
+                    for kr in data.get("rotaties", []):
+                        self.rotaties[(int(kr[0]), int(kr[1]))] = int(kr[2])
                 else:
                     tiles = data   # oud formaat (alleen een lijst met vakjes)
                 self.grid = {(int(k), int(r)): s for k, r, s in tiles}
@@ -145,7 +166,8 @@ class BouwerView(arcade.View):
 
     def _opslaan(self):
         data = {"tiles": [[k, r, s] for (k, r), s in self.grid.items()],
-                "mode": self.mode}
+                "mode": self.mode,
+                "rotaties": [[k, r, rot] for (k, r), rot in self.rotaties.items()]}
         with open(BESTAND, "w", encoding="utf-8") as f:
             json.dump(data, f)
         self._melding = "💾 Opgeslagen!"
@@ -181,7 +203,7 @@ class BouwerView(arcade.View):
             sx = kol * CEL - self.scroll
             if sx < -CEL or sx > SCHERM_BREEDTE:
                 continue
-            teken_item(soort, sx, rij * CEL, CEL)
+            teken_item(soort, sx, rij * CEL, CEL, self.rotaties.get((kol, rij), 0))
 
     def _teken_startmarker(self):
         """Teken waar de speler begint (linksonder)."""
@@ -208,10 +230,12 @@ class BouwerView(arcade.View):
                 teken_item("portaal_" + self.snel_soort, l + 2, BALK_Y + 10, 34)
                 naam = self.snel_soort
             elif soort == "deco":
-                teken_item("deco_" + self.deco_soort, l + 2, BALK_Y + 10, 34)
+                teken_item("deco_" + self.deco_soort, l + 2, BALK_Y + 10, 34, self.rotatie)
                 naam = DECO_NAAM[self.deco_soort]
             else:
-                teken_item(soort, l + 2, BALK_Y + 10, 34)
+                # spikes en deco draaien mee met de draai-stand
+                rot = self.rotatie if soort == "spike" else 0
+                teken_item(soort, l + 2, BALK_Y + 10, 34, rot)
                 naam = ITEM_NAAM[soort]
             arcade.draw_text(naam, (l + r) // 2, BALK_Y + 1,
                              arcade.color.WHITE, 8, anchor_x="center")
@@ -224,10 +248,10 @@ class BouwerView(arcade.View):
         # Actie-knoppen
         kleuren = {"spelen": (40, 160, 60), "opslaan": (40, 110, 180),
                    "wissen": (170, 60, 60), "kaart": (100, 100, 120),
-                   "type": type_kleur}
+                   "draai": (150, 110, 40), "type": type_kleur}
         teksten = {"spelen": "▶ Spelen", "opslaan": "💾 Opslaan",
                    "wissen": "🗑 Wissen", "kaart": "🗺 Kaart",
-                   "type": type_tekst}
+                   "draai": "↻ %d°" % self.rotatie, "type": type_tekst}
         for naam, (l, r) in self.actie_knoppen.items():
             arcade.draw_lrbt_rectangle_filled(l, r, BALK_Y + 8, SCHERM_HOOGTE - 8, kleuren[naam])
             arcade.draw_lrbt_rectangle_outline(l, r, BALK_Y + 8, SCHERM_HOOGTE - 8, arcade.color.WHITE, 2)
@@ -245,8 +269,8 @@ class BouwerView(arcade.View):
             arcade.draw_text(self._melding, SCHERM_BREEDTE // 2, 10,
                              arcade.color.YELLOW, 16, bold=True, anchor_x="center")
         else:
-            arcade.draw_text("Klik om te plaatsen  •  ←→ = schuiven  •  Type-knop: gewoon/race/vliegen"
-                             "  •  Klik nog eens op Portaal voor een ander soort",
+            arcade.draw_text("Klik om te plaatsen  •  ←→ = schuiven  •  Draai-knop of D = draaien"
+                             "  •  Klik nog eens op Portaal/Snel/Deco voor een ander soort",
                              SCHERM_BREEDTE // 2, 8, arcade.color.WHITE, 10, anchor_x="center")
 
     # ---------- Muis ----------
@@ -260,6 +284,7 @@ class BouwerView(arcade.View):
         rij = int(y // CEL)
         if self.gekozen == "gum":
             self.grid.pop((kol, rij), None)
+            self.rotaties.pop((kol, rij), None)
         else:
             if self.gekozen == "vlag":
                 # Er mag maar één finishvlag zijn
@@ -274,6 +299,11 @@ class BouwerView(arcade.View):
                 self.grid[(kol, rij)] = "deco_" + self.deco_soort
             else:
                 self.grid[(kol, rij)] = self.gekozen
+            # Onthoud de draai-stand voor dit vakje (0 = niet onthouden)
+            if self.rotatie:
+                self.rotaties[(kol, rij)] = self.rotatie
+            else:
+                self.rotaties.pop((kol, rij), None)
 
     def _klik_balk(self, x, y):
         for soort, (l, r) in self.palet_knoppen.items():
@@ -300,8 +330,12 @@ class BouwerView(arcade.View):
                     self._opslaan()
                 elif naam == "wissen":
                     self.grid = {}
+                    self.rotaties = {}
                 elif naam == "kaart":
                     self._naar_kaart()
+                elif naam == "draai":
+                    # Draai de plaats-stand een kwartslag verder (0 -> 90 -> 180 -> 270 -> 0)
+                    self.rotatie = (self.rotatie + 90) % 360
                 elif naam == "type":
                     # Klik door de types heen: gewoon -> race -> vlucht -> gewoon
                     volgende = {"gewoon": "race", "race": "vlucht", "vlucht": "gewoon"}
@@ -318,6 +352,9 @@ class BouwerView(arcade.View):
             self._speel()
         elif toets == arcade.key.S:
             self._opslaan()
+        elif toets == arcade.key.D:
+            # D = draaien (kwartslag verder)
+            self.rotatie = (self.rotatie + 90) % 360
         elif toets == arcade.key.K or toets == arcade.key.ESCAPE:
             self._naar_kaart()
 
@@ -350,13 +387,14 @@ class BouwerView(arcade.View):
 
         for (kol, rij), soort in self.grid.items():
             wx, wy = kol * CEL, rij * CEL
+            rot = self.rotaties.get((kol, rij), 0)
             max_x = max(max_x, wx + CEL)
             if soort == "grond":
                 platforms.append(Platform(wx, wy, CEL, CEL))
             elif soort == "blok":
                 platforms.append(BlokPlatform(wx, wy, CEL, CEL))
             elif soort == "spike":
-                vijanden.append(Spikes(wx + 4, wy, 2))
+                vijanden.append(Spikes(wx + 4, wy, 2, rot))     # met draaiing
             elif soort == "vijand":
                 vijanden.append(Vijand(wx, wy, wx - 80, wx + CEL + 80, 2))
             elif soort == "hart":
@@ -366,7 +404,7 @@ class BouwerView(arcade.View):
                 portalen.append(Portaal(wx + 5, wy, soort.split("_", 1)[1]))
             elif soort.startswith("deco_"):
                 # "deco_bloem" -> Decoratie met soort "bloem", enz. (geen botsing)
-                decoraties.append(Decoratie(wx, wy, soort.split("_", 1)[1]))
+                decoraties.append(Decoratie(wx, wy, soort.split("_", 1)[1], rot))
             elif soort == "vlag":
                 vlag_x, vlag_y = wx, wy
 
