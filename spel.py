@@ -939,7 +939,13 @@ class PlatformerSpel(arcade.View):
                         portaal.teken()
                 if not self.arena:                 # in de vechtmodus is er geen vlag
                     self._teken_vlag(self.vlag_x, self.vlag_y)
-                sp.teken()
+                # Teken BEIDE spelers, zodat je elkaar ziet als je dicht bij elkaar bent.
+                # Boven elke speler een gekleurd bolletje: speler 1 = blauw, speler 2 = rood.
+                for speler, kleur in ((self.speler, (60, 140, 255)), (self.speler2, (255, 80, 80))):
+                    if zicht(speler, speler.breedte):
+                        speler.teken()
+                        arcade.draw_circle_filled(speler.x + speler.breedte / 2,
+                                                  speler.y + speler.hoogte + 12, 7, kleur)
         # Scheidingslijn precies in het midden
         arcade.draw_lrbt_rectangle_filled(half - 3, half + 3, 0, H, (20, 20, 30))
         self._teken_twee_hud()
