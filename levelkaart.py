@@ -41,13 +41,14 @@ def _basis_positie(nummer):
 class LevelKaartView(arcade.View):
     """De levelkaart — hier kies je welk level je wilt spelen."""
 
-    # Knoppen aan de rechterkant: (links, rechts, onder, boven) — vier stuks
+    # Knoppen aan de rechterkant: (links, rechts, onder, boven) — vijf stuks
     _KL = SCHERM_BREEDTE - 152           # linkerkant van de knoppen
     _KR = SCHERM_BREEDTE - 8             # rechterkant van de knoppen
-    ARENA_KNOP = (_KL, _KR, 526, 656)   # vechtmodus (bovenste knop)
-    VLUCHT_KNOP = (_KL, _KR, 384, 514)  # vliegtuig-modus
-    RACE_KNOP = (_KL, _KR, 242, 372)    # racemodus
-    BOUWER_KNOP = (_KL, _KR, 100, 230)  # bouwmodus (onderste knop)
+    ARENA_KNOP = (_KL, _KR, 556, 660)   # vechtmodus (bovenste knop)
+    VLUCHT_KNOP = (_KL, _KR, 442, 546)  # vliegtuig-modus
+    RACE_KNOP = (_KL, _KR, 328, 432)    # racemodus
+    TWEE_KNOP = (_KL, _KR, 214, 318)    # 2 spelers (split-screen)
+    BOUWER_KNOP = (_KL, _KR, 100, 204)  # bouwmodus (onderste knop)
 
     def __init__(self, voltooid_levels, punten=0, levens=None, arena_record=0,
                  race_record=0, vlucht_record=0):
@@ -175,6 +176,8 @@ class LevelKaartView(arcade.View):
         race_record = f"record: baan {self.race_record}" if self.race_record > 0 else ""
         self._teken_zij_knop(self.RACE_KNOP, (40, 110, 180), (40, 150, 210),
                              "🏁", "RACEN", race_record, "(klik of R)")
+        self._teken_zij_knop(self.TWEE_KNOP, (200, 120, 30), (230, 160, 40),
+                             "👬", "2 SPELERS", "samen racen!", "(klik of 2)")
         self._teken_zij_knop(self.BOUWER_KNOP, (150, 100, 30), (190, 140, 40),
                              "🔨", "BOUWEN", "", "(klik of B)")
 
@@ -285,6 +288,9 @@ class LevelKaartView(arcade.View):
         elif toets == arcade.key.F:
             # F = start de vliegtuig-modus
             self._start_vlucht()
+        elif toets == arcade.key.KEY_2:
+            # 2 = start de 2-spelers-modus (split-screen race)
+            self._start_twee()
         elif toets == arcade.key.B:
             # B = start de bouwmodus
             self._start_bouwer()
@@ -294,6 +300,7 @@ class LevelKaartView(arcade.View):
         al, ar, ab, at = self.ARENA_KNOP
         vl, vr, vb, vt = self.VLUCHT_KNOP
         rl, rr, rb, rt = self.RACE_KNOP
+        tl, tr, tb, tt = self.TWEE_KNOP
         bl, br, bb, bt = self.BOUWER_KNOP
         if al <= x <= ar and ab <= y <= at:
             self._start_arena()
@@ -301,6 +308,8 @@ class LevelKaartView(arcade.View):
             self._start_vlucht()
         elif rl <= x <= rr and rb <= y <= rt:
             self._start_race()
+        elif tl <= x <= tr and tb <= y <= tt:
+            self._start_twee()
         elif bl <= x <= br and bb <= y <= bt:
             self._start_bouwer()
 
@@ -328,6 +337,13 @@ class LevelKaartView(arcade.View):
         """Start de vliegtuig-modus bij baan 1 — je vliegt vanzelf vooruit!"""
         from spel import PlatformerSpel
         spel = PlatformerSpel(1, self.voltooid, punten=0, levens=None, vlucht=True,
+                              kaart_punten=self.punten, kaart_levens=self.levens)
+        self.window.show_view(spel)
+
+    def _start_twee(self):
+        """Start de 2-spelers-modus: het scherm gaat doormidden (split-screen race)."""
+        from spel import PlatformerSpel
+        spel = PlatformerSpel(1, self.voltooid, punten=0, levens=None, twee=True,
                               kaart_punten=self.punten, kaart_levens=self.levens)
         self.window.show_view(spel)
 
