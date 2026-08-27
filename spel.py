@@ -12,6 +12,7 @@ from instellingen import (SCHERM_BREEDTE, SCHERM_HOOGTE, TWEE_BREEDTE, TWEE_HOOG
                            VLAG_DOEK_KLEUR, LEVEL_NAMEN, AANTAL_LEVELS)
 from speler import Speler, VLIEG_PLAFOND
 from portaal import SNELHEID_FACTOR
+from springers import SpringBol, SpringMat, BOL_KRACHT, MAT_KRACHT
 from powerup import Kogel
 import voortgang as voortgang_module
 
@@ -140,6 +141,8 @@ class PlatformerSpel(arcade.View):
         self.portalen = list(data[6]) if len(data) > 6 else []
         # Decoratie is optioneel (een 8e onderdeel); alleen zelfgebouwde levels hebben het
         self.decoraties = list(data[7]) if len(data) > 7 else []
+        # Spring-bollen en spring-matten (een 9e onderdeel)
+        self.springers = list(data[8]) if len(data) > 8 else []
         self.platforms = platforms
         # Zet de begin-modus: vliegtuig in de vluchtmodus, anders het gewone blokje.
         # Portalen kunnen dit tijdens het spelen nog omzetten (ufo/bal/golf)!
@@ -223,6 +226,11 @@ class PlatformerSpel(arcade.View):
             for vijand in self.vijanden:
                 if in_beeld(vijand, vijand.breedte):
                     vijand.teken()
+
+            # Teken de spring-bollen en spring-matten
+            for springer in self.springers:
+                if in_beeld(springer, springer.breedte):
+                    springer.teken()
 
             # Teken de power-ups die nog niet opgepakt zijn en in beeld zijn
             for powerup in self.powerups:
@@ -477,6 +485,9 @@ class PlatformerSpel(arcade.View):
         self._pas_portalen_toe(self.speler, self._vorige_speler_x)
         self._vorige_speler_x = self.speler.x   # onthouden voor de volgende stap
 
+        # Spring-matten (vanzelf) en spring-bollen (onthoud dat je erop staat)
+        self._check_springers(self.speler)
+
         # Draaien hangt af van de modus
         self._pas_rotatie_toe(self.speler)
 
@@ -721,6 +732,29 @@ class PlatformerSpel(arcade.View):
                         sp.rotatie = 0               # weer recht (behalve vliegtuig kantelt)
                     geluid_manager.speel_powerup()   # 🎵 vorm-wissel geluidje
 
+    def _check_springers(self, sp):
+        """Spring-matten (vanzelf springen) en spring-bollen (onthoud dat je erop staat)."""
+        op_bol = False
+        for s in self.springers:
+            if not s.raakt_speler(sp.x, sp.y, sp.breedte, sp.hoogte):
+                continue
+            if isinstance(s, SpringMat):
+                # Mat: spring VANZELF omhoog (alleen als je niet al omhoog schiet)
+                if sp.snelheid_y <= 0.5:
+                    sp.snelheid_y = MAT_KRACHT
+                    geluid_manager.speel_sprong()
+            else:
+                op_bol = True     # bol: je springt pas als je op de knop drukt
+        sp._op_bol = op_bol
+
+    def _springboost(self, sp):
+        """Als de speler op een spring-bol staat en op springen drukt: extra sprong."""
+        if getattr(sp, "_op_bol", False):
+            sp.snelheid_y = BOL_KRACHT
+            geluid_manager.speel_sprong()
+            return True
+        return False
+
     def _raakt_blok_zijkant(self, sp):
         """Botst deze speler tegen de ZIJKANT van een blok? (Geometry Dash-dood.)"""
         for p in self._blokken:
@@ -794,6 +828,7 @@ class PlatformerSpel(arcade.View):
             self._vorige_speler_x = sp.x
         else:
             self._vorige_speler_x2 = sp.x
+        self._check_springers(sp)          # spring-matten en spring-bollen
         self._pas_rotatie_toe(sp)
         if self._raakt_blok_zijkant(sp) or sp.is_gevallen():
             self._racer_dood(sp, idx)
@@ -882,6 +917,9 @@ class PlatformerSpel(arcade.View):
 
     def _actie_druk(self, sp, idx):
         """Een speler drukt op zijn knop: doe de actie die bij zijn modus hoort."""
+        # Sta je op een spring-bol? Dan spring je (ook in de lucht), wat je modus ook is.
+        if self._springboost(sp):
+            return
         m = sp.modus
         if m in ("vliegtuig", "golf"):
             if idx == 1:
@@ -937,6 +975,9 @@ class PlatformerSpel(arcade.View):
                 for v in self.vijanden:
                     if zicht(v, v.breedte):
                         v.teken()
+                for springer in self.springers:
+                    if zicht(springer, springer.breedte):
+                        springer.teken()
                 for portaal in self.portalen:
                     if zicht(portaal, portaal.breedte):
                         portaal.teken()
@@ -1048,6 +1089,9 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.RIGHT:
             self.speler.rechts_ingedrukt = True
         elif toets == arcade.key.UP or toets == arcade.key.SPACE:
+            # Sta je op een spring-bol? Dan spring je meteen (ook in de lucht)
+            if self._springboost(self.speler):
+                return
             modus = self.speler.modus
             if modus in ("vliegtuig", "golf"):
                 # Vasthoud-modi: knop ingedrukt = omhoog (stuwen of schuin omhoog)

@@ -13,12 +13,17 @@ CEL = 40                       # grootte van één raster-vakje
 BESTAND = "eigen_level.json"   # hier wordt je level opgeslagen
 
 # De dingen die je kunt plaatsen (op volgorde in het palet)
-ITEMS = ["grond", "blok", "spike", "vijand", "hart", "vlag", "portaal", "snel", "deco", "gum"]
+ITEMS = ["grond", "blok", "spike", "vijand", "hart", "vlag", "portaal", "snel",
+         "deco", "spring", "gum"]
 ITEM_NAAM = {
     "grond": "Grond", "blok": "Blok", "spike": "Spike", "vijand": "Vijand",
     "hart": "Hartje", "vlag": "Finish", "portaal": "Portaal", "snel": "Snel",
-    "deco": "Deco", "gum": "Gum",
+    "deco": "Deco", "spring": "Spring", "gum": "Gum",
 }
+
+# De spring-dingen waar je met de Spring-knop doorheen klikt
+SPRING_SOORTEN = ["bol", "mat"]
+SPRING_NAAM = {"bol": "Bol", "mat": "Mat"}
 
 # De vorm-portalen waar je met de Portaal-knop doorheen klikt
 PORTAAL_SOORTEN = ["vlucht", "blok", "ufo", "bal", "golf", "robot", "spin"]
@@ -86,6 +91,15 @@ def teken_item(soort, x, y, grootte, rotatie=0):
     elif soort.startswith("deco_"):
         # "deco_bloem", "deco_boom", enz. -> teken de decoratie
         teken_deco(soort.split("_", 1)[1], x, y, g, rotatie)
+    elif soort.startswith("spring_"):
+        # "spring_bol" of "spring_mat"
+        cx, cy = x + g // 2, y + g // 2
+        if soort.endswith("bol"):
+            arcade.draw_circle_outline(cx, cy, g * 0.32, (255, 210, 50), 3)
+            arcade.draw_triangle_filled(cx - 5, cy - 3, cx + 5, cy - 3, cx, cy + 5, (255, 210, 50))
+        else:
+            arcade.draw_lrbt_rectangle_filled(cx - g * 0.4, cx + g * 0.4, y + 6, y + 14, (255, 140, 40))
+            arcade.draw_triangle_filled(cx - 6, y + 14, cx + 6, y + 14, cx, y + 22, (255, 210, 50))
     elif soort == "gum":
         arcade.draw_lrbt_rectangle_filled(x + 5, x + g - 5, y + 8, y + g - 8, (255, 180, 200))
         arcade.draw_lrbt_rectangle_outline(x + 5, x + g - 5, y + 8, y + g - 8, (200, 100, 130), 2)
@@ -113,6 +127,7 @@ class BouwerView(arcade.View):
         self.portaal_soort = "vlucht"  # welk vorm-portaal je plaatst (klik op Portaal)
         self.snel_soort = "x2"         # welk snelheid-portaal je plaatst (klik op Snel)
         self.deco_soort = "bloem"      # welke decoratie je plaatst (klik op Deco)
+        self.spring_soort = "bol"      # welk spring-ding je plaatst (klik op Spring)
         # Type van je level: "gewoon" (lopen), "race" (auto-run), "vlucht" (vliegen)
         self.mode = "gewoon"
         self.scroll = 0                # hoe ver je naar rechts hebt geschoven
@@ -123,8 +138,8 @@ class BouwerView(arcade.View):
         # Palet-knoppen (links) en actie-knoppen (rechts) uitrekenen
         self.palet_knoppen = {}        # soort -> (l, r)
         for i, soort in enumerate(ITEMS):
-            l = 6 + i * 40
-            self.palet_knoppen[soort] = (l, l + 38)
+            l = 6 + i * 36
+            self.palet_knoppen[soort] = (l, l + 34)
         self.actie_knoppen = {         # naam -> (l, r)
             "spelen": (410, 460),
             "opslaan": (464, 524),
@@ -236,6 +251,9 @@ class BouwerView(arcade.View):
             elif soort == "deco":
                 teken_item("deco_" + self.deco_soort, l + 2, BALK_Y + 10, 34, self.rotatie)
                 naam = DECO_NAAM[self.deco_soort]
+            elif soort == "spring":
+                teken_item("spring_" + self.spring_soort, l + 2, BALK_Y + 10, 34)
+                naam = SPRING_NAAM[self.spring_soort]
             else:
                 # spikes en deco draaien mee met de draai-stand
                 rot = self.rotatie if soort == "spike" else 0
@@ -301,6 +319,8 @@ class BouwerView(arcade.View):
                 self.grid[(kol, rij)] = "portaal_" + self.snel_soort
             elif self.gekozen == "deco":
                 self.grid[(kol, rij)] = "deco_" + self.deco_soort
+            elif self.gekozen == "spring":
+                self.grid[(kol, rij)] = "spring_" + self.spring_soort
             else:
                 self.grid[(kol, rij)] = self.gekozen
             # Onthoud de draai-stand voor dit vakje (0 = niet onthouden)
@@ -324,6 +344,10 @@ class BouwerView(arcade.View):
                     # Nog een keer op Deco klikken: door de decoratie-soorten wisselen
                     i = DECO_SOORTEN.index(self.deco_soort)
                     self.deco_soort = DECO_SOORTEN[(i + 1) % len(DECO_SOORTEN)]
+                elif soort == "spring" and self.gekozen == "spring":
+                    # Nog een keer op Spring klikken: wissel tussen bol en mat
+                    i = SPRING_SOORTEN.index(self.spring_soort)
+                    self.spring_soort = SPRING_SOORTEN[(i + 1) % len(SPRING_SOORTEN)]
                 self.gekozen = soort
                 return
         for naam, (l, r) in self.actie_knoppen.items():
@@ -380,12 +404,14 @@ class BouwerView(arcade.View):
         from powerup import ExtraLevenPowerUp
         from portaal import Portaal
         from decoratie import Decoratie
+        from springers import SpringBol, SpringMat
 
         platforms = [Platform(0, 0, 100, 40)]   # altijd een klein startstukje grond
         vijanden = []
         powerups = []
         portalen = []
         decoraties = []
+        springers = []
         vlag_x, vlag_y = None, None
         max_x = 300
 
@@ -409,6 +435,10 @@ class BouwerView(arcade.View):
             elif soort.startswith("deco_"):
                 # "deco_bloem" -> Decoratie met soort "bloem", enz. (geen botsing)
                 decoraties.append(Decoratie(wx, wy, soort.split("_", 1)[1], rot))
+            elif soort == "spring_bol":
+                springers.append(SpringBol(wx + 3, wy + 3))
+            elif soort == "spring_mat":
+                springers.append(SpringMat(wx, wy))
             elif soort == "vlag":
                 vlag_x, vlag_y = wx, wy
 
@@ -416,7 +446,8 @@ class BouwerView(arcade.View):
             vlag_x, vlag_y = max_x + 60, 40
             max_x += 200
         level_breedte = max_x + 200
-        return platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte, portalen, decoraties
+        return (platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte,
+                portalen, decoraties, springers)
 
     def _speel(self):
         """Sla het level op en speel het."""
