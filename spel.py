@@ -123,6 +123,8 @@ class PlatformerSpel(arcade.View):
         level_breedte = data[5]
         # Portalen zijn optioneel (een 7e onderdeel); niet elk level heeft ze
         self.portalen = list(data[6]) if len(data) > 6 else []
+        # Decoratie is optioneel (een 8e onderdeel); alleen zelfgebouwde levels hebben het
+        self.decoraties = list(data[7]) if len(data) > 7 else []
         self.platforms = platforms
         # Zet de begin-modus: vliegtuig in de vluchtmodus, anders het gewone blokje.
         # Portalen kunnen dit tijdens het spelen nog omzetten (ufo/bal/golf)!
@@ -181,6 +183,11 @@ class PlatformerSpel(arcade.View):
         # --- Teken de spelwereld met de camera ---
         # Alles binnen dit blok beweegt mee met de camera
         with self.camera.activate():
+
+            # Teken eerst de decoratie (achtergrond, geen botsing)
+            for deco in self.decoraties:
+                if in_beeld(deco, deco.breedte):
+                    deco.teken()
 
             # Teken alleen de platforms die in beeld zijn
             for platform in self.platforms:
