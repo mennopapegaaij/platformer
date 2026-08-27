@@ -41,14 +41,17 @@ def _basis_positie(nummer):
 class LevelKaartView(arcade.View):
     """De levelkaart — hier kies je welk level je wilt spelen."""
 
-    # Knoppen aan de rechterkant: (links, rechts, onder, boven) — vijf stuks
+    # Knoppen aan de rechterkant: vijf stuks, netjes verdeeld onder de titelbalk.
     _KL = SCHERM_BREEDTE - 152           # linkerkant van de knoppen
     _KR = SCHERM_BREEDTE - 8             # rechterkant van de knoppen
-    ARENA_KNOP = (_KL, _KR, 556, 660)   # vechtmodus (bovenste knop)
-    VLUCHT_KNOP = (_KL, _KR, 442, 546)  # vliegtuig-modus
-    RACE_KNOP = (_KL, _KR, 328, 432)    # racemodus
-    TWEE_KNOP = (_KL, _KR, 214, 318)    # 2 spelers (split-screen)
-    BOUWER_KNOP = (_KL, _KR, 100, 204)  # bouwmodus (onderste knop)
+    _GAP = 8
+    _ONDER = 30                          # onderkant van de onderste knop
+    _BH = (SCHERM_HOOGTE - 66 - _ONDER - 4 * _GAP) // 5   # hoogte van één knop
+    BOUWER_KNOP = (_KL, _KR, _ONDER + 0 * (_BH + _GAP), _ONDER + 0 * (_BH + _GAP) + _BH)
+    TWEE_KNOP = (_KL, _KR, _ONDER + 1 * (_BH + _GAP), _ONDER + 1 * (_BH + _GAP) + _BH)
+    RACE_KNOP = (_KL, _KR, _ONDER + 2 * (_BH + _GAP), _ONDER + 2 * (_BH + _GAP) + _BH)
+    VLUCHT_KNOP = (_KL, _KR, _ONDER + 3 * (_BH + _GAP), _ONDER + 3 * (_BH + _GAP) + _BH)
+    ARENA_KNOP = (_KL, _KR, _ONDER + 4 * (_BH + _GAP), _ONDER + 4 * (_BH + _GAP) + _BH)
 
     def __init__(self, voltooid_levels, punten=0, levens=None, arena_record=0,
                  race_record=0, vlucht_record=0):
@@ -106,6 +109,9 @@ class LevelKaartView(arcade.View):
 
     def on_show_view(self):
         """Wordt aangeroepen als dit scherm zichtbaar wordt."""
+        # De kaart is altijd op de gewone (kleine) maat — ook terug uit 2-spelers
+        if self.window.width != SCHERM_BREEDTE or self.window.height != SCHERM_HOOGTE:
+            self.window.set_size(SCHERM_BREEDTE, SCHERM_HOOGTE)
         arcade.set_background_color((60, 160, 60))  # Groen gras
 
     def on_draw(self):
@@ -194,15 +200,17 @@ class LevelKaartView(arcade.View):
         """Teken een knop aan de zijkant (voor vecht-, vlucht-, race- of bouwmodus)."""
         l, r, b, t = rect
         cx = (l + r) // 2
+        h = t - b
         arcade.draw_lrbt_rectangle_filled(l, r, b, t, hoofd_kleur)
         arcade.draw_lrbt_rectangle_filled(l, r, b, t - 6, top_kleur)
         arcade.draw_lrbt_rectangle_outline(l, r, b, t, (255, 220, 120), 3)
-        arcade.draw_text(emoji, cx, t - 32, arcade.color.WHITE, 24, anchor_x="center")
-        arcade.draw_text(naam, cx, t - 56, arcade.color.WHITE, 14, bold=True, anchor_x="center")
+        # Tekst-plekken meeschalen met de knop-hoogte (past bij klein én groot scherm)
+        arcade.draw_text(emoji, cx, t - h * 0.28, arcade.color.WHITE, 22, anchor_x="center")
+        arcade.draw_text(naam, cx, t - h * 0.52, arcade.color.WHITE, 14, bold=True, anchor_x="center")
         if record_tekst:
-            arcade.draw_text(record_tekst, cx, b + 20, arcade.color.YELLOW, 9,
+            arcade.draw_text(record_tekst, cx, b + h * 0.22, arcade.color.YELLOW, 9,
                              bold=True, anchor_x="center")
-        arcade.draw_text(hint, cx, b + 6, (255, 230, 180), 9, anchor_x="center")
+        arcade.draw_text(hint, cx, b + h * 0.06, (255, 230, 180), 9, anchor_x="center")
 
     def _teken_level_knoop(self, nummer, x, y):
         """Teken één level-bolletje op de kaart."""

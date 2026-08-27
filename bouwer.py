@@ -175,6 +175,9 @@ class BouwerView(arcade.View):
 
     # ---------- Tekenen ----------
     def on_show_view(self):
+        # De bouwmodus is altijd op de gewone (kleine) maat
+        if self.window.width != SCHERM_BREEDTE or self.window.height != SCHERM_HOOGTE:
+            self.window.set_size(SCHERM_BREEDTE, SCHERM_HOOGTE)
         arcade.set_background_color((120, 190, 230))   # lichtblauwe lucht
 
     def on_draw(self):

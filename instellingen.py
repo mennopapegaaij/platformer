@@ -5,8 +5,11 @@
 import arcade
 
 # --- Instellingen van het scherm ---
-SCHERM_BREEDTE = 1600      # Hoe breed het venster is (2x zo breed voor 2 spelers)
-SCHERM_HOOGTE = 750        # Hoe hoog het venster is (1,5x zo hoog)
+SCHERM_BREEDTE = 800       # Hoe breed het venster is (1 speler); bij 2 spelers wordt het groter
+SCHERM_HOOGTE = 500        # Hoe hoog het venster is (1 speler)
+# Bij 2 spelers gaat het scherm doormidden; dan wordt het venster zo groot:
+TWEE_BREEDTE = 1600
+TWEE_HOOGTE = 750
 SCHERM_TITEL = "De Platformer"
 
 # --- Instellingen van de speler ---

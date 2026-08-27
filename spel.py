@@ -7,7 +7,7 @@ import copy   # om bij een herstart verse kopieën van je eigen level te maken
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
-from instellingen import (SCHERM_BREEDTE, SCHERM_HOOGTE,
+from instellingen import (SCHERM_BREEDTE, SCHERM_HOOGTE, TWEE_BREEDTE, TWEE_HOOGTE,
                            SPRING_KRACHT, LUCHT_KLEUR, VLAG_KLEUR,
                            VLAG_DOEK_KLEUR, LEVEL_NAMEN, AANTAL_LEVELS)
 from speler import Speler, VLIEG_PLAFOND
@@ -65,6 +65,10 @@ class PlatformerSpel(arcade.View):
 
     def on_show_view(self):
         """Wordt aangeroepen als dit scherm zichtbaar wordt."""
+        # Bij 2 spelers wordt het scherm groot (split-screen); anders de gewone maat
+        gewenst = (TWEE_BREEDTE, TWEE_HOOGTE) if self.twee else (SCHERM_BREEDTE, SCHERM_HOOGTE)
+        if (self.window.width, self.window.height) != gewenst:
+            self.window.set_size(*gewenst)
         arcade.set_background_color(LUCHT_KLEUR)
         self.huidig_level = self.start_level
         # Herstel punten van het vorige level
@@ -180,13 +184,15 @@ class PlatformerSpel(arcade.View):
         """Teken alles op het scherm."""
         self.clear()
 
-        # --- Teken eerst de achtergrond (altijd op vaste plek, schuift niet mee) ---
-        achtergrond_module.teken_achtergrond(self.huidig_level, SCHERM_BREEDTE, SCHERM_HOOGTE)
-
-        # In de 2-spelers-modus tekenen we het scherm in twee helften
+        # In de 2-spelers-modus tekenen we het scherm (groot) in twee helften
         if self.twee:
+            achtergrond_module.teken_achtergrond(self.huidig_level,
+                                                 self.window.width, self.window.height)
             self._teken_twee()
             return
+
+        # --- Teken eerst de achtergrond (altijd op vaste plek, schuift niet mee) ---
+        achtergrond_module.teken_achtergrond(self.huidig_level, SCHERM_BREEDTE, SCHERM_HOOGTE)
 
         # --- Alleen tekenen wat in beeld is (scheelt heel veel bij lange banen!) ---
         cam_x = max(SCHERM_BREEDTE / 2,
@@ -749,12 +755,13 @@ class PlatformerSpel(arcade.View):
         self.winnaar = None
         self._vlieg_omhoog = False
         self._vlieg_omhoog2 = False
-        # Links speler 1, rechts speler 2 (elk de halve breedte, niet uitgerekt)
-        half = SCHERM_BREEDTE // 2
-        self.camera.viewport = arcade.LBWH(0, 0, half, SCHERM_HOOGTE)
-        self.camera.projection = arcade.LRBT(-half / 2, half / 2, -SCHERM_HOOGTE / 2, SCHERM_HOOGTE / 2)
-        self.camera2.viewport = arcade.LBWH(half, 0, half, SCHERM_HOOGTE)
-        self.camera2.projection = arcade.LRBT(-half / 2, half / 2, -SCHERM_HOOGTE / 2, SCHERM_HOOGTE / 2)
+        # Links speler 1, rechts speler 2 (elk de halve breedte van het grote scherm)
+        W, H = self.window.width, self.window.height
+        half = W // 2
+        self.camera.viewport = arcade.LBWH(0, 0, half, H)
+        self.camera.projection = arcade.LRBT(-half / 2, half / 2, -H / 2, H / 2)
+        self.camera2.viewport = arcade.LBWH(half, 0, half, H)
+        self.camera2.projection = arcade.LRBT(-half / 2, half / 2, -H / 2, H / 2)
 
     def _is_klaar(self, idx):
         """Is deze speler klaar (gefinisht)? In de vechtmodus nooit (samen tot het eind)."""
@@ -863,11 +870,12 @@ class PlatformerSpel(arcade.View):
                         break
         self._check_win_twee()
         # Camera's laten meebewegen
-        half = SCHERM_BREEDTE // 2
+        W, H = self.window.width, self.window.height
+        half = W // 2
         for sp, cam in ((self.speler, self.camera), (self.speler2, self.camera2)):
             cx = sp.x + sp.breedte / 2
             cx = max(half / 2, min(cx, self.level_breedte - half / 2))
-            cam.position = cx, SCHERM_HOOGTE / 2
+            cam.position = cx, H / 2
 
     def _actie_druk(self, sp, idx):
         """Een speler drukt op zijn knop: doe de actie die bij zijn modus hoort."""
@@ -906,7 +914,8 @@ class PlatformerSpel(arcade.View):
 
     def _teken_twee(self):
         """Teken het scherm in twee helften: links speler 1, rechts speler 2."""
-        half = SCHERM_BREEDTE // 2
+        W, H = self.window.width, self.window.height
+        half = W // 2
         for sp, cam in ((self.speler, self.camera), (self.speler2, self.camera2)):
             with cam.activate():
                 cx = cam.position[0]
@@ -932,11 +941,11 @@ class PlatformerSpel(arcade.View):
                     self._teken_vlag(self.vlag_x, self.vlag_y)
                 sp.teken()
         # Scheidingslijn precies in het midden
-        arcade.draw_lrbt_rectangle_filled(half - 3, half + 3, 0, SCHERM_HOOGTE, (20, 20, 30))
+        arcade.draw_lrbt_rectangle_filled(half - 3, half + 3, 0, H, (20, 20, 30))
         self._teken_twee_hud()
         # Banner: iemand wint (race/vlucht) of allebei winnen (vechtmodus)
         if self.winnaar or (self.arena and self.level_gehaald):
-            mx, my = SCHERM_BREEDTE // 2, SCHERM_HOOGTE // 2
+            mx, my = W // 2, H // 2
             arcade.draw_lrbt_rectangle_filled(mx - 340, mx + 340, my - 80, my + 80, (20, 70, 20))
             arcade.draw_lrbt_rectangle_outline(mx - 340, mx + 340, my - 80, my + 80,
                                                arcade.color.WHITE, 3)
@@ -951,24 +960,25 @@ class PlatformerSpel(arcade.View):
 
     def _teken_twee_hud(self):
         """Teken bovenin elke helft een naam + (in race/vlucht) een voortgangsbalk."""
-        half = SCHERM_BREEDTE // 2
+        W, H = self.window.width, self.window.height
+        half = W // 2
         doel = self.vlag_x if self.vlag_x > 0 else self.level_breedte
         for sp, idx, midden, klaar in ((self.speler, 1, half // 2, self._finish1),
                                        (self.speler2, 2, half + half // 2, self._finish2)):
             if self.arena:
                 # Vechtmodus: geen voortgangsbalk, alleen een kopje
-                arcade.draw_text(f"Speler {idx}  —  Vechten! ⚔️", midden, SCHERM_HOOGTE - 40,
+                arcade.draw_text(f"Speler {idx}  —  Vechten! ⚔️", midden, H - 40,
                                  arcade.color.WHITE, 16, bold=True, anchor_x="center")
                 continue
             pct = max(0.0, min(sp.x / doel, 1.0))
             bl, br = midden - 150, midden + 150
-            bb, bt = SCHERM_HOOGTE - 26, SCHERM_HOOGTE - 12
+            bb, bt = H - 26, H - 12
             arcade.draw_lrbt_rectangle_filled(bl, br, bb, bt, (40, 40, 55))
             if pct > 0:
                 arcade.draw_lrbt_rectangle_filled(bl, bl + (br - bl) * pct, bb, bt, (80, 220, 90))
             arcade.draw_lrbt_rectangle_outline(bl, br, bb, bt, arcade.color.WHITE, 2)
             kop = f"Speler {idx}  —  FINISH! 🏁" if klaar else f"Speler {idx}  —  {int(pct * 100)}%"
-            arcade.draw_text(kop, midden, SCHERM_HOOGTE - 52, arcade.color.WHITE, 16,
+            arcade.draw_text(kop, midden, H - 52, arcade.color.WHITE, 16,
                              bold=True, anchor_x="center")
 
     def _speler_geraakt(self):
