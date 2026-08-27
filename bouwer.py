@@ -28,8 +28,8 @@ PORTAAL_NAAM = {"vlucht": "Vlieg", "blok": "Blok", "ufo": "UFO", "bal": "Bal",
 # De snelheid-portalen waar je met de Snel-knop doorheen klikt
 SNELHEID_SOORTEN = ["x0.5", "x1", "x2", "x5", "x10"]
 
-# Waar de bovenbalk (met knoppen) begint
-BALK_Y = 442
+# Waar de bovenbalk (met knoppen) begint (net onder de bovenrand)
+BALK_Y = SCHERM_HOOGTE - 58
 
 
 def teken_item(soort, x, y, grootte, rotatie=0):

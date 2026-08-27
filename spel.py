@@ -49,10 +49,13 @@ class PlatformerSpel(arcade.View):
         self._arena_top = 1
 
     # Klik-vlakken voor de arena-pijltjes bovenin: (links, rechts, onder, boven)
-    ARENA_PIJL_LINKS = (322, 356, 458, 486)
-    ARENA_PIJL_RECHTS = (444, 478, 458, 486)
+    ARENA_PIJL_LINKS = (SCHERM_BREEDTE // 2 - 78, SCHERM_BREEDTE // 2 - 44,
+                        SCHERM_HOOGTE - 42, SCHERM_HOOGTE - 14)
+    ARENA_PIJL_RECHTS = (SCHERM_BREEDTE // 2 + 44, SCHERM_BREEDTE // 2 + 78,
+                         SCHERM_HOOGTE - 42, SCHERM_HOOGTE - 14)
     # Klik-vlak voor de reset-knop rechtsboven
-    ARENA_RESET_KNOP = (700, 792, 430, 456)
+    ARENA_RESET_KNOP = (SCHERM_BREEDTE - 100, SCHERM_BREEDTE - 8,
+                        SCHERM_HOOGTE - 70, SCHERM_HOOGTE - 44)
 
     def on_show_view(self):
         """Wordt aangeroepen als dit scherm zichtbaar wordt."""
@@ -271,68 +274,60 @@ class PlatformerSpel(arcade.View):
         # K-toets hint linksonder
         arcade.draw_text("K = kaart", 10, 10, arcade.color.WHITE, 13)
 
+        # De berichten staan altijd netjes in het midden van het scherm
+        mx = SCHERM_BREEDTE // 2
+        my = SCHERM_HOOGTE // 2
+
+        def bericht_box(kleur):
+            arcade.draw_lrbt_rectangle_filled(mx - 300, mx + 300, my - 90, my + 90, kleur)
+
+        def bericht(tekst, dy, kleur=arcade.color.WHITE, grootte=18, vet=False):
+            arcade.draw_text(tekst, mx, my + dy, kleur, grootte, bold=vet, anchor_x="center")
+
         if self.game_over:
-            arcade.draw_lrbt_rectangle_filled(100, 700, 160, 340, (80, 0, 0))
-            arcade.draw_text("💀 Game Over! 💀",
-                             230, 270, arcade.color.WHITE, 28, bold=True)
+            bericht_box((80, 0, 0))
+            bericht("💀 Game Over! 💀", 20, grootte=28, vet=True)
             if self.arena:
-                arcade.draw_text(f"Je haalde arena-level {self.huidig_level}!",
-                                 220, 240, arcade.color.YELLOW, 16, bold=True)
-                arcade.draw_text("Druk op R om terug naar de kaart te gaan",
-                                 190, 205, arcade.color.WHITE, 16)
+                bericht(f"Je haalde arena-level {self.huidig_level}!", -12,
+                        arcade.color.YELLOW, 16, True)
+                bericht("Druk op R om terug naar de kaart te gaan", -45, grootte=16)
             else:
-                arcade.draw_text("Druk op R om opnieuw te beginnen",
-                                 205, 210, arcade.color.WHITE, 18)
+                bericht("Druk op R om opnieuw te beginnen", -40)
         elif self.gewonnen:
-            arcade.draw_lrbt_rectangle_filled(100, 700, 160, 340, arcade.color.DARK_GREEN)
-            arcade.draw_text("🎉 Je hebt het hele spel uitgespeeld! 🎉",
-                             130, 270, arcade.color.WHITE, 22, bold=True)
-            arcade.draw_text("Druk op R om terug naar de kaart te gaan",
-                             185, 210, arcade.color.WHITE, 18)
+            bericht_box(arcade.color.DARK_GREEN)
+            bericht("🎉 Je hebt het hele spel uitgespeeld! 🎉", 20, grootte=22, vet=True)
+            bericht("Druk op R om terug naar de kaart te gaan", -40)
         elif self.level_gehaald:
-            arcade.draw_lrbt_rectangle_filled(100, 700, 160, 340, arcade.color.DARK_BLUE)
+            bericht_box(arcade.color.DARK_BLUE)
             if self.eigen:
-                arcade.draw_text("🎉 Je eigen level gehaald! 🎉",
-                                 185, 270, arcade.color.WHITE, 22, bold=True)
-                arcade.draw_text("ENTER of K = terug naar bouwen",
-                                 210, 210, arcade.color.WHITE, 16)
+                bericht("🎉 Je eigen level gehaald! 🎉", 20, grootte=22, vet=True)
+                bericht("ENTER of K = terug naar bouwen", -40, grootte=16)
             elif self.vlucht:
-                arcade.draw_text("✈️ Finish! Baan gevlogen! ✈️",
-                                 185, 270, arcade.color.WHITE, 24, bold=True)
-                arcade.draw_text("ENTER = volgende baan  •  K = kaart",
-                                 195, 210, arcade.color.WHITE, 16)
+                bericht("✈️ Finish! Baan gevlogen! ✈️", 20, grootte=24, vet=True)
+                bericht("ENTER = volgende baan  •  K = kaart", -40, grootte=16)
             elif self.race:
-                arcade.draw_text("🏁 Finish! Baan gehaald! 🏁",
-                                 190, 270, arcade.color.WHITE, 24, bold=True)
-                arcade.draw_text("ENTER = volgende baan  •  K = kaart",
-                                 195, 210, arcade.color.WHITE, 16)
+                bericht("🏁 Finish! Baan gehaald! 🏁", 20, grootte=24, vet=True)
+                bericht("ENTER = volgende baan  •  K = kaart", -40, grootte=16)
             elif self.arena:
-                arcade.draw_text("Alle monsters verslagen! 🎉",
-                                 200, 270, arcade.color.WHITE, 24, bold=True)
-                arcade.draw_text("ENTER = volgend monster-level  •  K = kaart",
-                                 180, 210, arcade.color.WHITE, 16)
+                bericht("Alle monsters verslagen! 🎉", 20, grootte=24, vet=True)
+                bericht("ENTER = volgend monster-level  •  K = kaart", -40, grootte=16)
             else:
-                arcade.draw_text(f"Level {self.huidig_level} gehaald! 🎉",
-                                 240, 270, arcade.color.WHITE, 26, bold=True)
-                arcade.draw_text("Druk op ENTER om terug naar de kaart te gaan",
-                                 185, 210, arcade.color.WHITE, 18)
+                bericht(f"Level {self.huidig_level} gehaald! 🎉", 20, grootte=26, vet=True)
+                bericht("Druk op ENTER om terug naar de kaart te gaan", -40)
         elif self.dood:
-            arcade.draw_lrbt_rectangle_filled(100, 700, 160, 340, arcade.color.DARK_RED)
-            arcade.draw_text("Oeps! Je ging af!",
-                             240, 270, arcade.color.WHITE, 26, bold=True)
+            bericht_box(arcade.color.DARK_RED)
+            bericht("Oeps! Je ging af!", 20, grootte=26, vet=True)
             if self.arena or self.race or self.eigen:
-                arcade.draw_text("Maar je verliest GEEN leven! 😎",
-                                 220, 240, arcade.color.YELLOW, 16, bold=True)
+                bericht("Maar je verliest GEEN leven! 😎", -12, arcade.color.YELLOW, 16, True)
                 if self.race:
                     herstart = "Druk op R om deze baan opnieuw te racen"
                 elif self.eigen:
                     herstart = "Druk op R om je eigen level opnieuw te spelen"
                 else:
                     herstart = "Druk op R om dit monster-level opnieuw te doen"
-                arcade.draw_text(herstart, 175, 205, arcade.color.WHITE, 16)
+                bericht(herstart, -45, grootte=16)
             else:
-                arcade.draw_text("Druk op R om dit level opnieuw te spelen",
-                                 190, 210, arcade.color.WHITE, 18)
+                bericht("Druk op R om dit level opnieuw te spelen", -40)
 
     def _teken_vlag(self, x, y):
         """Teken een vlag op de gegeven positie."""
@@ -400,7 +395,7 @@ class PlatformerSpel(arcade.View):
         arcade.draw_triangle_filled(rr - 8, rcy, rl + 7, rt - 6, rl + 7, rb + 6, kleur_r)
 
         # Het levelnummer tussen de pijltjes
-        arcade.draw_text(f"Level {self.huidig_level}", 400, lb + 7,
+        arcade.draw_text(f"Level {self.huidig_level}", SCHERM_BREEDTE // 2, lb + 7,
                          arcade.color.WHITE, 13, bold=True, anchor_x="center")
 
         # Reset-knop rechtsboven: begin helemaal opnieuw bij level 1
@@ -415,7 +410,8 @@ class PlatformerSpel(arcade.View):
         """Teken bovenin een balk die laat zien hoe ver je in de baan bent."""
         doel = self.vlag_x if self.vlag_x > 0 else self.level_breedte
         voortgang = max(0.0, min(self.speler.x / doel, 1.0))
-        l, r, b, t = 200, 720, 476, 491
+        l, r = SCHERM_BREEDTE // 2 - 520, SCHERM_BREEDTE // 2 + 520
+        b, t = SCHERM_HOOGTE - 24, SCHERM_HOOGTE - 9
         # Achtergrond van de balk
         arcade.draw_lrbt_rectangle_filled(l, r, b, t, (40, 40, 55))
         # Het groene gevulde deel (hoe ver je bent)

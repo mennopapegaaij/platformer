@@ -7,8 +7,8 @@
 import arcade
 from instellingen import SCHERM_BREEDTE, SCHERM_HOOGTE, AANTAL_LEVELS, LEVEL_NAMEN
 
-# De drie kolommen (x-posities) waar de bolletjes op staan
-KOL_X = [150, 370, 590]
+# De drie kolommen (x-posities) waar de bolletjes op staan (meegeschaald met de breedte)
+KOL_X = [int(SCHERM_BREEDTE * 0.19), int(SCHERM_BREEDTE * 0.46), int(SCHERM_BREEDTE * 0.73)]
 
 # Elke rij is 140 pixels hoger dan de vorige
 RIJ_HOOGTE = 140
@@ -42,10 +42,12 @@ class LevelKaartView(arcade.View):
     """De levelkaart — hier kies je welk level je wilt spelen."""
 
     # Knoppen aan de rechterkant: (links, rechts, onder, boven) — vier stuks
-    ARENA_KNOP = (648, 792, 347, 433)   # vechtmodus (bovenste knop)
-    VLUCHT_KNOP = (648, 792, 253, 339)  # vliegtuig-modus
-    RACE_KNOP = (648, 792, 159, 245)    # racemodus
-    BOUWER_KNOP = (648, 792, 65, 151)   # bouwmodus (onderste knop)
+    _KL = SCHERM_BREEDTE - 152           # linkerkant van de knoppen
+    _KR = SCHERM_BREEDTE - 8             # rechterkant van de knoppen
+    ARENA_KNOP = (_KL, _KR, 526, 656)   # vechtmodus (bovenste knop)
+    VLUCHT_KNOP = (_KL, _KR, 384, 514)  # vliegtuig-modus
+    RACE_KNOP = (_KL, _KR, 242, 372)    # racemodus
+    BOUWER_KNOP = (_KL, _KR, 100, 230)  # bouwmodus (onderste knop)
 
     def __init__(self, voltooid_levels, punten=0, levens=None, arena_record=0,
                  race_record=0, vlucht_record=0):
@@ -98,7 +100,7 @@ class LevelKaartView(arcade.View):
     def _zichtbaar(self, nummer):
         """Staat dit bolletje op dit moment in beeld?"""
         _, y = self._scherm_positie(nummer)
-        return 30 <= y <= 415
+        return 30 <= y <= SCHERM_HOOGTE - 85
 
     def on_show_view(self):
         """Wordt aangeroepen als dit scherm zichtbaar wordt."""
