@@ -106,15 +106,17 @@ def teken_item(soort, x, y, grootte, rotatie=0):
             arcade.draw_circle_outline(cx, cy, g * 0.30, kleur, 3)
             arcade.draw_triangle_filled(cx - 5, cy + 3, cx + 5, cy + 3, cx, cy - 5, kleur)
         elif s.startswith("mat"):
-            kleur = spring_kleur(KRACHT_PER_STAND[int(s[3:])])
+            niveau = int(s[3:]) if s[3:].isdigit() else 3   # oud "mat" -> kracht 3
+            kleur = spring_kleur(KRACHT_PER_STAND[niveau])
             arcade.draw_lrbt_rectangle_filled(cx - g * 0.4, cx + g * 0.4, y + 6, y + 13, kleur)
             arcade.draw_triangle_filled(cx - 5, y + 13, cx + 5, y + 13, cx, y + 21, kleur)
-            arcade.draw_text(s[3:], cx, y - 1, arcade.color.BLACK, 8, bold=True, anchor_x="center")
-        else:  # bolN
-            kleur = spring_kleur(KRACHT_PER_STAND[int(s[3:])])
+            arcade.draw_text(str(niveau), cx, y - 1, arcade.color.BLACK, 8, bold=True, anchor_x="center")
+        else:  # bolN (of oud "bol")
+            niveau = int(s[3:]) if s[3:].isdigit() else 3   # oud "bol" -> kracht 3
+            kleur = spring_kleur(KRACHT_PER_STAND[niveau])
             arcade.draw_circle_outline(cx, cy, g * 0.30, kleur, 3)
             arcade.draw_triangle_filled(cx - 5, cy - 3, cx + 5, cy - 3, cx, cy + 5, kleur)
-            arcade.draw_text(s[3:], cx, y - 1, arcade.color.BLACK, 8, bold=True, anchor_x="center")
+            arcade.draw_text(str(niveau), cx, y - 1, arcade.color.BLACK, 8, bold=True, anchor_x="center")
     elif soort == "gum":
         arcade.draw_lrbt_rectangle_filled(x + 5, x + g - 5, y + 8, y + g - 8, (255, 180, 200))
         arcade.draw_lrbt_rectangle_outline(x + 5, x + g - 5, y + 8, y + g - 8, (200, 100, 130), 2)
@@ -453,9 +455,13 @@ class BouwerView(arcade.View):
             elif soort == "spring_neer":
                 springers.append(SpringBol(wx + 3, wy + 3, NEER_KRACHT))   # paarse neer-bol
             elif soort.startswith("spring_bol"):
-                springers.append(SpringBol(wx + 3, wy + 3, KRACHT_PER_STAND[int(soort[10:])]))
+                n = soort[10:]
+                springers.append(SpringBol(wx + 3, wy + 3,
+                                           KRACHT_PER_STAND[int(n) if n.isdigit() else 3]))
             elif soort.startswith("spring_mat"):
-                springers.append(SpringMat(wx, wy, KRACHT_PER_STAND[int(soort[10:])]))
+                n = soort[10:]
+                springers.append(SpringMat(wx, wy,
+                                           KRACHT_PER_STAND[int(n) if n.isdigit() else 3]))
             elif soort == "vlag":
                 vlag_x, vlag_y = wx, wy
 
