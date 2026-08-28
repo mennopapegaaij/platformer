@@ -735,6 +735,7 @@ class PlatformerSpel(arcade.View):
     def _check_springers(self, sp):
         """Spring-matten (vanzelf springen) en spring-bollen (onthoud dat je erop staat)."""
         sp._bol_kracht = None
+        sp._draai_bol = False
         for s in self.springers:
             if not s.raakt_speler(sp.x, sp.y, sp.breedte, sp.hoogte):
                 continue
@@ -743,12 +744,20 @@ class PlatformerSpel(arcade.View):
                 if sp.snelheid_y <= 0.5:
                     sp.snelheid_y = s.kracht
                     geluid_manager.speel_sprong()
+            elif getattr(s, "draai", False):
+                sp._draai_bol = True        # draai-bol: druk om de zwaartekracht om te draaien
             else:
-                sp._bol_kracht = s.kracht   # bol: je springt pas als je op de knop drukt
+                sp._bol_kracht = s.kracht   # gewone bol: druk om te springen
 
     def _springboost(self, sp):
-        """Sta je op een spring-bol en druk je op springen? Dan spring je met zijn kracht
-        (omhoog, of naar beneden bij een paarse bol)."""
+        """Sta je op een spring-bol en druk je op springen? Dan gebeurt er iets:
+        gewone bol = springen, draai-bol = zwaartekracht omdraaien (je valt de andere kant op)."""
+        if getattr(sp, "_draai_bol", False):
+            sp.zwaartekracht_richting *= -1
+            sp.snelheid_y = -6 * sp.zwaartekracht_richting   # duwtje de nieuwe kant op
+            sp.rotatie = 180 if sp.zwaartekracht_richting == -1 else 0  # op z'n kop
+            geluid_manager.speel_sprong()
+            return True
         if getattr(sp, "_bol_kracht", None) is not None:
             sp.snelheid_y = sp._bol_kracht
             geluid_manager.speel_sprong()

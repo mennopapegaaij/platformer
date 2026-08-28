@@ -24,8 +24,8 @@ ITEM_NAAM = {
 # De spring-dingen waar je met de Spring-knop doorheen klikt:
 # bol1..bol5 en mat1..mat5 (kracht 1 t/m 5), en "neer" (paarse bol waarmee je valt)
 SPRING_SOORTEN = ["bol1", "bol2", "bol3", "bol4", "bol5",
-                  "mat1", "mat2", "mat3", "mat4", "mat5", "neer"]
-SPRING_NAAM = {"neer": "Neer"}
+                  "mat1", "mat2", "mat3", "mat4", "mat5", "neer", "draai"]
+SPRING_NAAM = {"neer": "Neer", "draai": "Draai"}
 for _n in range(1, 6):
     SPRING_NAAM["bol%d" % _n] = "Bol%d" % _n
     SPRING_NAAM["mat%d" % _n] = "Mat%d" % _n
@@ -101,7 +101,12 @@ def teken_item(soort, x, y, grootte, rotatie=0):
         from springers import KRACHT_PER_STAND, NEER_KRACHT, spring_kleur
         s = soort.split("_", 1)[1]
         cx, cy = x + g // 2, y + g // 2
-        if s == "neer":
+        if s == "draai":
+            # Draai-bol: blauwe ring met twee pijltjes (omhoog + omlaag)
+            arcade.draw_circle_outline(cx, cy, g * 0.30, (70, 150, 255), 3)
+            arcade.draw_triangle_filled(cx - 7, cy + 1, cx - 3, cy + 1, cx - 5, cy + 6, (70, 150, 255))
+            arcade.draw_triangle_filled(cx + 3, cy - 1, cx + 7, cy - 1, cx + 5, cy - 6, (70, 150, 255))
+        elif s == "neer":
             kleur = spring_kleur(NEER_KRACHT)
             arcade.draw_circle_outline(cx, cy, g * 0.30, kleur, 3)
             arcade.draw_triangle_filled(cx - 5, cy + 3, cx + 5, cy + 3, cx, cy - 5, kleur)
@@ -452,6 +457,8 @@ class BouwerView(arcade.View):
             elif soort.startswith("deco_"):
                 # "deco_bloem" -> Decoratie met soort "bloem", enz. (geen botsing)
                 decoraties.append(Decoratie(wx, wy, soort.split("_", 1)[1], rot))
+            elif soort == "spring_draai":
+                springers.append(SpringBol(wx + 3, wy + 3, draai=True))    # blauwe draai-bol
             elif soort == "spring_neer":
                 springers.append(SpringBol(wx + 3, wy + 3, NEER_KRACHT))   # paarse neer-bol
             elif soort.startswith("spring_bol"):

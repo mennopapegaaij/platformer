@@ -170,10 +170,12 @@ class Speler:
                 self._robot_boost -= 1
             self.snelheid_y -= ZWAARTEKRACHT
         else:
-            # Blok en UFO: gewone zwaartekracht (bij de UFO spring je met een tik)
-            self.snelheid_y -= ZWAARTEKRACHT
+            # Blok en UFO: gewone zwaartekracht. De richting kan omgedraaid zijn door
+            # een draai-bol (dan val je juist naar BOVEN).
+            self.snelheid_y -= ZWAARTEKRACHT * self.zwaartekracht_richting
         self.y += self.snelheid_y
         self.staat_op_grond = False
+        omgedraaid = self.zwaartekracht_richting == -1
 
         # Botsingen met platforms
         for platform in platforms:
@@ -181,7 +183,8 @@ class Speler:
             if platform.raakt(self.x, self.y, self.breedte, self.hoogte):
                 self.y = platform.y + platform.hoogte
                 self.snelheid_y = 0
-                self.staat_op_grond = True
+                if not omgedraaid:
+                    self.staat_op_grond = True
                 self.heeft_dubbel_gesprongen = False  # Op de grond: extra sprong herlaadbaar
                 self._robot_boost = 0                 # robot mag pas na een nieuwe tik duwen
             # Hoofd stoot tegen onderkant platform
@@ -189,17 +192,18 @@ class Speler:
                   platform.raakt_van_onder(self.x, self.y, self.breedte, self.hoogte)):
                 self.y = platform.y - self.hoogte
                 self.snelheid_y = 0
-                # In de bal-/spin-modus met omgekeerde zwaartekracht 'sta' je ONDER een platform
-                if self.modus in ("bal", "spin") and self.zwaartekracht_richting == -1:
+                # Met omgekeerde zwaartekracht 'sta' je ONDER een platform
+                if omgedraaid:
                     self.staat_op_grond = True
 
-        # In de speciale modi: niet door het plafond bovenin gaan
-        if self.modus in ("vliegtuig", "ufo", "bal", "golf", "spin") and self.y + self.hoogte > VLIEG_PLAFOND:
+        # In de speciale modi (of bij omgedraaide zwaartekracht): niet door het plafond
+        if (self.modus in ("vliegtuig", "ufo", "bal", "golf", "spin") or omgedraaid) \
+                and self.y + self.hoogte > VLIEG_PLAFOND:
             self.y = VLIEG_PLAFOND - self.hoogte
             if self.snelheid_y > 0:
                 self.snelheid_y = 0
-                if self.modus in ("bal", "spin"):
-                    self.staat_op_grond = True   # de bal/spin 'ligt' tegen het plafond
+                if omgedraaid or self.modus in ("bal", "spin"):
+                    self.staat_op_grond = True   # je 'ligt' tegen het plafond
 
     def flap(self):
         """UFO-modus: geef een klein sprongetje omhoog (bij elke tik)."""

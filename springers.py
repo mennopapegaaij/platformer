@@ -22,15 +22,18 @@ def spring_kleur(kracht):
 
 
 class SpringBol:
-    """Een zweef-ring. Raak je hem en druk je op springen, dan spring je met zijn
-    kracht omhoog (of naar beneden als de kracht negatief is) — ook in de lucht!"""
+    """Een zweef-ring. Raak je hem en druk je op springen, dan gebeurt er iets:
+      - gewone bol: je springt met zijn kracht omhoog (of omlaag bij een negatieve kracht)
+      - draai-bol: de zwaartekracht draait om, dan val je juist de andere kant op!
+    Werkt ook midden in de lucht."""
 
-    def __init__(self, x, y, kracht=13):
+    def __init__(self, x, y, kracht=13, draai=False):
         self.x = x
         self.y = y
         self.breedte = 34
         self.hoogte = 34
         self.kracht = kracht
+        self.draai = draai        # True = draai-bol (zwaartekracht omdraaien)
 
     def raakt_speler(self, sx, sy, sb, sh):
         return (sx + sb > self.x and sx < self.x + self.breedte and
@@ -39,6 +42,13 @@ class SpringBol:
     def teken(self):
         cx = self.x + self.breedte / 2
         cy = self.y + self.hoogte / 2
+        if self.draai:
+            # Draai-bol: blauwe ring met twee pijltjes (omhoog + omlaag)
+            arcade.draw_circle_outline(cx, cy, 16, (70, 150, 255), 4)
+            arcade.draw_circle_outline(cx, cy, 9, (200, 230, 255), 2)
+            arcade.draw_triangle_filled(cx - 7, cy + 1, cx - 3, cy + 1, cx - 5, cy + 7, (70, 150, 255))
+            arcade.draw_triangle_filled(cx + 3, cy - 1, cx + 7, cy - 1, cx + 5, cy - 7, (70, 150, 255))
+            return
         kleur = spring_kleur(self.kracht)
         arcade.draw_circle_outline(cx, cy, 16, kleur, 4)
         arcade.draw_circle_outline(cx, cy, 9, (255, 245, 200), 2)
