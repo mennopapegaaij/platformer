@@ -12,7 +12,7 @@ from instellingen import (SCHERM_BREEDTE, SCHERM_HOOGTE, TWEE_BREEDTE, TWEE_HOOG
                            VLAG_DOEK_KLEUR, LEVEL_NAMEN, AANTAL_LEVELS)
 from speler import Speler, VLIEG_PLAFOND
 from portaal import SNELHEID_FACTOR
-from springers import SpringBol, SpringMat, BOL_KRACHT, MAT_KRACHT
+from springers import SpringBol, SpringMat
 from powerup import Kogel
 import voortgang as voortgang_module
 
@@ -734,23 +734,23 @@ class PlatformerSpel(arcade.View):
 
     def _check_springers(self, sp):
         """Spring-matten (vanzelf springen) en spring-bollen (onthoud dat je erop staat)."""
-        op_bol = False
+        sp._bol_kracht = None
         for s in self.springers:
             if not s.raakt_speler(sp.x, sp.y, sp.breedte, sp.hoogte):
                 continue
             if isinstance(s, SpringMat):
                 # Mat: spring VANZELF omhoog (alleen als je niet al omhoog schiet)
                 if sp.snelheid_y <= 0.5:
-                    sp.snelheid_y = MAT_KRACHT
+                    sp.snelheid_y = s.kracht
                     geluid_manager.speel_sprong()
             else:
-                op_bol = True     # bol: je springt pas als je op de knop drukt
-        sp._op_bol = op_bol
+                sp._bol_kracht = s.kracht   # bol: je springt pas als je op de knop drukt
 
     def _springboost(self, sp):
-        """Als de speler op een spring-bol staat en op springen drukt: extra sprong."""
-        if getattr(sp, "_op_bol", False):
-            sp.snelheid_y = BOL_KRACHT
+        """Sta je op een spring-bol en druk je op springen? Dan spring je met zijn kracht
+        (omhoog, of naar beneden bij een paarse bol)."""
+        if getattr(sp, "_bol_kracht", None) is not None:
+            sp.snelheid_y = sp._bol_kracht
             geluid_manager.speel_sprong()
             return True
         return False

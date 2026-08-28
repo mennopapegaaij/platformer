@@ -21,9 +21,14 @@ ITEM_NAAM = {
     "deco": "Deco", "spring": "Spring", "gum": "Gum",
 }
 
-# De spring-dingen waar je met de Spring-knop doorheen klikt
-SPRING_SOORTEN = ["bol", "mat"]
-SPRING_NAAM = {"bol": "Bol", "mat": "Mat"}
+# De spring-dingen waar je met de Spring-knop doorheen klikt:
+# bol1..bol5 en mat1..mat5 (kracht 1 t/m 5), en "neer" (paarse bol waarmee je valt)
+SPRING_SOORTEN = ["bol1", "bol2", "bol3", "bol4", "bol5",
+                  "mat1", "mat2", "mat3", "mat4", "mat5", "neer"]
+SPRING_NAAM = {"neer": "Neer"}
+for _n in range(1, 6):
+    SPRING_NAAM["bol%d" % _n] = "Bol%d" % _n
+    SPRING_NAAM["mat%d" % _n] = "Mat%d" % _n
 
 # De vorm-portalen waar je met de Portaal-knop doorheen klikt
 PORTAAL_SOORTEN = ["vlucht", "blok", "ufo", "bal", "golf", "robot", "spin"]
@@ -92,14 +97,24 @@ def teken_item(soort, x, y, grootte, rotatie=0):
         # "deco_bloem", "deco_boom", enz. -> teken de decoratie
         teken_deco(soort.split("_", 1)[1], x, y, g, rotatie)
     elif soort.startswith("spring_"):
-        # "spring_bol" of "spring_mat"
+        # "spring_bol3", "spring_mat5", "spring_neer"
+        from springers import KRACHT_PER_STAND, NEER_KRACHT, spring_kleur
+        s = soort.split("_", 1)[1]
         cx, cy = x + g // 2, y + g // 2
-        if soort.endswith("bol"):
-            arcade.draw_circle_outline(cx, cy, g * 0.32, (255, 210, 50), 3)
-            arcade.draw_triangle_filled(cx - 5, cy - 3, cx + 5, cy - 3, cx, cy + 5, (255, 210, 50))
-        else:
-            arcade.draw_lrbt_rectangle_filled(cx - g * 0.4, cx + g * 0.4, y + 6, y + 14, (255, 140, 40))
-            arcade.draw_triangle_filled(cx - 6, y + 14, cx + 6, y + 14, cx, y + 22, (255, 210, 50))
+        if s == "neer":
+            kleur = spring_kleur(NEER_KRACHT)
+            arcade.draw_circle_outline(cx, cy, g * 0.30, kleur, 3)
+            arcade.draw_triangle_filled(cx - 5, cy + 3, cx + 5, cy + 3, cx, cy - 5, kleur)
+        elif s.startswith("mat"):
+            kleur = spring_kleur(KRACHT_PER_STAND[int(s[3:])])
+            arcade.draw_lrbt_rectangle_filled(cx - g * 0.4, cx + g * 0.4, y + 6, y + 13, kleur)
+            arcade.draw_triangle_filled(cx - 5, y + 13, cx + 5, y + 13, cx, y + 21, kleur)
+            arcade.draw_text(s[3:], cx, y - 1, arcade.color.BLACK, 8, bold=True, anchor_x="center")
+        else:  # bolN
+            kleur = spring_kleur(KRACHT_PER_STAND[int(s[3:])])
+            arcade.draw_circle_outline(cx, cy, g * 0.30, kleur, 3)
+            arcade.draw_triangle_filled(cx - 5, cy - 3, cx + 5, cy - 3, cx, cy + 5, kleur)
+            arcade.draw_text(s[3:], cx, y - 1, arcade.color.BLACK, 8, bold=True, anchor_x="center")
     elif soort == "gum":
         arcade.draw_lrbt_rectangle_filled(x + 5, x + g - 5, y + 8, y + g - 8, (255, 180, 200))
         arcade.draw_lrbt_rectangle_outline(x + 5, x + g - 5, y + 8, y + g - 8, (200, 100, 130), 2)
@@ -127,7 +142,7 @@ class BouwerView(arcade.View):
         self.portaal_soort = "vlucht"  # welk vorm-portaal je plaatst (klik op Portaal)
         self.snel_soort = "x2"         # welk snelheid-portaal je plaatst (klik op Snel)
         self.deco_soort = "bloem"      # welke decoratie je plaatst (klik op Deco)
-        self.spring_soort = "bol"      # welk spring-ding je plaatst (klik op Spring)
+        self.spring_soort = "bol3"     # welk spring-ding je plaatst (klik op Spring)
         # Type van je level: "gewoon" (lopen), "race" (auto-run), "vlucht" (vliegen)
         self.mode = "gewoon"
         self.scroll = 0                # hoe ver je naar rechts hebt geschoven
@@ -404,7 +419,7 @@ class BouwerView(arcade.View):
         from powerup import ExtraLevenPowerUp
         from portaal import Portaal
         from decoratie import Decoratie
-        from springers import SpringBol, SpringMat
+        from springers import SpringBol, SpringMat, KRACHT_PER_STAND, NEER_KRACHT
 
         platforms = [Platform(0, 0, 100, 40)]   # altijd een klein startstukje grond
         vijanden = []
@@ -435,10 +450,12 @@ class BouwerView(arcade.View):
             elif soort.startswith("deco_"):
                 # "deco_bloem" -> Decoratie met soort "bloem", enz. (geen botsing)
                 decoraties.append(Decoratie(wx, wy, soort.split("_", 1)[1], rot))
-            elif soort == "spring_bol":
-                springers.append(SpringBol(wx + 3, wy + 3))
-            elif soort == "spring_mat":
-                springers.append(SpringMat(wx, wy))
+            elif soort == "spring_neer":
+                springers.append(SpringBol(wx + 3, wy + 3, NEER_KRACHT))   # paarse neer-bol
+            elif soort.startswith("spring_bol"):
+                springers.append(SpringBol(wx + 3, wy + 3, KRACHT_PER_STAND[int(soort[10:])]))
+            elif soort.startswith("spring_mat"):
+                springers.append(SpringMat(wx, wy, KRACHT_PER_STAND[int(soort[10:])]))
             elif soort == "vlag":
                 vlag_x, vlag_y = wx, wy
 
