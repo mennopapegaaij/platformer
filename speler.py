@@ -216,12 +216,16 @@ class Speler:
     def robot_sprong(self):
         """Robot-modus: begin een sprong (vasthouden maakt hem hoger)."""
         if self.staat_op_grond:
-            self.snelheid_y = ROBOT_START
+            # Bij omgekeerde zwaartekracht spring je juist naar beneden
+            self.snelheid_y = ROBOT_START * self.zwaartekracht_richting
             self._robot_boost = ROBOT_BOOST_FRAMES
 
     def spring(self):
-        """Laat de speler springen — hoger naarmate je meer punten hebt!"""
-        sprongkracht = SPRING_KRACHT + self.sprong_bonus
+        """Laat de speler springen — hoger naarmate je meer punten hebt!
+
+        Bij omgekeerde zwaartekracht (na een draai-bol) spring je juist naar BENEDEN,
+        zodat je van het plafond af komt."""
+        sprongkracht = (SPRING_KRACHT + self.sprong_bonus) * self.zwaartekracht_richting
         if self.staat_op_grond:
             self.snelheid_y = sprongkracht
         elif (self.dubbel_sprong_timer > 0 and not self.heeft_dubbel_gesprongen):
