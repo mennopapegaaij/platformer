@@ -132,7 +132,7 @@ class BouwerView(arcade.View):
 
     # Knoppen in de bovenbalk: naam -> (links, rechts)
     def __init__(self, voltooid_levels, punten=0, levens=None,
-                 arena_record=0, race_record=0, vlucht_record=0, twee=False):
+                 arena_record=0, race_record=0, vlucht_record=0, aantal_spelers=1):
         super().__init__()
         self.voltooid = voltooid_levels
         self.punten = punten
@@ -140,7 +140,7 @@ class BouwerView(arcade.View):
         self.arena_record = arena_record
         self.race_record = race_record
         self.vlucht_record = vlucht_record
-        self.twee = twee               # 2-spelers-modus aan? (dan speel je je level samen)
+        self.aantal_spelers = aantal_spelers   # met hoeveel spelers je je level speelt (1-4)
 
         self.grid = {}                 # (kol, rij) -> soort
         self.rotaties = {}             # (kol, rij) -> draai-hoek (0/90/180/270)
@@ -293,7 +293,7 @@ class BouwerView(arcade.View):
         kleuren = {"spelen": (40, 160, 60), "opslaan": (40, 110, 180),
                    "wissen": (170, 60, 60), "kaart": (100, 100, 120),
                    "draai": (150, 110, 40), "type": type_kleur}
-        teksten = {"spelen": "▶ 2P Spelen" if self.twee else "▶ Spelen",
+        teksten = {"spelen": ("▶ %dP Spelen" % self.aantal_spelers) if self.aantal_spelers > 1 else "▶ Spelen",
                    "opslaan": "💾 Opslaan", "wissen": "🗑 Wissen", "kaart": "🗺 Kaart",
                    "draai": "↻ %d°" % self.rotatie, "type": type_tekst}
         for naam, (l, r) in self.actie_knoppen.items():
@@ -486,7 +486,7 @@ class BouwerView(arcade.View):
         data = self._bouw_level()
         spel = PlatformerSpel(1, self.voltooid, punten=0, levens=None,
                               eigen_level=data, race=(self.mode == "race"),
-                              vlucht=(self.mode == "vlucht"), twee=self.twee,
+                              vlucht=(self.mode == "vlucht"), aantal_spelers=self.aantal_spelers,
                               kaart_punten=self.punten, kaart_levens=self.levens)
         self.window.show_view(spel)
 

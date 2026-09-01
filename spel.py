@@ -22,7 +22,7 @@ class PlatformerSpel(arcade.View):
 
     def __init__(self, level_nummer, voltooid_levels, punten=0, levens=None,
                  arena=False, kaart_punten=0, kaart_levens=None, race=False,
-                 eigen_level=None, vlucht=False, twee=False):
+                 eigen_level=None, vlucht=False, twee=False, aantal_spelers=None):
         super().__init__()
         # Eigen (zelfgebouwd) level uit de bouwmodus (of None)
         self.eigen = eigen_level is not None
@@ -39,19 +39,24 @@ class PlatformerSpel(arcade.View):
         self.race = race
         # Vliegtuig-modus: je vliegt vanzelf vooruit en houdt de knop vast om te stijgen
         self.vlucht = vlucht
-        self._vlieg_omhoog = False   # of speler 1 nu de vlieg-knop vasthoudt
-        # 2-spelers-modus (split-screen): een tweede speler doet mee. Werkt samen
-        # met de gekozen modus (race, vliegen of vechten).
-        self.twee = twee
-        self._vlieg_omhoog2 = False  # of speler 2 nu de knop vasthoudt
+        # Aantal spelers (1 t/m 4). "twee=True" betekent 2 spelers (voor de compatibiliteit).
+        if aantal_spelers is None:
+            aantal_spelers = 2 if twee else 1
+        self.aantal = max(1, min(4, aantal_spelers))
+        self.twee = self.aantal >= 2   # "twee" = meer dan 1 speler (split-screen)
         # De punten/levens van de gewone kaart, om terug te zetten na de arena
         self.kaart_punten = kaart_punten
         self.kaart_levens = kaart_levens
-        # Maak een camera aan die de speler volgt
-        self.camera = arcade.camera.Camera2D()
-        self.camera2 = arcade.camera.Camera2D()   # tweede camera (rechterhelft)
-        self.speler = Speler()
-        self.speler2 = Speler()                   # de tweede speler
+        # Elke speler krijgt een eigen poppetje en een eigen camera
+        self.spelers = [Speler() for _ in range(self.aantal)]
+        self.cameras = [arcade.camera.Camera2D() for _ in range(self.aantal)]
+        self._vlieg = [False] * self.aantal   # of elke speler nu de knop vasthoudt
+        self._finish = [False] * self.aantal  # of elke speler al gefinisht is
+        self._vorige = [0.0] * self.aantal    # vorige x van elke speler (voor portaal-sweep)
+        # Speler 1 en camera 1 hebben ook een 'gewone' naam (voor de 1-speler-code)
+        self.speler = self.spelers[0]
+        self.camera = self.cameras[0]
+        self._vlieg_omhoog = False   # 1-speler: of de speler de vlieg-knop vasthoudt
         # Hoogste arena-level dat je mag kiezen met de pijltjes (groeit als je wint)
         self._arena_top = 1
 
@@ -67,17 +72,18 @@ class PlatformerSpel(arcade.View):
     def on_show_view(self):
         """Wordt aangeroepen als dit scherm zichtbaar wordt."""
         # Bij 2 spelers wordt het scherm groot (split-screen); anders de gewone maat
-        gewenst = (TWEE_BREEDTE, TWEE_HOOGTE) if self.twee else (SCHERM_BREEDTE, SCHERM_HOOGTE)
+        # Venstermaat: 1 speler = 1 vak, 2 = naast elkaar, 3-4 = 2x2 (groter naar beneden)
+        kol, rij = self._raster()
+        gewenst = (SCHERM_BREEDTE * kol, SCHERM_HOOGTE * rij)
         if (self.window.width, self.window.height) != gewenst:
             self.window.set_size(*gewenst)
         arcade.set_background_color(LUCHT_KLEUR)
         self.huidig_level = self.start_level
         # Herstel punten van het vorige level
         self.punten = self.start_punten
-        # Reset de speler (power-ups weg, positie terug naar start)
-        self.speler.volledig_reset()
-        if self.twee:
-            self.speler2.volledig_reset()
+        # Reset alle spelers (power-ups weg, positie terug naar start)
+        for sp in self.spelers:
+            sp.volledig_reset()
         # Herstel levens als die meegegeven zijn
         if self.start_levens is not None:
             self.speler.levens = self.start_levens
@@ -150,9 +156,9 @@ class PlatformerSpel(arcade.View):
         self.speler.zwaartekracht_richting = 1
         # Onthoud de vorige x van de speler (voor de snelheid-portaal 'sweep'-check)
         self._vorige_speler_x = self.speler.x
-        # --- 2-spelers-modus: zet speler 2 ook klaar en verdeel het scherm ---
+        # --- Meerdere spelers: zet alle spelers klaar en verdeel het scherm ---
         if self.twee:
-            self._zet_twee_klaar()
+            self._zet_multi_klaar()
         # Onthoud welke blokken je kunnen doden als je tegen de ZIJKANT aan botst
         # (net als Geometry Dash). In de race-, vlucht- en bouwmodus tellen ALLE
         # blokken mee (ook de grasblokken); in de gewone levels doen we dit niet,
@@ -784,79 +790,94 @@ class PlatformerSpel(arcade.View):
             return True
         return False
 
-    # ================== 2-SPELERS-MODUS (split-screen race) ==================
+    # ============== MEERDERE SPELERS (split-screen, 1 t/m 4) ==============
 
-    def _zet_twee_klaar(self):
-        """Zet speler 2 op de start en verdeel het scherm in twee helften."""
-        # Speler 1 wordt blauw, speler 2 wordt rood (zo zie je wie wie is)
-        self.speler.kleur = (60, 140, 255)
-        self.speler2.kleur = (255, 80, 80)
-        self.speler2.reset()
-        self.speler2.modus = self.speler.modus
-        self.speler2.snelheid_bonus = self.speler.snelheid_bonus
-        self.speler2.sprong_bonus = self.speler.sprong_bonus
-        self._vorige_speler_x2 = self.speler2.x
-        self._finish1 = False
-        self._finish2 = False
+    SPELER_KLEUREN = [(60, 140, 255), (255, 80, 80), (80, 200, 90), (255, 170, 40)]
+
+    # Spring-knop per speler (0..3)
+    SPRING_TOETS = {arcade.key.W: 0, arcade.key.SPACE: 0, arcade.key.UP: 1,
+                    arcade.key.T: 2, arcade.key.I: 3}
+    # Links/rechts-knoppen per speler: toets -> (speler, "links"/"rechts")
+    BEWEEG_TOETS = {
+        arcade.key.A: (0, "links"), arcade.key.D: (0, "rechts"),
+        arcade.key.LEFT: (1, "links"), arcade.key.RIGHT: (1, "rechts"),
+        arcade.key.F: (2, "links"), arcade.key.H: (2, "rechts"),
+        arcade.key.J: (3, "links"), arcade.key.L: (3, "rechts"),
+    }
+
+    def _raster(self):
+        """Hoeveel kolommen en rijen het scherm heeft (op basis van het aantal spelers)."""
+        kol = 2 if self.aantal >= 2 else 1
+        rij = 2 if self.aantal >= 3 else 1
+        return kol, rij
+
+    def _vak(self, i):
+        """Het scherm-vak (viewport) van speler i: (x, y, breedte, hoogte)."""
+        kol, rij = self._raster()
+        c = i % kol
+        r = i // kol                       # 0 = bovenste rij
+        return (c * SCHERM_BREEDTE, (rij - 1 - r) * SCHERM_HOOGTE,
+                SCHERM_BREEDTE, SCHERM_HOOGTE)
+
+    def _zet_multi_klaar(self):
+        """Zet alle spelers op de start en verdeel het scherm in vakken."""
+        for i, sp in enumerate(self.spelers):
+            if i > 0:
+                sp.reset()
+                sp.modus = self.speler.modus
+                sp.snelheid_bonus = self.speler.snelheid_bonus
+                sp.sprong_bonus = self.speler.sprong_bonus
+            sp.kleur = self.SPELER_KLEUREN[i]
+            self._vlieg[i] = False
+            self._finish[i] = False
+            self._vorige[i] = sp.x
         self.winnaar = None
-        self._vlieg_omhoog = False
-        self._vlieg_omhoog2 = False
-        # Links speler 1, rechts speler 2 (elk de halve breedte van het grote scherm)
-        W, H = self.window.width, self.window.height
-        half = W // 2
-        self.camera.viewport = arcade.LBWH(0, 0, half, H)
-        self.camera.projection = arcade.LRBT(-half / 2, half / 2, -H / 2, H / 2)
-        self.camera2.viewport = arcade.LBWH(half, 0, half, H)
-        self.camera2.projection = arcade.LRBT(-half / 2, half / 2, -H / 2, H / 2)
+        # Elke camera krijgt zijn eigen vak (niet uitgerekt)
+        for i, cam in enumerate(self.cameras):
+            vx, vy, vw, vh = self._vak(i)
+            cam.viewport = arcade.LBWH(vx, vy, vw, vh)
+            cam.projection = arcade.LRBT(-vw / 2, vw / 2, -vh / 2, vh / 2)
 
-    def _is_klaar(self, idx):
-        """Is deze speler klaar (gefinisht)? In de vechtmodus nooit (samen tot het eind)."""
-        return self._finish1 if idx == 1 else self._finish2
+    def _is_klaar(self, i):
+        """Is speler i klaar (gefinisht)? In de vechtmodus nooit (samen tot het eind)."""
+        return self._finish[i]
 
-    def _racer_dood(self, sp, idx):
+    def _racer_dood(self, sp, i):
         """Een speler ging af: terug naar de start (geen leven kwijt)."""
         sp.reset()
         sp.modus = "vliegtuig" if self.vlucht else "blok"
         geluid_manager.speel_geraakt()
-        if idx == 1:
-            self._vorige_speler_x = sp.x
-        else:
-            self._vorige_speler_x2 = sp.x
+        self._vorige[i] = sp.x
 
-    def _beweeg_speler_twee(self, sp, idx):
+    def _beweeg_speler_multi(self, sp, i):
         """Beweeg één speler (auto-run of handmatig), met portalen en botsingen."""
         if self.race or self.vlucht:
             sp.rechts_ingedrukt = True          # auto-run modi: vanzelf naar rechts
             sp.links_ingedrukt = False
         if sp.modus in ("vliegtuig", "golf", "robot"):
-            sp.vlieg_omhoog = self._vlieg_omhoog if idx == 1 else self._vlieg_omhoog2
+            sp.vlieg_omhoog = self._vlieg[i]
         sp.bijwerken(self.level_breedte, self.platforms)
-        vorige = self._vorige_speler_x if idx == 1 else self._vorige_speler_x2
-        self._pas_portalen_toe(sp, vorige)
-        if idx == 1:
-            self._vorige_speler_x = sp.x
-        else:
-            self._vorige_speler_x2 = sp.x
-        self._check_springers(sp)          # spring-matten en spring-bollen
+        self._pas_portalen_toe(sp, self._vorige[i])
+        self._vorige[i] = sp.x
+        self._check_springers(sp)
         self._pas_rotatie_toe(sp)
         if self._raakt_blok_zijkant(sp) or sp.is_gevallen():
-            self._racer_dood(sp, idx)
+            self._racer_dood(sp, i)
 
-    def _update_monsters_twee(self):
-        """Werk de monsters bij; beide spelers kunnen stompen of geraakt worden."""
+    def _update_monsters_multi(self):
+        """Werk de monsters bij; elke speler kan stompen of geraakt worden."""
         weg = []
         nieuw = []
-        p1c = self.speler.x + self.speler.breedte / 2
-        p2c = self.speler2.x + self.speler2.breedte / 2
+        centers = [s.x + s.breedte / 2 for s in self.spelers]
         for vijand in self.vijanden:
             vc = vijand.x + vijand.breedte / 2
-            doel = p1c if abs(p1c - vc) <= abs(p2c - vc) else p2c   # richt op dichtstbijzijnde
+            doel = min(centers, key=lambda c: abs(c - vc))   # dichtstbijzijnde speler
             vijand.bijwerken(doel)
             if getattr(vijand, 'nieuwe_monsters', None):
                 nieuw.extend(vijand.nieuwe_monsters)
                 vijand.nieuwe_monsters = []
-            for sp, idx in ((self.speler, 1), (self.speler2, 2)):
-                if self._is_klaar(idx):
+            for i, sp in enumerate(self.spelers):
+                if self._is_klaar(i):
                     continue
                 van_boven = (sp.snelheid_y < 0) or (sp.y >= vijand.y + vijand.hoogte / 2)
                 if van_boven and vijand.speler_springt_erop(sp.x, sp.y, sp.breedte, sp.hoogte):
@@ -869,77 +890,65 @@ class PlatformerSpel(arcade.View):
                     sp.snelheid_y = SPRING_KRACHT / 2
                     geluid_manager.speel_vijand_dood()
                 elif not sp.is_onkwetsbaar() and vijand.raakt_speler(sp.x, sp.y, sp.breedte, sp.hoogte):
-                    self._racer_dood(sp, idx)
+                    self._racer_dood(sp, i)
         for v in weg:
             if v in self.vijanden:
                 self.vijanden.remove(v)
         self.vijanden.extend(nieuw)
 
-    def _check_win_twee(self):
+    def _check_win_multi(self):
         """Bepaal per modus of er gewonnen is."""
         if self.arena:
             levende = [v for v in self.vijanden if not getattr(v, 'is_spike', False)]
             if not levende and not self.level_gehaald:
-                self.level_gehaald = True    # allebei gewonnen!
+                self.level_gehaald = True    # iedereen gewonnen!
                 geluid_manager.speel_level_gehaald()
             return
-        # Vlag-modi (race/vlucht): wie het eerst bij de finish is, wint
-        for sp, idx in ((self.speler, 1), (self.speler2, 2)):
-            if self._is_klaar(idx):
+        for i, sp in enumerate(self.spelers):
+            if self._is_klaar(i):
                 continue
             y_ok = True if self.vlucht else sp.y < self.vlag_y + 60
             if sp.x + sp.breedte > self.vlag_x and y_ok:
-                if idx == 1:
-                    self._finish1 = True
-                else:
-                    self._finish2 = True
+                self._finish[i] = True
                 if not self.winnaar:
-                    self.winnaar = idx
+                    self.winnaar = i + 1
                     geluid_manager.speel_level_gehaald()
 
     def _update_twee(self):
-        """Werk beide spelers + de monsters bij en laat de twee camera's meebewegen."""
+        """Werk alle spelers + de monsters bij en laat de camera's meebewegen."""
         if self.winnaar or self.level_gehaald:
             return
-        for sp, idx in ((self.speler, 1), (self.speler2, 2)):
-            if not self._is_klaar(idx):
-                self._beweeg_speler_twee(sp, idx)
-        self._update_monsters_twee()
-        # Power-ups: beide spelers kunnen ze oppakken
+        for i, sp in enumerate(self.spelers):
+            if not self._is_klaar(i):
+                self._beweeg_speler_multi(sp, i)
+        self._update_monsters_multi()
+        # Power-ups: elke speler kan ze oppakken
         for pu in self.powerups:
             if not pu.opgepakt:
                 pu.bijwerken()
-                for sp, idx in ((self.speler, 1), (self.speler2, 2)):
-                    if not self._is_klaar(idx) and pu.raakt_speler(sp.x, sp.y, sp.breedte, sp.hoogte):
+                for i, sp in enumerate(self.spelers):
+                    if not self._is_klaar(i) and pu.raakt_speler(sp.x, sp.y, sp.breedte, sp.hoogte):
                         pu.toepassen(sp)
                         pu.opgepakt = True
                         geluid_manager.speel_powerup()
                         break
-        self._check_win_twee()
-        # Camera's laten meebewegen
-        W, H = self.window.width, self.window.height
-        half = W // 2
-        for sp, cam in ((self.speler, self.camera), (self.speler2, self.camera2)):
+        self._check_win_multi()
+        # Camera's laten meebewegen (elke volgt zijn eigen speler)
+        for sp, cam in zip(self.spelers, self.cameras):
             cx = sp.x + sp.breedte / 2
-            cx = max(half / 2, min(cx, self.level_breedte - half / 2))
-            cam.position = cx, H / 2
+            cx = max(SCHERM_BREEDTE / 2, min(cx, self.level_breedte - SCHERM_BREEDTE / 2))
+            cam.position = cx, SCHERM_HOOGTE / 2
 
-    def _actie_druk(self, sp, idx):
-        """Een speler drukt op zijn knop: doe de actie die bij zijn modus hoort."""
+    def _actie_druk(self, sp, i):
+        """Speler i drukt op zijn knop: doe de actie die bij zijn modus hoort."""
         # Sta je op een spring-bol? Dan spring je (ook in de lucht), wat je modus ook is.
         if self._springboost(sp):
             return
         m = sp.modus
         if m in ("vliegtuig", "golf"):
-            if idx == 1:
-                self._vlieg_omhoog = True
-            else:
-                self._vlieg_omhoog2 = True
+            self._vlieg[i] = True
         elif m == "robot":
-            if idx == 1:
-                self._vlieg_omhoog = True
-            else:
-                self._vlieg_omhoog2 = True
+            self._vlieg[i] = True
             sp.robot_sprong()
             geluid_manager.speel_sprong()
         elif m == "ufo":
@@ -958,19 +967,17 @@ class PlatformerSpel(arcade.View):
                 geluid_manager.speel_sprong()
 
     def _volgende_twee_baan(self):
-        """Ga met z'n tweeën naar de volgende racebaan."""
+        """Ga met alle spelers naar de volgende baan/level."""
         self.huidig_level += 1
         self.maak_level(self.huidig_level)
 
     def _teken_twee(self):
-        """Teken het scherm in twee helften: links speler 1, rechts speler 2."""
-        W, H = self.window.width, self.window.height
-        half = W // 2
-        for sp, cam in ((self.speler, self.camera), (self.speler2, self.camera2)):
+        """Teken het scherm in vakken: elke speler zijn eigen vak."""
+        for sp, cam in zip(self.spelers, self.cameras):
             with cam.activate():
                 cx = cam.position[0]
-                links = cx - half / 2 - 60
-                rechts = cx + half / 2 + 60
+                links = cx - SCHERM_BREEDTE / 2 - 60
+                rechts = cx + SCHERM_BREEDTE / 2 + 60
 
                 def zicht(o, b=0):
                     return o.x + b >= links and o.x <= rechts
@@ -992,51 +999,55 @@ class PlatformerSpel(arcade.View):
                         portaal.teken()
                 if not self.arena:                 # in de vechtmodus is er geen vlag
                     self._teken_vlag(self.vlag_x, self.vlag_y)
-                # Teken BEIDE spelers, zodat je elkaar ziet als je dicht bij elkaar bent.
-                # Speler 1 is blauw, speler 2 is rood (die kleuren zitten in de speler zelf).
-                for speler in (self.speler, self.speler2):
+                # Teken ALLE spelers, zodat je elkaar ziet als je dicht bij elkaar bent
+                for speler in self.spelers:
                     if zicht(speler, speler.breedte):
                         speler.teken()
-        # Scheidingslijn precies in het midden
-        arcade.draw_lrbt_rectangle_filled(half - 3, half + 3, 0, H, (20, 20, 30))
+        # Scheidingslijnen tussen de vakken
+        W, H = self.window.width, self.window.height
+        kol, rij = self._raster()
+        if kol == 2:
+            arcade.draw_lrbt_rectangle_filled(W // 2 - 3, W // 2 + 3, 0, H, (20, 20, 30))
+        if rij == 2:
+            arcade.draw_lrbt_rectangle_filled(0, W, H // 2 - 3, H // 2 + 3, (20, 20, 30))
         self._teken_twee_hud()
-        # Banner: iemand wint (race/vlucht) of allebei winnen (vechtmodus)
+        # Banner: iemand wint (race/vlucht) of iedereen wint (vechtmodus)
         if self.winnaar or (self.arena and self.level_gehaald):
             mx, my = W // 2, H // 2
-            arcade.draw_lrbt_rectangle_filled(mx - 340, mx + 340, my - 80, my + 80, (20, 70, 20))
-            arcade.draw_lrbt_rectangle_outline(mx - 340, mx + 340, my - 80, my + 80,
+            arcade.draw_lrbt_rectangle_filled(mx - 340, mx + 340, my - 60, my + 60, (20, 70, 20))
+            arcade.draw_lrbt_rectangle_outline(mx - 340, mx + 340, my - 60, my + 60,
                                                arcade.color.WHITE, 3)
             if self.winnaar:
                 titel = f"🏆 Speler {self.winnaar} wint!"
                 hint = "ENTER = nieuwe baan   •   K = kaart"
             else:
-                titel = "🎉 Allebei gewonnen! 🎉"
+                titel = "🎉 Iedereen gewonnen! 🎉"
                 hint = "ENTER = volgend monster-level   •   K = kaart"
-            arcade.draw_text(titel, mx, my + 12, (255, 230, 80), 34, bold=True, anchor_x="center")
-            arcade.draw_text(hint, mx, my - 42, arcade.color.WHITE, 18, anchor_x="center")
+            arcade.draw_text(titel, mx, my + 8, (255, 230, 80), 30, bold=True, anchor_x="center")
+            arcade.draw_text(hint, mx, my - 34, arcade.color.WHITE, 16, anchor_x="center")
 
     def _teken_twee_hud(self):
-        """Teken bovenin elke helft een naam + (in race/vlucht) een voortgangsbalk."""
-        W, H = self.window.width, self.window.height
-        half = W // 2
+        """Teken in elk vak een naam + (in race/vlucht) een voortgangsbalk."""
         doel = self.vlag_x if self.vlag_x > 0 else self.level_breedte
-        for sp, idx, midden, klaar in ((self.speler, 1, half // 2, self._finish1),
-                                       (self.speler2, 2, half + half // 2, self._finish2)):
+        for i, sp in enumerate(self.spelers):
+            vx, vy, vw, vh = self._vak(i)
+            midden = vx + vw // 2
+            boven = vy + vh                    # bovenkant van dit vak
+            kleur = self.SPELER_KLEUREN[i]
             if self.arena:
-                # Vechtmodus: geen voortgangsbalk, alleen een kopje
-                arcade.draw_text(f"Speler {idx}  —  Vechten! ⚔️", midden, H - 40,
-                                 arcade.color.WHITE, 16, bold=True, anchor_x="center")
+                arcade.draw_text(f"Speler {i + 1}  —  Vechten! ⚔️", midden, boven - 26,
+                                 kleur, 15, bold=True, anchor_x="center")
                 continue
             pct = max(0.0, min(sp.x / doel, 1.0))
-            bl, br = midden - 150, midden + 150
-            bb, bt = H - 26, H - 12
+            bl, br = midden - 130, midden + 130
+            bb, bt = boven - 22, boven - 10
             arcade.draw_lrbt_rectangle_filled(bl, br, bb, bt, (40, 40, 55))
             if pct > 0:
                 arcade.draw_lrbt_rectangle_filled(bl, bl + (br - bl) * pct, bb, bt, (80, 220, 90))
             arcade.draw_lrbt_rectangle_outline(bl, br, bb, bt, arcade.color.WHITE, 2)
-            kop = f"Speler {idx}  —  FINISH! 🏁" if klaar else f"Speler {idx}  —  {int(pct * 100)}%"
-            arcade.draw_text(kop, midden, H - 52, arcade.color.WHITE, 16,
-                             bold=True, anchor_x="center")
+            kop = (f"Speler {i + 1} — FINISH! 🏁" if self._finish[i]
+                   else f"Speler {i + 1} — {int(pct * 100)}%")
+            arcade.draw_text(kop, midden, boven - 44, kleur, 14, bold=True, anchor_x="center")
 
     def _speler_geraakt(self):
         """Verwerk dat de speler geraakt wordt: leven aftrekken of game over."""
@@ -1063,24 +1074,21 @@ class PlatformerSpel(arcade.View):
 
     def on_key_press(self, toets, modifiers):
         """Wordt aangeroepen als je een toets indrukt."""
-        # 2-spelers-modus: speler 1 = W (springen) + A/D (bewegen),
-        #                   speler 2 = PIJLTJE OMHOOG (springen) + links/rechts (bewegen)
+        # Meerdere spelers: elke speler heeft eigen knoppen (springen + links/rechts).
+        # Speler 1 = W + A/D, speler 2 = pijltjes, speler 3 = T + F/H, speler 4 = I + J/L
         if self.twee:
-            bezig = not (self.winnaar or self.level_gehaald)
-            if toets in (arcade.key.W, arcade.key.SPACE):
-                if bezig and not self._finish1:
-                    self._actie_druk(self.speler, 1)
-            elif toets == arcade.key.A:
-                self.speler.links_ingedrukt = True
-            elif toets == arcade.key.D:
-                self.speler.rechts_ingedrukt = True
-            elif toets == arcade.key.UP:
-                if bezig and not self._finish2:
-                    self._actie_druk(self.speler2, 2)
-            elif toets == arcade.key.LEFT:
-                self.speler2.links_ingedrukt = True
-            elif toets == arcade.key.RIGHT:
-                self.speler2.rechts_ingedrukt = True
+            if toets in self.SPRING_TOETS:
+                i = self.SPRING_TOETS[toets]
+                if i < self.aantal and not self.winnaar and not self.level_gehaald \
+                        and not self._finish[i]:
+                    self._actie_druk(self.spelers[i], i)
+            elif toets in self.BEWEEG_TOETS:
+                i, kant = self.BEWEEG_TOETS[toets]
+                if i < self.aantal:
+                    if kant == "links":
+                        self.spelers[i].links_ingedrukt = True
+                    else:
+                        self.spelers[i].rechts_ingedrukt = True
             elif toets in (arcade.key.ENTER, arcade.key.NUM_ENTER):
                 if self.winnaar or self.level_gehaald:
                     if self.eigen:
@@ -1209,20 +1217,19 @@ class PlatformerSpel(arcade.View):
 
     def on_key_release(self, toets, modifiers):
         """Wordt aangeroepen als je een toets loslaat."""
-        # 2-spelers-modus: knoppen loslaten
+        # Meerdere spelers: knoppen loslaten
         if self.twee:
-            if toets in (arcade.key.W, arcade.key.SPACE):
-                self._vlieg_omhoog = False
-            elif toets == arcade.key.A:
-                self.speler.links_ingedrukt = False
-            elif toets == arcade.key.D:
-                self.speler.rechts_ingedrukt = False
-            elif toets == arcade.key.UP:
-                self._vlieg_omhoog2 = False
-            elif toets == arcade.key.LEFT:
-                self.speler2.links_ingedrukt = False
-            elif toets == arcade.key.RIGHT:
-                self.speler2.rechts_ingedrukt = False
+            if toets in self.SPRING_TOETS:
+                i = self.SPRING_TOETS[toets]
+                if i < self.aantal:
+                    self._vlieg[i] = False       # vasthoud-modi loslaten
+            elif toets in self.BEWEEG_TOETS:
+                i, kant = self.BEWEEG_TOETS[toets]
+                if i < self.aantal:
+                    if kant == "links":
+                        self.spelers[i].links_ingedrukt = False
+                    else:
+                        self.spelers[i].rechts_ingedrukt = False
             return
         if toets == arcade.key.LEFT:
             self.speler.links_ingedrukt = False
@@ -1254,7 +1261,7 @@ class PlatformerSpel(arcade.View):
         data = voortgang_module.laad_voortgang()
         b = BouwerView(self.voltooid, self.kaart_punten, self.kaart_levens,
                        data.get("arena_record", 0), data.get("race_record", 0),
-                       data.get("vlucht_record", 0), twee=self.twee)
+                       data.get("vlucht_record", 0), aantal_spelers=self.aantal)
         self.window.show_view(b)
 
     def _volgende_arena_level(self):
