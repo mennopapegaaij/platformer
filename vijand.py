@@ -1391,13 +1391,14 @@ class Spikes(Vijand):
     PUNT_BREEDTE = 40
     PUNT_HOOGTE = 45
 
-    def __init__(self, x, y, aantal=3, rotatie=0):
+    def __init__(self, x, y, aantal=3, rotatie=0, kleur=(185, 185, 200)):
         breedte = aantal * self.PUNT_BREEDTE
         super().__init__(x, y, x, x + breedte, 0)   # snelheid 0: staat helemaal stil
         self.breedte = breedte
         self.hoogte = self.PUNT_HOOGTE
         self.aantal = aantal
         self.rotatie = rotatie % 360    # 0=omhoog, 90/180/270 = opzij / naar beneden
+        self.kleur = kleur          # kleur van de punten (grijs, blauw ijs, rood vuur...)
         self.is_spike = True        # zo weet het spel: dit is een spike (niet te doden)
         self.levens = 999999        # gaat nooit dood
 
@@ -1445,14 +1446,35 @@ class Spikes(Vijand):
         # Donkere voet onderaan (draait mee)
         arcade.draw_polygon_filled([d(x, y), d(x + w, y), d(x + w, y + 12), d(x, y + 12)],
                                    (70, 70, 80))
+        # Lichtere glimp-kleur (van de eigen kleur)
+        glimp = tuple(min(255, c + 55) for c in self.kleur)
         # Rij scherpe punten (elk driehoekje draait mee)
         for i in range(self.aantal):
             sx = x + i * pb
             arcade.draw_polygon_filled([d(sx, y + 7), d(sx + pb, y + 7), d(sx + pb / 2, y + h)],
-                                       (185, 185, 200))
+                                       self.kleur)
             # Lichtglimp op elke punt zodat hij scherp glimt
             arcade.draw_polygon_filled([d(sx + pb * 0.32, y + 7), d(sx + pb * 0.55, y + 7),
-                                        d(sx + pb / 2, y + h - 7)], (235, 235, 245))
+                                        d(sx + pb / 2, y + h - 7)], glimp)
+
+
+# De 5 soorten spikes die je in de bouwmodus kunt kiezen: soort -> (aantal punten, kleur)
+SPIKE_SOORTEN = ["gewoon", "dubbel", "drie", "ijs", "vuur"]
+SPIKE_NAAM = {"gewoon": "Spike", "dubbel": "Dubbel", "drie": "Drie",
+              "ijs": "IJs", "vuur": "Vuur"}
+SPIKE_INFO = {
+    "gewoon": (1, (185, 185, 200)),   # grijze losse spike
+    "dubbel": (2, (185, 185, 200)),   # twee grijze punten
+    "drie":   (3, (185, 185, 200)),   # drie grijze punten
+    "ijs":    (1, (150, 210, 255)),   # blauwe ijs-spike
+    "vuur":   (1, (255, 120, 60)),    # rode vuur-spike
+}
+
+
+def maak_spike(soort, x, y, rotatie=0):
+    """Maak een Spikes van een bepaald soort (uit SPIKE_INFO)."""
+    aantal, kleur = SPIKE_INFO.get(soort, SPIKE_INFO["gewoon"])
+    return Spikes(x, y, aantal, rotatie, kleur)
 
 
 # =============================================
