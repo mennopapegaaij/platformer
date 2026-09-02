@@ -77,6 +77,17 @@ def teken_item(soort, x, y, grootte, rotatie=0):
         elif s == "half":
             arcade.draw_lrbt_rectangle_filled(x, x + g, y, y + g // 2, (150, 110, 80))
             arcade.draw_lrbt_rectangle_outline(x, x + g, y, y + g // 2, (90, 60, 40), 2)
+        elif s == "stuiter":
+            arcade.draw_lrbt_rectangle_filled(x, x + g, y, y + g, (60, 180, 90))
+            arcade.draw_lrbt_rectangle_outline(x, x + g, y, y + g, (30, 120, 50), 2)
+            cx = x + g // 2
+            arcade.draw_triangle_filled(cx - 7, y + g * 0.45, cx + 7, y + g * 0.45,
+                                        cx, y + g * 0.8, (230, 255, 230))
+        elif s == "verdwijn":
+            arcade.draw_lrbt_rectangle_filled(x, x + g, y, y + g, (200, 160, 90))
+            arcade.draw_lrbt_rectangle_outline(x, x + g, y, y + g, (120, 80, 40), 2)
+            arcade.draw_line(x + g * 0.35, y + g, x + g * 0.45, y, (120, 80, 40), 1)
+            arcade.draw_line(x + g * 0.65, y + g, x + g * 0.55, y, (120, 80, 40), 1)
         else:  # gewoon
             arcade.draw_lrbt_rectangle_filled(x, x + g, y, y + g, (150, 110, 80))
             arcade.draw_lrbt_rectangle_outline(x, x + g, y, y + g, (90, 60, 40), 2)
@@ -456,7 +467,7 @@ class BouwerView(arcade.View):
     # ---------- Je level bouwen en spelen ----------
     def _bouw_level(self):
         """Zet het raster om in echte level-gegevens voor het spel."""
-        from platforms import Platform, BlokPlatform, SchuinBlok
+        from platforms import Platform, BlokPlatform, SchuinBlok, StuiterBlok, VerdwijnBlok
         from vijand import Vijand, Spikes, maak_spike
         from powerup import ExtraLevenPowerUp
         from portaal import Portaal
@@ -486,6 +497,10 @@ class BouwerView(arcade.View):
                     platforms.append(SchuinBlok(wx, wy, CEL, CEL, "af"))
                 elif s == "half":
                     platforms.append(BlokPlatform(wx, wy, CEL, CEL // 2))
+                elif s == "stuiter":
+                    platforms.append(StuiterBlok(wx, wy, CEL, CEL))
+                elif s == "verdwijn":
+                    platforms.append(VerdwijnBlok(wx, wy, CEL, CEL))
                 else:
                     platforms.append(BlokPlatform(wx, wy, CEL, CEL))
             elif soort == "spike" or soort.startswith("spike_"):

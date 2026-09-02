@@ -182,11 +182,19 @@ class Speler:
             # Landen op het platform (van bovenaf)
             if platform.raakt(self.x, self.y, self.breedte, self.hoogte):
                 self.y = platform.y + platform.hoogte
-                self.snelheid_y = 0
-                if not omgedraaid:
-                    self.staat_op_grond = True
                 self.heeft_dubbel_gesprongen = False  # Op de grond: extra sprong herlaadbaar
                 self._robot_boost = 0                 # robot mag pas na een nieuwe tik duwen
+                # Verdwijnblok: laat het weten dat je erop staat (het gaat dan verdwijnen)
+                if hasattr(platform, "aangeraakt"):
+                    platform.aangeraakt()
+                # Stuiterblok: stuiter omhoog i.p.v. blijven staan
+                stuiter = getattr(platform, "stuiter", 0)
+                if stuiter and not omgedraaid:
+                    self.snelheid_y = stuiter
+                else:
+                    self.snelheid_y = 0
+                    if not omgedraaid:
+                        self.staat_op_grond = True
             # Hoofd stoot tegen onderkant platform
             elif (self.snelheid_y > 0 and
                   platform.raakt_van_onder(self.x, self.y, self.breedte, self.hoogte)):

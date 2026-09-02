@@ -122,6 +122,77 @@ class SchuinBlok:
         arcade.draw_polygon_outline(punten, (90, 60, 40), 3)
 
 
+STUITER_KRACHT = 15   # hoe hoog je stuitert op een stuiterblok
+
+
+class StuiterBlok(BlokPlatform):
+    """Een blok waar je bovenop stuitert (als een trampoline)."""
+
+    stuiter = STUITER_KRACHT   # de speler leest dit uit bij het landen
+
+    def teken(self):
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (60, 180, 90))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (30, 120, 50), 3)
+        # pijltje omhoog erop (zo zie je: hier stuiter je)
+        cx = x + w / 2
+        arcade.draw_triangle_filled(cx - 9, y + h * 0.45, cx + 9, y + h * 0.45,
+                                    cx, y + h * 0.85, (230, 255, 230))
+
+
+class VerdwijnBlok(BlokPlatform):
+    """Een blok dat verdwijnt als je erop gaat staan, en na een tijdje terugkomt."""
+
+    def __init__(self, x, y, breedte, hoogte):
+        super().__init__(x, y, breedte, hoogte)
+        self._staat = "heel"    # "heel" / "aftellen" / "weg"
+        self._teller = 0
+
+    @property
+    def vast(self):
+        return self._staat != "weg"   # als het weg is, is het niet meer vast
+
+    def aangeraakt(self):
+        """Wordt aangeroepen als de speler erop gaat staan."""
+        if self._staat == "heel":
+            self._staat = "aftellen"
+            self._teller = 25
+
+    def bijwerken(self):
+        if self._staat == "aftellen":
+            self._teller -= 1
+            if self._teller <= 0:
+                self._staat = "weg"
+                self._teller = 110       # zo lang blijft het weg
+        elif self._staat == "weg":
+            self._teller -= 1
+            if self._teller <= 0:
+                self._staat = "heel"     # komt weer terug
+
+    def raakt(self, *a):
+        return self._staat != "weg" and super().raakt(*a)
+
+    def raakt_van_onder(self, *a):
+        return self._staat != "weg" and super().raakt_van_onder(*a)
+
+    def teken(self):
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        if self._staat == "weg":
+            arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (150, 150, 160), 1)
+            return
+        # Knippert oranje als het bijna verdwijnt
+        if self._staat == "aftellen" and (self._teller // 4) % 2 == 0:
+            kleur = (230, 120, 60)
+        else:
+            kleur = (200, 160, 90)
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, kleur)
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (120, 80, 40), 3)
+        # barstjes (zodat je ziet dat het kan breken)
+        arcade.draw_line(x + w * 0.3, y + h, x + w * 0.42, y, (120, 80, 40), 1)
+        arcade.draw_line(x + w * 0.7, y + h, x + w * 0.58, y, (120, 80, 40), 1)
+
+
 # De soorten blokken die je in de bouwmodus kunt kiezen
-BLOK_SOORTEN = ["gewoon", "schuinop", "schuinaf", "half"]
-BLOK_NAAM = {"gewoon": "Blok", "schuinop": "Schuin /", "schuinaf": "Schuin \\", "half": "Half"}
+BLOK_SOORTEN = ["gewoon", "schuinop", "schuinaf", "half", "stuiter", "verdwijn"]
+BLOK_NAAM = {"gewoon": "Blok", "schuinop": "Schuin /", "schuinaf": "Schuin \\",
+             "half": "Half", "stuiter": "Stuiter", "verdwijn": "Verdwijn"}

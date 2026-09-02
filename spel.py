@@ -476,6 +476,8 @@ class PlatformerSpel(arcade.View):
         if self.dood:
             return
 
+        self._update_platforms()      # verdwijnblokken aftellen
+
         # In de race- én vliegtuig-modus ga je VANZELF naar rechts
         if self.race or self.vlucht:
             self.speler.rechts_ingedrukt = True
@@ -771,9 +773,17 @@ class PlatformerSpel(arcade.View):
             return True
         return False
 
+    def _update_platforms(self):
+        """Werk bijzondere blokken bij (zoals het verdwijnblok dat aftelt)."""
+        for p in self.platforms:
+            if hasattr(p, "bijwerken"):
+                p.bijwerken()
+
     def _raakt_blok_zijkant(self, sp):
         """Botst deze speler tegen de ZIJKANT van een blok? (Geometry Dash-dood.)"""
         for p in self._blokken:
+            if not getattr(p, "vast", True):
+                continue                       # verdwenen blok: geen botsing
             top = p.y + p.hoogte
             # Overlapt de speler verticaal met het blok, maar staat hij er niet bovenop?
             if not (sp.y + sp.hoogte > p.y + 4 and sp.y < top - 6):
@@ -919,6 +929,7 @@ class PlatformerSpel(arcade.View):
         """Werk alle spelers + de monsters bij en laat de camera's meebewegen."""
         if self.winnaar or self.level_gehaald:
             return
+        self._update_platforms()      # verdwijnblokken aftellen
         for i, sp in enumerate(self.spelers):
             if not self._is_klaar(i):
                 self._beweeg_speler_multi(sp, i)
