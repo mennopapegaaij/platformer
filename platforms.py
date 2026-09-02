@@ -79,3 +79,49 @@ class BlokPlatform(Platform):
         arcade.draw_line(x + w / 2, y, x + w / 2, y + h / 2, (90, 60, 40), 2)
         arcade.draw_line(x + w / 4, y + h / 2, x + w / 4, y + h, (90, 60, 40), 2)
         arcade.draw_line(x + 3 * w / 4, y + h / 2, x + 3 * w / 4, y + h, (90, 60, 40), 2)
+
+
+class SchuinBlok:
+    """Een schuin blok (helling): je loopt er soepel overheen omhoog of omlaag.
+
+    richting "op"  -> loopt omhoog naar rechts  (/)
+    richting "af"  -> loopt omhoog naar links   (\\)
+    """
+
+    is_schuin = True   # zo weet de speler: hier loop je schuin overheen
+
+    def __init__(self, x, y, breedte, hoogte, richting="op"):
+        self.x = x
+        self.y = y
+        self.breedte = breedte
+        self.hoogte = hoogte
+        self.richting = richting
+
+    def hoogte_op(self, px):
+        """De hoogte van het loop-oppervlak op wereld-x = px."""
+        t = (px - self.x) / self.breedte
+        t = max(0.0, min(1.0, t))
+        if self.richting == "op":
+            return self.y + self.hoogte * t          # links laag, rechts hoog
+        return self.y + self.hoogte * (1 - t)        # links hoog, rechts laag
+
+    # De gewone (rechte) botsingen slaan we over — de speler regelt de helling zelf
+    def raakt(self, px, py, pw, ph):
+        return False
+
+    def raakt_van_onder(self, px, py, pw, ph):
+        return False
+
+    def teken(self):
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        if self.richting == "op":
+            punten = [(x, y), (x + w, y), (x + w, y + h)]     # driehoek /
+        else:
+            punten = [(x, y), (x + w, y), (x, y + h)]         # driehoek \
+        arcade.draw_polygon_filled(punten, (150, 110, 80))
+        arcade.draw_polygon_outline(punten, (90, 60, 40), 3)
+
+
+# De soorten blokken die je in de bouwmodus kunt kiezen
+BLOK_SOORTEN = ["gewoon", "schuinop", "schuinaf", "half"]
+BLOK_NAAM = {"gewoon": "Blok", "schuinop": "Schuin /", "schuinaf": "Schuin \\", "half": "Half"}

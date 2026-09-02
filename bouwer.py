@@ -9,6 +9,7 @@ import os
 from instellingen import SCHERM_BREEDTE, SCHERM_HOOGTE
 from decoratie import teken_deco, DECO_SOORTEN, DECO_NAAM
 from vijand import SPIKE_SOORTEN, SPIKE_NAAM, SPIKE_INFO
+from platforms import BLOK_SOORTEN, BLOK_NAAM
 
 CEL = 40                       # grootte van één raster-vakje
 BESTAND = "eigen_level.json"   # hier wordt je level opgeslagen
@@ -65,9 +66,20 @@ def teken_item(soort, x, y, grootte, rotatie=0):
     if soort == "grond":
         arcade.draw_lrbt_rectangle_filled(x, x + g, y, y + g, (60, 160, 60))
         arcade.draw_lrbt_rectangle_filled(x, x + g, y + g - 5, y + g, (90, 200, 90))
-    elif soort == "blok":
-        arcade.draw_lrbt_rectangle_filled(x, x + g, y, y + g, (150, 110, 80))
-        arcade.draw_lrbt_rectangle_outline(x, x + g, y, y + g, (90, 60, 40), 2)
+    elif soort == "blok" or soort.startswith("blok_"):
+        s = soort.split("_", 1)[1] if "_" in soort else "gewoon"
+        if s == "schuinop":
+            arcade.draw_triangle_filled(x, y, x + g, y, x + g, y + g, (150, 110, 80))
+            arcade.draw_triangle_outline(x, y, x + g, y, x + g, y + g, (90, 60, 40), 2)
+        elif s == "schuinaf":
+            arcade.draw_triangle_filled(x, y, x + g, y, x, y + g, (150, 110, 80))
+            arcade.draw_triangle_outline(x, y, x + g, y, x, y + g, (90, 60, 40), 2)
+        elif s == "half":
+            arcade.draw_lrbt_rectangle_filled(x, x + g, y, y + g // 2, (150, 110, 80))
+            arcade.draw_lrbt_rectangle_outline(x, x + g, y, y + g // 2, (90, 60, 40), 2)
+        else:  # gewoon
+            arcade.draw_lrbt_rectangle_filled(x, x + g, y, y + g, (150, 110, 80))
+            arcade.draw_lrbt_rectangle_outline(x, x + g, y, y + g, (90, 60, 40), 2)
     elif soort == "spike" or soort.startswith("spike_"):
         s = soort.split("_", 1)[1] if "_" in soort else "gewoon"
         aantal, kleur = SPIKE_INFO.get(s, SPIKE_INFO["gewoon"])
@@ -156,6 +168,7 @@ class BouwerView(arcade.View):
         self.deco_soort = "bloem"      # welke decoratie je plaatst (klik op Deco)
         self.spring_soort = "bol3"     # welk spring-ding je plaatst (klik op Spring)
         self.spike_soort = "gewoon"    # welke spike je plaatst (klik op Spike)
+        self.blok_soort = "gewoon"     # welk blok je plaatst (klik op Blok)
         # Type van je level: "gewoon" (lopen), "race" (auto-run), "vlucht" (vliegen)
         self.mode = "gewoon"
         self.scroll = 0                # hoe ver je naar rechts hebt geschoven
@@ -285,6 +298,9 @@ class BouwerView(arcade.View):
             elif soort == "spike":
                 teken_item("spike_" + self.spike_soort, l + 2, BALK_Y + 10, 34, self.rotatie)
                 naam = SPIKE_NAAM[self.spike_soort]
+            elif soort == "blok":
+                teken_item("blok_" + self.blok_soort, l + 2, BALK_Y + 10, 34)
+                naam = BLOK_NAAM[self.blok_soort]
             else:
                 teken_item(soort, l + 2, BALK_Y + 10, 34)
                 naam = ITEM_NAAM[soort]
@@ -352,6 +368,8 @@ class BouwerView(arcade.View):
                 self.grid[(kol, rij)] = "spring_" + self.spring_soort
             elif self.gekozen == "spike":
                 self.grid[(kol, rij)] = "spike_" + self.spike_soort
+            elif self.gekozen == "blok":
+                self.grid[(kol, rij)] = "blok_" + self.blok_soort
             else:
                 self.grid[(kol, rij)] = self.gekozen
             # Onthoud de draai-stand voor dit vakje (0 = niet onthouden)
@@ -383,6 +401,10 @@ class BouwerView(arcade.View):
                     # Nog een keer op Spike klikken: door de 5 spike-soorten wisselen
                     i = SPIKE_SOORTEN.index(self.spike_soort)
                     self.spike_soort = SPIKE_SOORTEN[(i + 1) % len(SPIKE_SOORTEN)]
+                elif soort == "blok" and self.gekozen == "blok":
+                    # Nog een keer op Blok klikken: door de blok-soorten wisselen
+                    i = BLOK_SOORTEN.index(self.blok_soort)
+                    self.blok_soort = BLOK_SOORTEN[(i + 1) % len(BLOK_SOORTEN)]
                 self.gekozen = soort
                 return
         for naam, (l, r) in self.actie_knoppen.items():
@@ -434,7 +456,7 @@ class BouwerView(arcade.View):
     # ---------- Je level bouwen en spelen ----------
     def _bouw_level(self):
         """Zet het raster om in echte level-gegevens voor het spel."""
-        from platforms import Platform, BlokPlatform
+        from platforms import Platform, BlokPlatform, SchuinBlok
         from vijand import Vijand, Spikes, maak_spike
         from powerup import ExtraLevenPowerUp
         from portaal import Portaal
@@ -456,8 +478,16 @@ class BouwerView(arcade.View):
             max_x = max(max_x, wx + CEL)
             if soort == "grond":
                 platforms.append(Platform(wx, wy, CEL, CEL))
-            elif soort == "blok":
-                platforms.append(BlokPlatform(wx, wy, CEL, CEL))
+            elif soort == "blok" or soort.startswith("blok_"):
+                s = soort.split("_", 1)[1] if "_" in soort else "gewoon"
+                if s == "schuinop":
+                    platforms.append(SchuinBlok(wx, wy, CEL, CEL, "op"))
+                elif s == "schuinaf":
+                    platforms.append(SchuinBlok(wx, wy, CEL, CEL, "af"))
+                elif s == "half":
+                    platforms.append(BlokPlatform(wx, wy, CEL, CEL // 2))
+                else:
+                    platforms.append(BlokPlatform(wx, wy, CEL, CEL))
             elif soort == "spike" or soort.startswith("spike_"):
                 s = soort.split("_", 1)[1] if "_" in soort else "gewoon"
                 vijanden.append(maak_spike(s, wx + 4, wy, rot))   # 5 soorten, met draaiing

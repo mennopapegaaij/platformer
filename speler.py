@@ -196,6 +196,21 @@ class Speler:
                 if omgedraaid:
                     self.staat_op_grond = True
 
+        # Schuine blokken (hellingen): loop er soepel overheen omhoog/omlaag
+        if not omgedraaid:
+            midden = self.x + self.breedte / 2
+            for platform in platforms:
+                if not getattr(platform, "is_schuin", False):
+                    continue
+                if platform.x <= midden <= platform.x + platform.breedte:
+                    opp = platform.hoogte_op(midden)      # hoogte van de helling hier
+                    if self.snelheid_y <= 0 and self.y <= opp and self.y + self.hoogte > opp:
+                        self.y = opp
+                        self.snelheid_y = 0
+                        self.staat_op_grond = True
+                        self.heeft_dubbel_gesprongen = False
+                        self._robot_boost = 0
+
         # In de speciale modi (of bij omgedraaide zwaartekracht): niet door het plafond
         if (self.modus in ("vliegtuig", "ufo", "bal", "golf", "spin") or omgedraaid) \
                 and self.y + self.hoogte > VLIEG_PLAFOND:
