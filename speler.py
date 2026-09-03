@@ -77,7 +77,7 @@ class Speler:
         self.vlieg_omhoog = False        # knop-vasthouden (vliegtuig, golf, robot)
         self.zwaartekracht_richting = 1  # 1 = omlaag, -1 = omhoog (bal en spin)
         self._robot_boost = 0            # hoeveel frames de robot nog omhoog mag duwen
-        self.heeft_kloon = False         # dubbel-portaal: een spiegel-kopie van jou
+        self.kloon = None                # dubbel-portaal: een tweede kopie van jou (of None)
         self.snelheid_factor = 1.0       # snelheid-portaal (x0.5 / x1 / x2 / x5 / x10)
 
     def reset(self):
@@ -101,7 +101,7 @@ class Speler:
         self.zwaartekracht_richting = 1     # zwaartekracht weer gewoon omlaag
         self._robot_boost = 0               # robot-duw reset
         self.snelheid_factor = 1.0          # snelheid weer normaal
-        self.heeft_kloon = False            # kloon weg bij herstart
+        self.kloon = None                   # kloon weg bij herstart
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""

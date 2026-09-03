@@ -505,12 +505,15 @@ class PlatformerSpel(arcade.View):
         if self._check_blok_zijkant():
             return
 
+        # Beweeg de kloon (dubbel-portaal) met de speler mee
+        kloon_raakt = self._update_kloon(self.speler)
+
         # Waarschuwingstimer aftellen
         if self._waarschuwing_teller > 0:
             self._waarschuwing_teller -= 1
 
-        # Is de speler in een kuil gevallen, of raakte zijn spiegel-kloon een spike?
-        if self.speler.is_gevallen() or self._kloon_geraakt(self.speler):
+        # Is de speler in een kuil gevallen, of ging zijn kloon ergens tegenaan?
+        if self.speler.is_gevallen() or kloon_raakt:
             self._speler_geraakt()
             return
 
@@ -725,14 +728,14 @@ class PlatformerSpel(arcade.View):
             if not self._raakt_portaal(sp, vorige_x, portaal):
                 continue
             if portaal.soort == "dubbel":
-                # Dubbel-portaal: er komt een spiegel-kopie van jou bij
-                if not sp.heeft_kloon:
-                    sp.heeft_kloon = True
+                # Dubbel-portaal: er komt een tweede kopie van jou uit het portaal
+                if sp.kloon is None:
+                    self._maak_kloon(sp)
                     geluid_manager.speel_powerup()
             elif portaal.soort == "enkel":
                 # Enkel-portaal: je wordt weer één
-                if sp.heeft_kloon:
-                    sp.heeft_kloon = False
+                if sp.kloon is not None:
+                    sp.kloon = None
                     geluid_manager.speel_powerup()
             elif portaal.soort in SNELHEID_FACTOR:
                 # Snelheid-portaal: ga langzamer of sneller (x0.5 ... x10)
@@ -784,37 +787,66 @@ class PlatformerSpel(arcade.View):
             return True
         return False
 
-    def _kloon_y(self, sp):
-        """De hoogte van de spiegel-kloon (gespiegeld rond het midden van het scherm)."""
-        return SCHERM_HOOGTE - sp.y - sp.hoogte
+    def _maak_kloon(self, sp):
+        """Maak een tweede kopie die UIT het portaal komt en de andere kant op valt.
 
-    def _kloon_geraakt(self, sp):
-        """Raakt de spiegel-kloon een spike of een blok? (Dan ga je ook af — de
-        bovenste kloon kan dus NIET door blokken heen.)"""
-        if not sp.heeft_kloon:
+        De kloon start op dezelfde plek als de speler (dus niet in een blok) en
+        heeft omgekeerde zwaartekracht: hij valt omhoog terwijl de speler omlaag valt.
+        """
+        k = Speler()
+        k.x = sp.x
+        k.y = sp.y
+        k.modus = sp.modus
+        k.snelheid_bonus = sp.snelheid_bonus
+        k.sprong_bonus = sp.sprong_bonus
+        k.snelheid_factor = sp.snelheid_factor
+        k.kleur = sp.kleur
+        k.zwaartekracht_richting = -1     # de kloon valt naar BOVEN
+        sp.kloon = k
+
+    def _kloon_actie(self, sp):
+        """Laat de kloon dezelfde actie doen als de speler (springen enz.)."""
+        k = sp.kloon
+        if k is None:
+            return
+        m = k.modus
+        if m == "robot":
+            k.robot_sprong()
+        elif m == "ufo":
+            k.flap()
+        elif m == "bal":
+            k.flip_zwaartekracht()
+        elif m == "spin":
+            self._spin_teleport(k)
+        elif m not in ("vliegtuig", "golf"):   # gewoon blok: springen
+            k.spring()
+
+    def _update_kloon(self, sp):
+        """Beweeg de kloon met de speler mee. Geeft True als hij ergens tegenaan gaat."""
+        k = sp.kloon
+        if k is None:
             return False
-        ky = self._kloon_y(sp)
+        k.rechts_ingedrukt = sp.rechts_ingedrukt
+        k.links_ingedrukt = sp.links_ingedrukt
+        if k.modus in ("vliegtuig", "golf", "robot"):
+            k.vlieg_omhoog = sp.vlieg_omhoog
+        k.bijwerken(self.level_breedte, self.platforms)
+        k.x = sp.x                       # blijf horizontaal gelijk met de speler
+        self._pas_rotatie_toe(k)
+        # De kloon gaat af als hij een blok-zijkant of een spike raakt, of eraf valt
+        if self._raakt_blok_zijkant(k):
+            return True
         for v in self.vijanden:
-            if getattr(v, "is_spike", False) and v.raakt_speler(sp.x, ky, sp.breedte, sp.hoogte):
+            if getattr(v, "is_spike", False) and v.raakt_speler(k.x, k.y, k.breedte, k.hoogte):
                 return True
-        # De kloon kan niet door blokken heen: overlapt hij er een, dan ga je af
-        for p in self._blokken:
-            if not getattr(p, "vast", True):
-                continue                      # verdwenen blok telt niet
-            if (sp.x < p.x + p.breedte and sp.x + sp.breedte > p.x and
-                    ky < p.y + p.hoogte and ky + sp.hoogte > p.y):
-                return True
+        if k.y < -50 or k.y > SCHERM_HOOGTE + 50:
+            return True
         return False
 
     def _teken_kloon(self, sp):
-        """Teken de spiegel-kloon (dezelfde vorm, ondersteboven, hoger op het scherm)."""
-        if not sp.heeft_kloon:
-            return
-        echt_y, echt_rot = sp.y, sp.rotatie
-        sp.y = self._kloon_y(sp)
-        sp.rotatie = (180 - sp.rotatie) % 360     # ondersteboven
-        sp.teken()
-        sp.y, sp.rotatie = echt_y, echt_rot       # weer terugzetten
+        """Teken de kloon (als die er is)."""
+        if sp.kloon is not None:
+            sp.kloon.teken()
 
     def _update_platforms(self):
         """Werk bijzondere blokken bij (zoals het verdwijnblok dat aftelt)."""
@@ -915,7 +947,8 @@ class PlatformerSpel(arcade.View):
         self._vorige[i] = sp.x
         self._check_springers(sp)
         self._pas_rotatie_toe(sp)
-        if self._raakt_blok_zijkant(sp) or sp.is_gevallen() or self._kloon_geraakt(sp):
+        kloon_raakt = self._update_kloon(sp)
+        if self._raakt_blok_zijkant(sp) or sp.is_gevallen() or kloon_raakt:
             self._racer_dood(sp, i)
 
     def _update_monsters_multi(self):
@@ -996,6 +1029,7 @@ class PlatformerSpel(arcade.View):
 
     def _actie_druk(self, sp, i):
         """Speler i drukt op zijn knop: doe de actie die bij zijn modus hoort."""
+        self._kloon_actie(sp)   # de kloon (dubbel-portaal) springt met je mee
         # Sta je op een spring-bol? Dan spring je (ook in de lucht), wat je modus ook is.
         if self._springboost(sp):
             return
@@ -1162,6 +1196,7 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.RIGHT:
             self.speler.rechts_ingedrukt = True
         elif toets == arcade.key.UP or toets == arcade.key.SPACE:
+            self._kloon_actie(self.speler)   # de kloon (dubbel-portaal) springt met je mee
             # Sta je op een spring-bol? Dan spring je meteen (ook in de lucht)
             if self._springboost(self.speler):
                 return
