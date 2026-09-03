@@ -257,8 +257,9 @@ class PlatformerSpel(arcade.View):
             for kogel in self.kogels:
                 kogel.teken()
 
-            # Teken de speler
+            # Teken de speler (en zijn spiegel-kloon als die er is)
             self.speler.teken()
+            self._teken_kloon(self.speler)
 
         # --- Teken de berichten buiten de camera (altijd midden op het scherm) ---
 
@@ -508,8 +509,8 @@ class PlatformerSpel(arcade.View):
         if self._waarschuwing_teller > 0:
             self._waarschuwing_teller -= 1
 
-        # Is de speler in een kuil gevallen?
-        if self.speler.is_gevallen():
+        # Is de speler in een kuil gevallen, of raakte zijn spiegel-kloon een spike?
+        if self.speler.is_gevallen() or self._kloon_geraakt(self.speler):
             self._speler_geraakt()
             return
 
@@ -723,7 +724,17 @@ class PlatformerSpel(arcade.View):
         for portaal in self.portalen:
             if not self._raakt_portaal(sp, vorige_x, portaal):
                 continue
-            if portaal.soort in SNELHEID_FACTOR:
+            if portaal.soort == "dubbel":
+                # Dubbel-portaal: er komt een spiegel-kopie van jou bij
+                if not sp.heeft_kloon:
+                    sp.heeft_kloon = True
+                    geluid_manager.speel_powerup()
+            elif portaal.soort == "enkel":
+                # Enkel-portaal: je wordt weer één
+                if sp.heeft_kloon:
+                    sp.heeft_kloon = False
+                    geluid_manager.speel_powerup()
+            elif portaal.soort in SNELHEID_FACTOR:
                 # Snelheid-portaal: ga langzamer of sneller (x0.5 ... x10)
                 factor = SNELHEID_FACTOR[portaal.soort]
                 if sp.snelheid_factor != factor:
@@ -772,6 +783,38 @@ class PlatformerSpel(arcade.View):
             geluid_manager.speel_sprong()
             return True
         return False
+
+    def _kloon_y(self, sp):
+        """De hoogte van de spiegel-kloon (gespiegeld rond het midden van het scherm)."""
+        return SCHERM_HOOGTE - sp.y - sp.hoogte
+
+    def _kloon_geraakt(self, sp):
+        """Raakt de spiegel-kloon een spike of een blok? (Dan ga je ook af — de
+        bovenste kloon kan dus NIET door blokken heen.)"""
+        if not sp.heeft_kloon:
+            return False
+        ky = self._kloon_y(sp)
+        for v in self.vijanden:
+            if getattr(v, "is_spike", False) and v.raakt_speler(sp.x, ky, sp.breedte, sp.hoogte):
+                return True
+        # De kloon kan niet door blokken heen: overlapt hij er een, dan ga je af
+        for p in self._blokken:
+            if not getattr(p, "vast", True):
+                continue                      # verdwenen blok telt niet
+            if (sp.x < p.x + p.breedte and sp.x + sp.breedte > p.x and
+                    ky < p.y + p.hoogte and ky + sp.hoogte > p.y):
+                return True
+        return False
+
+    def _teken_kloon(self, sp):
+        """Teken de spiegel-kloon (dezelfde vorm, ondersteboven, hoger op het scherm)."""
+        if not sp.heeft_kloon:
+            return
+        echt_y, echt_rot = sp.y, sp.rotatie
+        sp.y = self._kloon_y(sp)
+        sp.rotatie = (180 - sp.rotatie) % 360     # ondersteboven
+        sp.teken()
+        sp.y, sp.rotatie = echt_y, echt_rot       # weer terugzetten
 
     def _update_platforms(self):
         """Werk bijzondere blokken bij (zoals het verdwijnblok dat aftelt)."""
@@ -872,7 +915,7 @@ class PlatformerSpel(arcade.View):
         self._vorige[i] = sp.x
         self._check_springers(sp)
         self._pas_rotatie_toe(sp)
-        if self._raakt_blok_zijkant(sp) or sp.is_gevallen():
+        if self._raakt_blok_zijkant(sp) or sp.is_gevallen() or self._kloon_geraakt(sp):
             self._racer_dood(sp, i)
 
     def _update_monsters_multi(self):
@@ -1011,10 +1054,11 @@ class PlatformerSpel(arcade.View):
                         portaal.teken()
                 if not self.arena:                 # in de vechtmodus is er geen vlag
                     self._teken_vlag(self.vlag_x, self.vlag_y)
-                # Teken ALLE spelers, zodat je elkaar ziet als je dicht bij elkaar bent
+                # Teken ALLE spelers (en hun spiegel-klonen), zodat je elkaar ziet
                 for speler in self.spelers:
                     if zicht(speler, speler.breedte):
                         speler.teken()
+                        self._teken_kloon(speler)
         # Scheidingslijnen tussen de vakken
         W, H = self.window.width, self.window.height
         kol, rij = self._raster()
