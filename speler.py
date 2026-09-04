@@ -22,6 +22,9 @@ ROBOT_START = 7        # Beginkracht van de sprong
 ROBOT_EXTRA = 0.7      # Extra duw omhoog per frame terwijl je vasthoudt
 ROBOT_BOOST_FRAMES = 16  # Hoeveel frames je kunt blijven duwen (langer = hoger)
 
+# --- Helikopter-modus: druk = omhoog, druk nog eens = omlaag ---
+HELI_SNELHEID = 4      # Hoe snel de helikopter omhoog of omlaag gaat
+
 
 class Speler:
     """Het poppetje dat de speler bestuurt: een geel vierkantje met een gezichtje."""
@@ -77,6 +80,7 @@ class Speler:
         self.vlieg_omhoog = False        # knop-vasthouden (vliegtuig, golf, robot)
         self.zwaartekracht_richting = 1  # 1 = omlaag, -1 = omhoog (bal en spin)
         self._robot_boost = 0            # hoeveel frames de robot nog omhoog mag duwen
+        self._heli_omhoog = True         # helikopter: gaat hij nu omhoog (True) of omlaag (False)?
         self.kloon = None                # dubbel-portaal: een tweede kopie van jou (of None)
         self.snelheid_factor = 1.0       # snelheid-portaal (x0.5 / x1 / x2 / x5 / x10)
 
@@ -100,6 +104,7 @@ class Speler:
         self.modus = "blok"                 # begin weer als gewoon blokje
         self.zwaartekracht_richting = 1     # zwaartekracht weer gewoon omlaag
         self._robot_boost = 0               # robot-duw reset
+        self._heli_omhoog = True            # helikopter begint omhoog
         self.snelheid_factor = 1.0          # snelheid weer normaal
         self.kloon = None                   # kloon weg bij herstart
 
@@ -164,6 +169,10 @@ class Speler:
             # Golf: schuin omhoog als je vasthoudt, anders schuin omlaag (45 graden).
             # Maal met de richting zodat de kloon precies de andere kant op golft.
             self.snelheid_y = (snelheid if self.vlieg_omhoog else -snelheid) * richting
+        elif self.modus == "heli":
+            # Helikopter: druk = omhoog, druk nog eens = omlaag (steeds wisselen).
+            # Maal met de richting zodat de kloon de andere kant op vliegt.
+            self.snelheid_y = (HELI_SNELHEID if self._heli_omhoog else -HELI_SNELHEID) * richting
         elif self.modus in ("bal", "spin"):
             # Bal/spin: zwaartekracht in de huidige richting (kan omgedraaid zijn)
             self.snelheid_y -= ZWAARTEKRACHT * 1.3 * self.zwaartekracht_richting
@@ -226,7 +235,7 @@ class Speler:
                         self._robot_boost = 0
 
         # In de speciale modi (of bij omgedraaide zwaartekracht): niet door het plafond
-        if (self.modus in ("vliegtuig", "ufo", "bal", "golf", "spin") or omgedraaid) \
+        if (self.modus in ("vliegtuig", "ufo", "bal", "golf", "spin", "heli") or omgedraaid) \
                 and self.y + self.hoogte > VLIEG_PLAFOND:
             self.y = VLIEG_PLAFOND - self.hoogte
             if self.snelheid_y > 0:
@@ -243,6 +252,10 @@ class Speler:
     def flip_zwaartekracht(self):
         """Bal-modus: draai de zwaartekracht om (van vloer naar plafond en terug)."""
         self.zwaartekracht_richting *= -1
+
+    def heli_wissel(self):
+        """Helikopter-modus: wissel tussen omhoog en omlaag vliegen (bij elke tik)."""
+        self._heli_omhoog = not self._heli_omhoog
 
     def robot_sprong(self):
         """Robot-modus: begin een sprong (vasthouden maakt hem hoger)."""
@@ -295,6 +308,9 @@ class Speler:
             return
         if self.modus == "spin":
             self._teken_spin()
+            return
+        if self.modus == "heli":
+            self._teken_heli()
             return
 
         # Gewoon blokje: in de racemodus tolt het door de lucht → teken het gedraaid
@@ -432,6 +448,31 @@ class Speler:
         arcade.draw_circle_filled(cx, y + 28, 3, OOG_KLEUR)
         arcade.draw_line(cx, y + 32, cx, y + 37, metaal, 2)
         arcade.draw_circle_filled(cx, y + 38, 2, (255, 80, 80))
+
+    def _teken_heli(self):
+        """Teken een helikoptertje met een draaiende rotor bovenop (lichtblauw)."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w / 2
+        cy = y + h / 2
+        romp_kleur = self.kleur
+        donker = (40, 110, 160)
+        # Romp (afgeronde bak)
+        arcade.draw_ellipse_filled(cx, cy - 1, w - 4, h - 8, romp_kleur)
+        arcade.draw_ellipse_outline(cx, cy - 1, w - 4, h - 8, donker, 3)
+        # Raampje
+        arcade.draw_circle_filled(cx + 5, cy, 4, (200, 240, 255))
+        # Staart naar achteren
+        arcade.draw_line(cx - w / 2 + 4, cy, x - 4, cy + 3, donker, 3)
+        # Landingsglijders eronder
+        arcade.draw_line(x + 4, y + 2, x + w - 4, y + 2, donker, 2)
+        # Rotor bovenop (een lange balk die "draait")
+        arcade.draw_line(x - 2, y + h - 2, x + w + 2, y + h - 2, donker, 3)
+        arcade.draw_line(cx, y + h - 4, cx, y + h, donker, 2)
+        # Pijltje dat laat zien of hij nu omhoog of omlaag gaat
+        if self._heli_omhoog:
+            arcade.draw_triangle_filled(cx - 4, cy - 2, cx + 4, cy - 2, cx, cy + 5, (255, 255, 255))
+        else:
+            arcade.draw_triangle_filled(cx - 4, cy + 3, cx + 4, cy + 3, cx, cy - 4, (255, 255, 255))
 
     def _teken_spin(self):
         """Teken een spinnetje: een rond lijf met acht pootjes (donkerrood)."""

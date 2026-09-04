@@ -673,7 +673,7 @@ class PlatformerSpel(arcade.View):
     # Welke modus hoort bij welk portaal-soort
     PORTAAL_MODUS = {"vlucht": "vliegtuig", "blok": "blok",
                      "ufo": "ufo", "bal": "bal", "golf": "golf",
-                     "robot": "robot", "spin": "spin"}
+                     "robot": "robot", "spin": "spin", "heli": "heli"}
 
     def _pas_rotatie_toe(self, sp):
         """Zet de draai-stand van een speler op basis van zijn modus."""
@@ -684,7 +684,7 @@ class PlatformerSpel(arcade.View):
             sp.rotatie = 35 if sp.vlieg_omhoog else -35            # schuin omhoog/omlaag
         elif modus == "bal":
             sp.rotatie = (sp.rotatie - 7) % 360                    # rollen
-        elif modus in ("ufo", "robot", "spin"):
+        elif modus in ("ufo", "robot", "spin", "heli"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -827,6 +827,8 @@ class PlatformerSpel(arcade.View):
             k.flip_zwaartekracht()
         elif m == "spin":
             self._spin_teleport(k)
+        elif m == "heli":
+            k.heli_wissel()
         elif m not in ("vliegtuig", "golf"):   # gewoon blok: springen
             k.spring()
 
@@ -1058,6 +1060,9 @@ class PlatformerSpel(arcade.View):
         elif m == "spin":
             self._spin_teleport(sp)
             geluid_manager.speel_sprong()
+        elif m == "heli":
+            sp.heli_wissel()
+            geluid_manager.speel_sprong()
         else:
             op_grond = sp.staat_op_grond
             sp.spring()
@@ -1229,6 +1234,10 @@ class PlatformerSpel(arcade.View):
             elif modus == "spin":
                 # Spin: elke tik teleporteer je naar de vloer of het plafond
                 self._spin_teleport(self.speler)
+                geluid_manager.speel_sprong()
+            elif modus == "heli":
+                # Helikopter: elke tik wisselen tussen omhoog en omlaag
+                self.speler.heli_wissel()
                 geluid_manager.speel_sprong()
             else:
                 # Gewoon blokje: springen

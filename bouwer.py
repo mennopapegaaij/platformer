@@ -33,9 +33,9 @@ for _n in range(1, 6):
     SPRING_NAAM["mat%d" % _n] = "Mat%d" % _n
 
 # De vorm-portalen waar je met de Portaal-knop doorheen klikt
-PORTAAL_SOORTEN = ["vlucht", "blok", "ufo", "bal", "golf", "robot", "spin", "dubbel", "enkel"]
+PORTAAL_SOORTEN = ["vlucht", "blok", "ufo", "bal", "golf", "robot", "spin", "heli", "dubbel", "enkel"]
 PORTAAL_NAAM = {"vlucht": "Vlieg", "blok": "Blok", "ufo": "UFO", "bal": "Bal",
-                "golf": "Golf", "robot": "Robot", "spin": "Spin",
+                "golf": "Golf", "robot": "Robot", "spin": "Spin", "heli": "Heli",
                 "dubbel": "Dubbel", "enkel": "Enkel"}
 
 # De snelheid-portalen waar je met de Snel-knop doorheen klikt

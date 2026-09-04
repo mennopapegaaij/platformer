@@ -18,6 +18,7 @@ PORTAAL_KLEUREN = {
     "golf":   ((220, 60, 120), (255, 150, 190)),   # roze = golf
     "robot":  ((90, 140, 70), (170, 210, 130)),    # groen = robot
     "spin":   ((150, 40, 40), (220, 110, 110)),    # donkerrood = spin
+    "heli":   ((40, 130, 180), (150, 210, 240)),   # lichtblauw = helikopter
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
     # Snelheid-portalen (veranderen niet je vorm, maar hoe snel je gaat)
@@ -94,6 +95,11 @@ def teken_portaal_icoon(soort, cx, cy):
             arcade.draw_line(cx, cy, cx + dx, cy + 8, arcade.color.WHITE, 2)
             arcade.draw_line(cx, cy, cx + dx, cy - 8, arcade.color.WHITE, 2)
         arcade.draw_circle_filled(cx, cy, 7, arcade.color.WHITE)
+    elif soort == "heli":
+        # Helikoptertje (bolletje met een rotor-balk erboven en twee pijltjes)
+        arcade.draw_line(cx - 10, cy + 6, cx + 10, cy + 6, arcade.color.WHITE, 2)
+        arcade.draw_circle_filled(cx, cy - 1, 6, arcade.color.WHITE)
+        arcade.draw_line(cx, cy + 5, cx, cy + 6, arcade.color.WHITE, 2)
     elif soort in SNELHEID_FACTOR:
         # Snelheid-portaal: laat de keer-factor zien (bv. "x2")
         arcade.draw_text(soort, cx, cy - 6, arcade.color.WHITE, 11, bold=True, anchor_x="center")
