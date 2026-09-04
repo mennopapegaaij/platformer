@@ -219,15 +219,15 @@ class PlatformerSpel(arcade.View):
         # Alles binnen dit blok beweegt mee met de camera
         with self.camera.activate():
 
-            # Teken eerst de decoratie (achtergrond, geen botsing)
-            for deco in self.decoraties:
-                if in_beeld(deco, deco.breedte):
-                    deco.teken()
-
             # Teken alleen de platforms die in beeld zijn
             for platform in self.platforms:
                 if in_beeld(platform, platform.breedte):
                     platform.teken()
+
+            # Teken de decoratie ná de platforms, zodat het ervóór staat (geen botsing)
+            for deco in self.decoraties:
+                if in_beeld(deco, deco.breedte):
+                    deco.teken()
 
             # Teken alleen de vijanden die in beeld zijn
             for vijand in self.vijanden:
@@ -1108,12 +1108,13 @@ class PlatformerSpel(arcade.View):
                 def zicht(o, b=0):
                     return o.x + b >= links and o.x <= rechts
 
-                for deco in self.decoraties:
-                    if zicht(deco, deco.breedte):
-                        deco.teken()
                 for p in self.platforms:
                     if zicht(p, p.breedte):
                         p.teken()
+                # Decoratie ná de platforms, zodat het ervóór staat
+                for deco in self.decoraties:
+                    if zicht(deco, deco.breedte):
+                        deco.teken()
                 for v in self.vijanden:
                     if zicht(v, v.breedte):
                         v.teken()
