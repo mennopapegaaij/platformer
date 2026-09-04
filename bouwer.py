@@ -10,18 +10,23 @@ from instellingen import SCHERM_BREEDTE, SCHERM_HOOGTE
 from decoratie import teken_deco, DECO_SOORTEN, DECO_NAAM
 from vijand import SPIKE_SOORTEN, SPIKE_NAAM, SPIKE_INFO
 from platforms import BLOK_SOORTEN, BLOK_NAAM
+from teleport import teken_tele_icoon
 
 CEL = 40                       # grootte van één raster-vakje
 BESTAND = "eigen_level.json"   # hier wordt je level opgeslagen
 
 # De dingen die je kunt plaatsen (op volgorde in het palet)
 ITEMS = ["grond", "blok", "spike", "vijand", "hart", "vlag", "portaal", "snel",
-         "deco", "spring", "gum"]
+         "deco", "spring", "tele", "gum"]
 ITEM_NAAM = {
     "grond": "Grond", "blok": "Blok", "spike": "Spike", "vijand": "Vijand",
     "hart": "Hartje", "vlag": "Finish", "portaal": "Portaal", "snel": "Snel",
-    "deco": "Deco", "spring": "Spring", "gum": "Gum",
+    "deco": "Deco", "spring": "Spring", "tele": "Tele", "gum": "Gum",
 }
+
+# De teleporter-kleuren waar je met de Tele-knop doorheen klikt
+TELE_SOORTEN = ["blauw", "oranje"]
+TELE_NAAM = {"blauw": "Blauw", "oranje": "Oranje"}
 
 # De spring-dingen waar je met de Spring-knop doorheen klikt:
 # bol1..bol5 en mat1..mat5 (kracht 1 t/m 5), en "neer" (paarse bol waarmee je valt)
@@ -122,6 +127,9 @@ def teken_item(soort, x, y, grootte, rotatie=0):
         cx, cy = x + g // 2, y + g // 2
         arcade.draw_ellipse_outline(cx, cy, g - 10, g - 4, buiten, 3)
         teken_portaal_icoon(p_soort, cx, cy)
+    elif soort.startswith("tele_"):
+        # "tele_blauw" / "tele_oranje" -> teken een teleporter-ringetje
+        teken_tele_icoon(soort.split("_", 1)[1], x + g // 2, y + g // 2)
     elif soort.startswith("deco_"):
         # "deco_bloem", "deco_boom", enz. -> teken de decoratie
         teken_deco(soort.split("_", 1)[1], x, y, g, rotatie)
@@ -183,6 +191,7 @@ class BouwerView(arcade.View):
         self.spring_soort = "bol3"     # welk spring-ding je plaatst (klik op Spring)
         self.spike_soort = "gewoon"    # welke spike je plaatst (klik op Spike)
         self.blok_soort = "gewoon"     # welk blok je plaatst (klik op Blok)
+        self.tele_soort = "blauw"      # welke teleporter-kleur je plaatst (klik op Tele)
         # Type van je level: "gewoon" (lopen), "race" (auto-run), "vlucht" (vliegen)
         self.mode = "gewoon"
         self.scroll = 0                # hoe ver je naar rechts hebt geschoven
@@ -193,8 +202,8 @@ class BouwerView(arcade.View):
         # Palet-knoppen (links) en actie-knoppen (rechts) uitrekenen
         self.palet_knoppen = {}        # soort -> (l, r)
         for i, soort in enumerate(ITEMS):
-            l = 6 + i * 36
-            self.palet_knoppen[soort] = (l, l + 34)
+            l = 6 + i * 33
+            self.palet_knoppen[soort] = (l, l + 31)
         self.actie_knoppen = {         # naam -> (l, r)
             "spelen": (410, 460),
             "opslaan": (464, 524),
@@ -316,25 +325,28 @@ class BouwerView(arcade.View):
             arcade.draw_lrbt_rectangle_outline(l, r, BALK_Y + 6, SCHERM_HOOGTE - 18, rand, 3 if gekozen else 1)
             # De Portaal-, Snel- en Deco-knop tonen welk soort je nu plaatst
             if soort == "portaal":
-                teken_item("portaal_" + self.portaal_soort, l + 2, BALK_Y + 10, 34)
+                teken_item("portaal_" + self.portaal_soort, l + 2, BALK_Y + 10, 31)
                 naam = "P:" + PORTAAL_NAAM[self.portaal_soort]
             elif soort == "snel":
-                teken_item("portaal_" + self.snel_soort, l + 2, BALK_Y + 10, 34)
+                teken_item("portaal_" + self.snel_soort, l + 2, BALK_Y + 10, 31)
                 naam = self.snel_soort
             elif soort == "deco":
-                teken_item("deco_" + self.deco_soort, l + 2, BALK_Y + 10, 34, self.rotatie)
+                teken_item("deco_" + self.deco_soort, l + 2, BALK_Y + 10, 31, self.rotatie)
                 naam = DECO_NAAM[self.deco_soort]
             elif soort == "spring":
-                teken_item("spring_" + self.spring_soort, l + 2, BALK_Y + 10, 34)
+                teken_item("spring_" + self.spring_soort, l + 2, BALK_Y + 10, 31)
                 naam = SPRING_NAAM[self.spring_soort]
             elif soort == "spike":
-                teken_item("spike_" + self.spike_soort, l + 2, BALK_Y + 10, 34, self.rotatie)
+                teken_item("spike_" + self.spike_soort, l + 2, BALK_Y + 10, 31, self.rotatie)
                 naam = SPIKE_NAAM[self.spike_soort]
             elif soort == "blok":
-                teken_item("blok_" + self.blok_soort, l + 2, BALK_Y + 10, 34)
+                teken_item("blok_" + self.blok_soort, l + 2, BALK_Y + 10, 31)
                 naam = BLOK_NAAM[self.blok_soort]
+            elif soort == "tele":
+                teken_item("tele_" + self.tele_soort, l + 2, BALK_Y + 10, 31)
+                naam = TELE_NAAM[self.tele_soort]
             else:
-                teken_item(soort, l + 2, BALK_Y + 10, 34)
+                teken_item(soort, l + 2, BALK_Y + 10, 31)
                 naam = ITEM_NAAM[soort]
             arcade.draw_text(naam, (l + r) // 2, BALK_Y + 1,
                              arcade.color.WHITE, 8, anchor_x="center")
@@ -406,6 +418,8 @@ class BouwerView(arcade.View):
                 self.grid[(kol, rij)] = "portaal_" + self.portaal_soort
             elif self.gekozen == "snel":
                 self.grid[(kol, rij)] = "portaal_" + self.snel_soort
+            elif self.gekozen == "tele":
+                self.grid[(kol, rij)] = "tele_" + self.tele_soort
             elif self.gekozen == "spring":
                 self.grid[(kol, rij)] = "spring_" + self.spring_soort
             elif self.gekozen == "spike":
@@ -447,6 +461,10 @@ class BouwerView(arcade.View):
                     # Nog een keer op Blok klikken: door de blok-soorten wisselen
                     i = BLOK_SOORTEN.index(self.blok_soort)
                     self.blok_soort = BLOK_SOORTEN[(i + 1) % len(BLOK_SOORTEN)]
+                elif soort == "tele" and self.gekozen == "tele":
+                    # Nog een keer op Tele klikken: wissel tussen blauw en oranje
+                    i = TELE_SOORTEN.index(self.tele_soort)
+                    self.tele_soort = TELE_SOORTEN[(i + 1) % len(TELE_SOORTEN)]
                 self.gekozen = soort
                 return
         for naam, (l, r) in self.actie_knoppen.items():
@@ -506,6 +524,7 @@ class BouwerView(arcade.View):
         from portaal import Portaal
         from decoratie import Decoratie
         from springers import SpringBol, SpringMat, KRACHT_PER_STAND, NEER_KRACHT
+        from teleport import Teleporter
 
         platforms = [Platform(0, 0, 100, 40)]   # altijd een klein startstukje grond
         vijanden = []
@@ -513,6 +532,7 @@ class BouwerView(arcade.View):
         portalen = []
         decoraties = []
         springers = []
+        teleporters = []
         vlag_x, vlag_y = None, None
         max_x = 300
 
@@ -546,6 +566,9 @@ class BouwerView(arcade.View):
             elif soort.startswith("portaal_"):
                 # "portaal_vlucht" -> Portaal met soort "vlucht", enz.
                 portalen.append(Portaal(wx + 5, wy, soort.split("_", 1)[1]))
+            elif soort.startswith("tele_"):
+                # "tele_blauw" / "tele_oranje" -> een teleporter
+                teleporters.append(Teleporter(wx + 5, wy, soort.split("_", 1)[1]))
             elif soort.startswith("deco_"):
                 # "deco_bloem" -> Decoratie met soort "bloem", enz. (geen botsing)
                 decoraties.append(Decoratie(wx, wy, soort.split("_", 1)[1], rot))
@@ -576,7 +599,7 @@ class BouwerView(arcade.View):
             max_x += 200
         level_breedte = max_x + 200
         return (platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte,
-                portalen, decoraties, springers)
+                portalen, decoraties, springers, teleporters)
 
     def _speel(self):
         """Sla het level op en speel het."""

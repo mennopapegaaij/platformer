@@ -149,6 +149,8 @@ class PlatformerSpel(arcade.View):
         self.decoraties = list(data[7]) if len(data) > 7 else []
         # Spring-bollen en spring-matten (een 9e onderdeel)
         self.springers = list(data[8]) if len(data) > 8 else []
+        # Teleporters (een 10e onderdeel): blauw <-> oranje paren
+        self.teleporters = list(data[9]) if len(data) > 9 else []
         self.platforms = platforms
         # Zet de begin-modus: vliegtuig in de vluchtmodus, anders het gewone blokje.
         # Portalen kunnen dit tijdens het spelen nog omzetten (ufo/bal/golf)!
@@ -252,6 +254,11 @@ class PlatformerSpel(arcade.View):
             for portaal in self.portalen:
                 if in_beeld(portaal, portaal.breedte):
                     portaal.teken()
+
+            # Teken de teleporters (blauw <-> oranje paren)
+            for tele in self.teleporters:
+                if in_beeld(tele, tele.breedte):
+                    tele.teken()
 
             # Teken de kogels
             for kogel in self.kogels:
@@ -497,6 +504,9 @@ class PlatformerSpel(arcade.View):
 
         # Spring-matten (vanzelf) en spring-bollen (onthoud dat je erop staat)
         self._check_springers(self.speler)
+
+        # Teleporters: spring van blauw naar oranje (en andersom)
+        self._check_teleport(self.speler)
 
         # Draaien hangt af van de modus
         self._pas_rotatie_toe(self.speler)
@@ -761,6 +771,36 @@ class PlatformerSpel(arcade.View):
         if nieuwe_modus != "vliegtuig":
             sp.rotatie = 0               # weer recht (behalve vliegtuig kantelt)
 
+    def _check_teleport(self, sp):
+        """Raakt de speler een teleporter? Dan spring je naar de dichtstbijzijnde
+        teleporter van de ANDERE kleur (blauw <-> oranje)."""
+        raakt_nu = None
+        for t in self.teleporters:
+            if t.raakt_speler(sp.x, sp.y, sp.breedte, sp.hoogte):
+                raakt_nu = t
+                break
+        if raakt_nu is None:
+            sp._teleport_klaar = True     # niet meer op een teleporter -> weer klaar
+            return
+        # Net geteleporteerd? Eerst even weglopen voordat het weer mag (geen heen-en-weer)
+        if not getattr(sp, "_teleport_klaar", True):
+            return
+        # Zoek de dichtstbijzijnde teleporter van de ándere kleur
+        doel, beste = None, None
+        for t in self.teleporters:
+            if t.kleur == raakt_nu.kleur:
+                continue
+            afstand = abs(t.x - raakt_nu.x)
+            if beste is None or afstand < beste:
+                beste, doel = afstand, t
+        if doel is None:
+            return                        # geen partner van de andere kleur
+        # Spring naar het midden van de doel-teleporter
+        sp.x = doel.x + (doel.breedte - sp.breedte) / 2
+        sp.y = doel.y + (doel.hoogte - sp.hoogte) / 2
+        sp._teleport_klaar = False
+        geluid_manager.speel_powerup()
+
     def _check_springers(self, sp):
         """Spring-matten (vanzelf springen) en spring-bollen (onthoud dat je erop staat)."""
         sp._bol_kracht = None
@@ -979,6 +1019,7 @@ class PlatformerSpel(arcade.View):
         self._pas_portalen_toe(sp, self._vorige[i])
         self._vorige[i] = sp.x
         self._check_springers(sp)
+        self._check_teleport(sp)
         self._pas_rotatie_toe(sp)
         kloon_raakt = self._update_kloon(sp, self._vlieg[i])
         if self._raakt_blok_zijkant(sp) or sp.is_gevallen() or kloon_raakt:
@@ -1124,6 +1165,9 @@ class PlatformerSpel(arcade.View):
                 for portaal in self.portalen:
                     if zicht(portaal, portaal.breedte):
                         portaal.teken()
+                for tele in self.teleporters:
+                    if zicht(tele, tele.breedte):
+                        tele.teken()
                 if not self.arena:                 # in de vechtmodus is er geen vlag
                     self._teken_vlag(self.vlag_x, self.vlag_y)
                 # Teken ALLE spelers (en hun spiegel-klonen), zodat je elkaar ziet
