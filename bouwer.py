@@ -173,6 +173,8 @@ class BouwerView(arcade.View):
 
         self.grid = {}                 # (kol, rij) -> soort
         self.rotaties = {}             # (kol, rij) -> draai-hoek (0/90/180/270)
+        self.deco = {}                 # decoratie zit in een APARTE laag (kan bovenop een blok)
+        self.deco_rotaties = {}        # (kol, rij) -> draai-hoek van de decoratie
         self.rotatie = 0               # de draai-stand waarmee je nu plaatst
         self.gekozen = "grond"         # welk item je nu plaatst
         self.portaal_soort = "vlucht"  # welk vorm-portaal je plaatst (klik op Portaal)
@@ -222,9 +224,19 @@ class BouwerView(arcade.View):
                         self.mode = "gewoon"
                     for kr in data.get("rotaties", []):
                         self.rotaties[(int(kr[0]), int(kr[1]))] = int(kr[2])
+                    # De aparte decoratie-laag inlezen (nieuw formaat)
+                    for kr in data.get("deco", []):
+                        self.deco[(int(kr[0]), int(kr[1]))] = kr[2]
+                    for kr in data.get("deco_rotaties", []):
+                        self.deco_rotaties[(int(kr[0]), int(kr[1]))] = int(kr[2])
                 else:
                     tiles = data   # oud formaat (alleen een lijst met vakjes)
                 self.grid = {(int(k), int(r)): s for k, r, s in tiles}
+                # Oude levels: decoratie zat in het gewone raster -> verhuis naar de deco-laag
+                for cel in [c for c, s in self.grid.items() if s.startswith("deco_")]:
+                    self.deco[cel] = self.grid.pop(cel)
+                    if cel in self.rotaties:
+                        self.deco_rotaties[cel] = self.rotaties.pop(cel)
                 return
             except Exception:
                 pass
@@ -236,7 +248,9 @@ class BouwerView(arcade.View):
     def _opslaan(self):
         data = {"tiles": [[k, r, s] for (k, r), s in self.grid.items()],
                 "mode": self.mode,
-                "rotaties": [[k, r, rot] for (k, r), rot in self.rotaties.items()]}
+                "rotaties": [[k, r, rot] for (k, r), rot in self.rotaties.items()],
+                "deco": [[k, r, s] for (k, r), s in self.deco.items()],
+                "deco_rotaties": [[k, r, rot] for (k, r), rot in self.deco_rotaties.items()]}
         with open(BESTAND, "w", encoding="utf-8") as f:
             json.dump(data, f)
         self._melding = "💾 Opgeslagen!"
@@ -276,6 +290,12 @@ class BouwerView(arcade.View):
             if sx < -CEL or sx > SCHERM_BREEDTE:
                 continue
             teken_item(soort, sx, rij * CEL, CEL, self.rotaties.get((kol, rij), 0))
+        # Decoratie ligt in een aparte laag, dus die tekenen we BOVENOP de blokken
+        for (kol, rij), soort in self.deco.items():
+            sx = kol * CEL - self.scroll
+            if sx < -CEL or sx > SCHERM_BREEDTE:
+                continue
+            teken_item(soort, sx, rij * CEL, CEL, self.deco_rotaties.get((kol, rij), 0))
 
     def _teken_startmarker(self):
         """Teken waar de speler begint (linksonder)."""
@@ -362,8 +382,20 @@ class BouwerView(arcade.View):
         kol = int(wereld_x // CEL)
         rij = int(y // CEL)
         if self.gekozen == "gum":
-            self.grid.pop((kol, rij), None)
-            self.rotaties.pop((kol, rij), None)
+            # Gum wist eerst de decoratie (die ligt bovenop), anders het gewone item
+            if (kol, rij) in self.deco:
+                self.deco.pop((kol, rij), None)
+                self.deco_rotaties.pop((kol, rij), None)
+            else:
+                self.grid.pop((kol, rij), None)
+                self.rotaties.pop((kol, rij), None)
+        elif self.gekozen == "deco":
+            # Decoratie in de aparte laag -> die kan dus BOVENOP een blok liggen
+            self.deco[(kol, rij)] = "deco_" + self.deco_soort
+            if self.rotatie:
+                self.deco_rotaties[(kol, rij)] = self.rotatie
+            else:
+                self.deco_rotaties.pop((kol, rij), None)
         else:
             if self.gekozen == "vlag":
                 # Er mag maar één finishvlag zijn
@@ -374,8 +406,6 @@ class BouwerView(arcade.View):
                 self.grid[(kol, rij)] = "portaal_" + self.portaal_soort
             elif self.gekozen == "snel":
                 self.grid[(kol, rij)] = "portaal_" + self.snel_soort
-            elif self.gekozen == "deco":
-                self.grid[(kol, rij)] = "deco_" + self.deco_soort
             elif self.gekozen == "spring":
                 self.grid[(kol, rij)] = "spring_" + self.spring_soort
             elif self.gekozen == "spike":
@@ -428,6 +458,8 @@ class BouwerView(arcade.View):
                 elif naam == "wissen":
                     self.grid = {}
                     self.rotaties = {}
+                    self.deco = {}
+                    self.deco_rotaties = {}
                 elif naam == "kaart":
                     self._naar_kaart()
                 elif naam == "draai":
@@ -531,6 +563,13 @@ class BouwerView(arcade.View):
                                            KRACHT_PER_STAND[int(n) if n.isdigit() else 3]))
             elif soort == "vlag":
                 vlag_x, vlag_y = wx, wy
+
+        # Decoratie uit de aparte laag (ligt bovenop blokken, geen botsing)
+        for (kol, rij), soort in self.deco.items():
+            wx, wy = kol * CEL, rij * CEL
+            rot = self.deco_rotaties.get((kol, rij), 0)
+            max_x = max(max_x, wx + CEL)
+            decoraties.append(Decoratie(wx, wy, soort.split("_", 1)[1], rot))
 
         if vlag_x is None:                       # geen vlag geplaatst? zet er een aan het eind
             vlag_x, vlag_y = max_x + 60, 40
