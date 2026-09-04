@@ -506,7 +506,7 @@ class PlatformerSpel(arcade.View):
             return
 
         # Beweeg de kloon (dubbel-portaal) met de speler mee
-        kloon_raakt = self._update_kloon(self.speler)
+        kloon_raakt = self._update_kloon(self.speler, self._vlieg_omhoog)
 
         # Waarschuwingstimer aftellen
         if self._waarschuwing_teller > 0:
@@ -739,20 +739,17 @@ class PlatformerSpel(arcade.View):
                     geluid_manager.speel_powerup()
             elif portaal.soort in SNELHEID_FACTOR:
                 # Snelheid-portaal: ga langzamer of sneller (x0.5 ... x10)
+                # Alleen de speler (de onderste) verandert — de kloon heeft eigen portalen.
                 factor = SNELHEID_FACTOR[portaal.soort]
                 if sp.snelheid_factor != factor:
                     sp.snelheid_factor = factor
-                    if sp.kloon is not None:
-                        sp.kloon.snelheid_factor = factor   # de kloon gaat even snel
                     geluid_manager.speel_powerup()
             else:
-                # Vorm-portaal: verander van poppetje
+                # Vorm-portaal: verander van poppetje.
+                # Alleen de speler verandert; de kloon heeft zijn eigen portalen.
                 nieuwe_modus = self.PORTAAL_MODUS.get(portaal.soort, "blok")
                 if sp.modus != nieuwe_modus:
                     self._zet_vorm(sp, nieuwe_modus, 1)
-                    # De kloon verandert MEE (maar blijft ondersteboven: richting -1)
-                    if sp.kloon is not None:
-                        self._zet_vorm(sp.kloon, nieuwe_modus, -1)
                     geluid_manager.speel_powerup()   # 🎵 vorm-wissel geluidje
 
     def _zet_vorm(self, sp, nieuwe_modus, richting):
@@ -832,17 +829,24 @@ class PlatformerSpel(arcade.View):
         elif m not in ("vliegtuig", "golf"):   # gewoon blok: springen
             k.spring()
 
-    def _update_kloon(self, sp):
-        """Beweeg de kloon met de speler mee. Geeft True als hij ergens tegenaan gaat."""
+    def _update_kloon(self, sp, knop_vast=False):
+        """Beweeg de kloon met de speler mee. Geeft True als hij ergens tegenaan gaat.
+
+        `knop_vast` is of de knop nu ingedrukt wordt (voor de vasthoud-vormen van de kloon)."""
         k = sp.kloon
         if k is None:
             return False
+        vorige_x = getattr(k, "_vorige_x", k.x)
         k.rechts_ingedrukt = sp.rechts_ingedrukt
         k.links_ingedrukt = sp.links_ingedrukt
+        # De kloon heeft misschien een ándere vorm dan de speler, dus we gebruiken
+        # de 'rauwe' knop-vasthouden (niet die van de speler).
         if k.modus in ("vliegtuig", "golf", "robot"):
-            k.vlieg_omhoog = sp.vlieg_omhoog
+            k.vlieg_omhoog = knop_vast
         k.bijwerken(self.level_breedte, self.platforms)
         k.x = sp.x                       # blijf horizontaal gelijk met de speler
+        self._kloon_portalen(k, vorige_x)   # de kloon kan zelf door portalen
+        k._vorige_x = k.x
         self._pas_rotatie_toe(k)
         # De kloon gaat af als hij een blok-zijkant of een spike raakt, of eraf valt
         if self._raakt_blok_zijkant(k):
@@ -853,6 +857,24 @@ class PlatformerSpel(arcade.View):
         if k.y < -50 or k.y > SCHERM_HOOGTE + 50:
             return True
         return False
+
+    def _kloon_portalen(self, k, vorige_x):
+        """Raakt de KLOON zelf een portaal? Dan verandert alleen de kloon (niet de speler).
+
+        Dubbel/enkel-portalen slaan we over — die horen bij de gewone speler."""
+        for portaal in self.portalen:
+            if not self._raakt_portaal(k, vorige_x, portaal):
+                continue
+            if portaal.soort in SNELHEID_FACTOR:
+                factor = SNELHEID_FACTOR[portaal.soort]
+                if k.snelheid_factor != factor:
+                    k.snelheid_factor = factor
+                    geluid_manager.speel_powerup()
+            elif portaal.soort in self.PORTAAL_MODUS:
+                nieuwe_modus = self.PORTAAL_MODUS[portaal.soort]
+                if k.modus != nieuwe_modus:
+                    self._zet_vorm(k, nieuwe_modus, -1)   # kloon blijft ondersteboven
+                    geluid_manager.speel_powerup()
 
     def _teken_kloon(self, sp):
         """Teken de kloon (als die er is)."""
@@ -958,7 +980,7 @@ class PlatformerSpel(arcade.View):
         self._vorige[i] = sp.x
         self._check_springers(sp)
         self._pas_rotatie_toe(sp)
-        kloon_raakt = self._update_kloon(sp)
+        kloon_raakt = self._update_kloon(sp, self._vlieg[i])
         if self._raakt_blok_zijkant(sp) or sp.is_gevallen() or kloon_raakt:
             self._racer_dood(sp, i)
 
@@ -1040,7 +1062,8 @@ class PlatformerSpel(arcade.View):
 
     def _actie_druk(self, sp, i):
         """Speler i drukt op zijn knop: doe de actie die bij zijn modus hoort."""
-        self._kloon_actie(sp)   # de kloon (dubbel-portaal) springt met je mee
+        self._vlieg[i] = True   # knop vastgehouden (ook voor de kloon zijn eigen vorm)
+        self._kloon_actie(sp)   # de kloon (dubbel-portaal) doet zijn eigen actie mee
         # Sta je op een spring-bol? Dan spring je (ook in de lucht), wat je modus ook is.
         if self._springboost(sp):
             return
@@ -1210,7 +1233,8 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.RIGHT:
             self.speler.rechts_ingedrukt = True
         elif toets == arcade.key.UP or toets == arcade.key.SPACE:
-            self._kloon_actie(self.speler)   # de kloon (dubbel-portaal) springt met je mee
+            self._vlieg_omhoog = True         # knop vastgehouden (ook voor de kloon zijn eigen vorm)
+            self._kloon_actie(self.speler)    # de kloon (dubbel-portaal) doet zijn eigen actie mee
             # Sta je op een spring-bol? Dan spring je meteen (ook in de lucht)
             if self._springboost(self.speler):
                 return
