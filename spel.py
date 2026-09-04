@@ -683,7 +683,8 @@ class PlatformerSpel(arcade.View):
     # Welke modus hoort bij welk portaal-soort
     PORTAAL_MODUS = {"vlucht": "vliegtuig", "blok": "blok",
                      "ufo": "ufo", "bal": "bal", "golf": "golf",
-                     "robot": "robot", "spin": "spin", "heli": "heli"}
+                     "robot": "robot", "spin": "spin", "heli": "heli",
+                     "draaibol": "draaibol"}
 
     def _pas_rotatie_toe(self, sp):
         """Zet de draai-stand van een speler op basis van zijn modus."""
@@ -694,6 +695,8 @@ class PlatformerSpel(arcade.View):
             sp.rotatie = 35 if sp.vlieg_omhoog else -35            # schuin omhoog/omlaag
         elif modus == "bal":
             sp.rotatie = (sp.rotatie - 7) % 360                    # rollen
+        elif modus == "draaibol":
+            pass                                                  # tolt al in zijn eigen natuurkunde
         elif modus in ("ufo", "robot", "spin", "heli"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
@@ -768,6 +771,8 @@ class PlatformerSpel(arcade.View):
         sp.snelheid_y = 0                # netjes overschakelen (geen wilde sprong)
         sp.vlieg_omhoog = False
         sp.zwaartekracht_richting = richting   # kloon = -1 (ondersteboven), speler = 1
+        sp._grav_d = 0                   # draaibol begint met zwaartekracht naar beneden
+        sp._val_snelheid = 0
         if nieuwe_modus != "vliegtuig":
             sp.rotatie = 0               # weer recht (behalve vliegtuig kantelt)
 
@@ -866,6 +871,8 @@ class PlatformerSpel(arcade.View):
             self._spin_teleport(k)
         elif m == "heli":
             k.heli_wissel()
+        elif m == "draaibol":
+            k.draaibol_draai()
         elif m not in ("vliegtuig", "golf"):   # gewoon blok: springen
             k.spring()
 
@@ -929,6 +936,8 @@ class PlatformerSpel(arcade.View):
 
     def _raakt_blok_zijkant(self, sp):
         """Botst deze speler tegen de ZIJKANT van een blok? (Geometry Dash-dood.)"""
+        if sp.modus == "draaibol":
+            return False        # de draaibol rolt juist tegen muren op -> niet dood
         for p in self._blokken:
             if not getattr(p, "vast", True):
                 continue                       # verdwenen blok: geen botsing
@@ -1127,6 +1136,9 @@ class PlatformerSpel(arcade.View):
         elif m == "heli":
             sp.heli_wissel()
             geluid_manager.speel_sprong()
+        elif m == "draaibol":
+            sp.draaibol_draai()
+            geluid_manager.speel_sprong()
         else:
             op_grond = sp.staat_op_grond
             sp.spring()
@@ -1307,6 +1319,10 @@ class PlatformerSpel(arcade.View):
             elif modus == "heli":
                 # Helikopter: elke tik wisselen tussen omhoog en omlaag
                 self.speler.heli_wissel()
+                geluid_manager.speel_sprong()
+            elif modus == "draaibol":
+                # Draaibol: elke tik draait de zwaartekracht een kwartslag
+                self.speler.draaibol_draai()
                 geluid_manager.speel_sprong()
             else:
                 # Gewoon blokje: springen

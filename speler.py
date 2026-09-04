@@ -25,6 +25,11 @@ ROBOT_BOOST_FRAMES = 16  # Hoeveel frames je kunt blijven duwen (langer = hoger)
 # --- Helikopter-modus: druk = omhoog, druk nog eens = omlaag ---
 HELI_SNELHEID = 4      # Hoe snel de helikopter omhoog of omlaag gaat
 
+# --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
+# Bij elke stand hoort een zwaartekracht-richting (x, y):
+#   0 = naar beneden, 1 = naar rechts, 2 = naar boven, 3 = naar links
+GRAV_VEC = {0: (0, -1), 1: (1, 0), 2: (0, 1), 3: (-1, 0)}
+
 
 class Speler:
     """Het poppetje dat de speler bestuurt: een geel vierkantje met een gezichtje."""
@@ -81,6 +86,8 @@ class Speler:
         self.zwaartekracht_richting = 1  # 1 = omlaag, -1 = omhoog (bal en spin)
         self._robot_boost = 0            # hoeveel frames de robot nog omhoog mag duwen
         self._heli_omhoog = True         # helikopter: gaat hij nu omhoog (True) of omlaag (False)?
+        self._grav_d = 0                 # draaibol: welke kant valt de zwaartekracht (0..3)
+        self._val_snelheid = 0           # draaibol: hoe snel je in de zwaartekracht-richting valt
         self.kloon = None                # dubbel-portaal: een tweede kopie van jou (of None)
         self.snelheid_factor = 1.0       # snelheid-portaal (x0.5 / x1 / x2 / x5 / x10)
 
@@ -105,6 +112,8 @@ class Speler:
         self.zwaartekracht_richting = 1     # zwaartekracht weer gewoon omlaag
         self._robot_boost = 0               # robot-duw reset
         self._heli_omhoog = True            # helikopter begint omhoog
+        self._grav_d = 0                    # draaibol: zwaartekracht weer naar beneden
+        self._val_snelheid = 0              # draaibol: valsnelheid reset
         self.snelheid_factor = 1.0          # snelheid weer normaal
         self.kloon = None                   # kloon weg bij herstart
 
@@ -131,6 +140,11 @@ class Speler:
                 self.heeft_dubbel_gesprongen = False
         if self.schiet_timer > 0:
             self.schiet_timer -= 1
+
+        # Draaibol heeft zijn eigen natuurkunde (zwaartekracht kan 4 kanten op)
+        if self.modus == "draaibol":
+            self._draaibol_bijwerken(level_breedte, platforms)
+            return
 
         # Bepaal de snelheid: normaal + snelheidsboost power-up + punten-bonus
         snelheid = SPELER_SNELHEID + self.snelheid_bonus
@@ -257,6 +271,85 @@ class Speler:
         """Helikopter-modus: wissel tussen omhoog en omlaag vliegen (bij elke tik)."""
         self._heli_omhoog = not self._heli_omhoog
 
+    def draaibol_draai(self):
+        """Draaibol-modus: draai de zwaartekracht een kwartslag verder (0->1->2->3->0)."""
+        self._grav_d = (self._grav_d + 1) % 4
+        self._val_snelheid = 0     # begin schoon te vallen in de nieuwe richting
+
+    def _overlapt(self, p):
+        """Hulpje: overlapt de speler dit platform (rechthoek)?"""
+        return (self.x < p.x + p.breedte and self.x + self.breedte > p.x and
+                self.y < p.y + p.hoogte and self.y + self.hoogte > p.y)
+
+    def _draaibol_bijwerken(self, level_breedte, platforms):
+        """Draaibol: de zwaartekracht kan 4 kanten op. Je rolt langs de vloer/muur en
+        met elke druk draait de zwaartekracht een kwartslag (zo rol je tegen muren op)."""
+        gx, gy = GRAV_VEC[self._grav_d]     # zwaartekracht-richting
+        fx, fy = -gy, gx                    # 'vooruit' = een kwartslag naast de zwaartekracht
+
+        # Loop-snelheid langs de vloer (of muur)
+        snelheid = SPELER_SNELHEID + self.snelheid_bonus
+        if self.snelheid_boost_timer > 0:
+            snelheid *= 2
+        snelheid *= self.snelheid_factor
+        run = 0
+        if self.rechts_ingedrukt:
+            run = snelheid
+            self.kijkt_rechts = True
+        elif self.links_ingedrukt:
+            run = -snelheid
+            self.kijkt_rechts = False
+
+        # Vallen versnelt in de zwaartekracht-richting
+        self._val_snelheid = min(self._val_snelheid + ZWAARTEKRACHT * 1.3, 11)
+
+        # Zet loop + val om naar een gewone x- en y-snelheid
+        self.snelheid_x = run * fx + self._val_snelheid * gx
+        self.snelheid_y = run * fy + self._val_snelheid * gy
+        self.staat_op_grond = False
+
+        # Alleen vaste, rechte blokken tellen als muur/vloer
+        vast = [p for p in platforms
+                if getattr(p, "vast", True) and not getattr(p, "is_schuin", False)]
+
+        # Eerst in de x-richting bewegen en botsingen oplossen
+        self.x += self.snelheid_x
+        for p in vast:
+            if self._overlapt(p):
+                if self.snelheid_x > 0:
+                    self.x = p.x - self.breedte
+                elif self.snelheid_x < 0:
+                    self.x = p.x + p.breedte
+                if gx != 0:                 # zwaartekracht wijst opzij -> je 'staat' tegen de muur
+                    self._val_snelheid = 0
+                    self.staat_op_grond = True
+
+        # Daarna in de y-richting
+        self.y += self.snelheid_y
+        for p in vast:
+            if self._overlapt(p):
+                if self.snelheid_y > 0:
+                    self.y = p.y - self.hoogte
+                elif self.snelheid_y < 0:
+                    self.y = p.y + p.hoogte
+                if gy != 0:                 # zwaartekracht wijst omhoog/omlaag -> je staat op vloer/plafond
+                    self._val_snelheid = 0
+                    self.staat_op_grond = True
+
+        # Binnen het speelveld blijven
+        if self.x < 0:
+            self.x = 0
+        if self.x + self.breedte > level_breedte:
+            self.x = level_breedte - self.breedte
+        if self.y + self.hoogte > VLIEG_PLAFOND:
+            self.y = VLIEG_PLAFOND - self.hoogte
+            if gy > 0:
+                self._val_snelheid = 0
+                self.staat_op_grond = True
+
+        # De bol tolt mee terwijl hij rolt (voor het plaatje)
+        self.rotatie = (self.rotatie - run * 3) % 360
+
     def robot_sprong(self):
         """Robot-modus: begin een sprong (vasthouden maakt hem hoger)."""
         if self.staat_op_grond:
@@ -311,6 +404,9 @@ class Speler:
             return
         if self.modus == "heli":
             self._teken_heli()
+            return
+        if self.modus == "draaibol":
+            self._teken_draaibol()
             return
 
         # Gewoon blokje: in de racemodus tolt het door de lucht → teken het gedraaid
@@ -473,6 +569,25 @@ class Speler:
             arcade.draw_triangle_filled(cx - 4, cy - 2, cx + 4, cy - 2, cx, cy + 5, (255, 255, 255))
         else:
             arcade.draw_triangle_filled(cx - 4, cy + 3, cx + 4, cy + 3, cx, cy - 4, (255, 255, 255))
+
+    def _teken_draaibol(self):
+        """Teken een rollende bol met een pijltje dat wijst waar de zwaartekracht heen valt."""
+        cx = self.x + self.breedte / 2
+        cy = self.y + self.hoogte / 2
+        r = 15
+        # Lijf van de bol (groen-blauw, zodat hij verschilt van de gewone bal)
+        arcade.draw_circle_filled(cx, cy, r, (80, 200, 180))
+        arcade.draw_circle_outline(cx, cy, r, (30, 130, 120), 3)
+        # Twee strepen die meedraaien -> je ziet hem rollen
+        a, b = self._draai(-r + 2, 0), self._draai(r - 2, 0)
+        arcade.draw_line(a[0], a[1], b[0], b[1], (30, 130, 120), 3)
+        c, d = self._draai(0, -r + 2), self._draai(0, r - 2)
+        arcade.draw_line(c[0], c[1], d[0], d[1], (30, 130, 120), 2)
+        # Pijltje in de zwaartekracht-richting (zo zie je welke kant 'beneden' nu is)
+        gx, gy = GRAV_VEC[self._grav_d]
+        px, py = cx + gx * 10, cy + gy * 10
+        arcade.draw_line(cx, cy, px, py, (255, 255, 255), 3)
+        arcade.draw_circle_filled(px, py, 3, (255, 255, 255))
 
     def _teken_spin(self):
         """Teken een spinnetje: een rond lijf met acht pootjes (donkerrood)."""
