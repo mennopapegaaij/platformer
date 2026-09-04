@@ -742,18 +742,27 @@ class PlatformerSpel(arcade.View):
                 factor = SNELHEID_FACTOR[portaal.soort]
                 if sp.snelheid_factor != factor:
                     sp.snelheid_factor = factor
+                    if sp.kloon is not None:
+                        sp.kloon.snelheid_factor = factor   # de kloon gaat even snel
                     geluid_manager.speel_powerup()
             else:
                 # Vorm-portaal: verander van poppetje
                 nieuwe_modus = self.PORTAAL_MODUS.get(portaal.soort, "blok")
                 if sp.modus != nieuwe_modus:
-                    sp.modus = nieuwe_modus
-                    sp.snelheid_y = 0                # netjes overschakelen (geen wilde sprong)
-                    sp.vlieg_omhoog = False
-                    sp.zwaartekracht_richting = 1    # zwaartekracht weer gewoon omlaag
-                    if nieuwe_modus != "vliegtuig":
-                        sp.rotatie = 0               # weer recht (behalve vliegtuig kantelt)
+                    self._zet_vorm(sp, nieuwe_modus, 1)
+                    # De kloon verandert MEE (maar blijft ondersteboven: richting -1)
+                    if sp.kloon is not None:
+                        self._zet_vorm(sp.kloon, nieuwe_modus, -1)
                     geluid_manager.speel_powerup()   # 🎵 vorm-wissel geluidje
+
+    def _zet_vorm(self, sp, nieuwe_modus, richting):
+        """Zet een speler (of kloon) netjes in een nieuwe vorm."""
+        sp.modus = nieuwe_modus
+        sp.snelheid_y = 0                # netjes overschakelen (geen wilde sprong)
+        sp.vlieg_omhoog = False
+        sp.zwaartekracht_richting = richting   # kloon = -1 (ondersteboven), speler = 1
+        if nieuwe_modus != "vliegtuig":
+            sp.rotatie = 0               # weer recht (behalve vliegtuig kantelt)
 
     def _check_springers(self, sp):
         """Spring-matten (vanzelf springen) en spring-bollen (onthoud dat je erop staat)."""

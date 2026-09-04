@@ -152,25 +152,29 @@ class Speler:
             self.x = level_breedte - self.breedte
 
         # Verticale beweging hangt af van de modus
+        richting = self.zwaartekracht_richting   # 1 = gewoon, -1 = alles omgedraaid (kloon!)
         if self.modus == "vliegtuig":
-            # Vliegtuig: knop vasthouden = stuw omhoog, anders zak je langzaam
+            # Vliegtuig: knop vasthouden = stuw omhoog, anders zak je langzaam.
+            # Maal met de richting, zodat de kloon ondersteboven kan vliegen.
             if self.vlieg_omhoog:
-                self.snelheid_y += VLIEG_STUW
-            self.snelheid_y -= VLIEG_ZWAARTE
+                self.snelheid_y += VLIEG_STUW * richting
+            self.snelheid_y -= VLIEG_ZWAARTE * richting
             self.snelheid_y = max(-VLIEG_MAX, min(VLIEG_MAX, self.snelheid_y))
         elif self.modus == "golf":
-            # Golf: schuin omhoog als je vasthoudt, anders schuin omlaag (45 graden)
-            self.snelheid_y = snelheid if self.vlieg_omhoog else -snelheid
+            # Golf: schuin omhoog als je vasthoudt, anders schuin omlaag (45 graden).
+            # Maal met de richting zodat de kloon precies de andere kant op golft.
+            self.snelheid_y = (snelheid if self.vlieg_omhoog else -snelheid) * richting
         elif self.modus in ("bal", "spin"):
             # Bal/spin: zwaartekracht in de huidige richting (kan omgedraaid zijn)
             self.snelheid_y -= ZWAARTEKRACHT * 1.3 * self.zwaartekracht_richting
             self.snelheid_y = max(-11, min(11, self.snelheid_y))
         elif self.modus == "robot":
-            # Robot: terwijl je vasthoudt blijf je omhoog duwen (langer = hoger)
-            if self.vlieg_omhoog and self._robot_boost > 0 and self.snelheid_y > 0:
-                self.snelheid_y += ROBOT_EXTRA
+            # Robot: terwijl je vasthoudt blijf je omhoog duwen (langer = hoger).
+            # Maal met de richting zodat de kloon ondersteboven ook hoger kan springen.
+            if self.vlieg_omhoog and self._robot_boost > 0 and self.snelheid_y * richting > 0:
+                self.snelheid_y += ROBOT_EXTRA * richting
                 self._robot_boost -= 1
-            self.snelheid_y -= ZWAARTEKRACHT
+            self.snelheid_y -= ZWAARTEKRACHT * richting
         else:
             # Blok en UFO: gewone zwaartekracht. De richting kan omgedraaid zijn door
             # een draai-bol (dan val je juist naar BOVEN).
@@ -231,8 +235,10 @@ class Speler:
                     self.staat_op_grond = True   # je 'ligt' tegen het plafond
 
     def flap(self):
-        """UFO-modus: geef een klein sprongetje omhoog (bij elke tik)."""
-        self.snelheid_y = FLAP_KRACHT
+        """UFO-modus: geef een klein sprongetje (bij elke tik).
+
+        Maal met de richting zodat de kloon ondersteboven juist naar beneden flapt."""
+        self.snelheid_y = FLAP_KRACHT * self.zwaartekracht_richting
 
     def flip_zwaartekracht(self):
         """Bal-modus: draai de zwaartekracht om (van vloer naar plafond en terug)."""
