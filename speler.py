@@ -88,6 +88,7 @@ class Speler:
         self._heli_omhoog = True         # helikopter: gaat hij nu omhoog (True) of omlaag (False)?
         self._grav_d = 0                 # draaibol: welke kant valt de zwaartekracht (0..3)
         self._val_snelheid = 0           # draaibol: hoe snel je in de zwaartekracht-richting valt
+        self.plafond = VLIEG_PLAFOND     # hoogste hoogte; None = geen plafond (oneindig omhoog)
         self.kloon = None                # dubbel-portaal: een tweede kopie van jou (of None)
         self.snelheid_factor = 1.0       # snelheid-portaal (x0.5 / x1 / x2 / x5 / x10)
 
@@ -248,10 +249,12 @@ class Speler:
                         self.heeft_dubbel_gesprongen = False
                         self._robot_boost = 0
 
-        # In de speciale modi (of bij omgedraaide zwaartekracht): niet door het plafond
-        if (self.modus in ("vliegtuig", "ufo", "bal", "golf", "spin", "heli") or omgedraaid) \
-                and self.y + self.hoogte > VLIEG_PLAFOND:
-            self.y = VLIEG_PLAFOND - self.hoogte
+        # In de speciale modi (of bij omgedraaide zwaartekracht): niet door het plafond.
+        # Is self.plafond None, dan is er GEEN plafond en kun je oneindig omhoog.
+        if (self.plafond is not None
+                and (self.modus in ("vliegtuig", "ufo", "bal", "golf", "spin", "heli") or omgedraaid)
+                and self.y + self.hoogte > self.plafond):
+            self.y = self.plafond - self.hoogte
             if self.snelheid_y > 0:
                 self.snelheid_y = 0
                 if omgedraaid or self.modus in ("bal", "spin"):
@@ -341,8 +344,9 @@ class Speler:
             self.x = 0
         if self.x + self.breedte > level_breedte:
             self.x = level_breedte - self.breedte
-        if self.y + self.hoogte > VLIEG_PLAFOND:
-            self.y = VLIEG_PLAFOND - self.hoogte
+        # Alleen een plafond als self.plafond niet None is (anders oneindig omhoog)
+        if self.plafond is not None and self.y + self.hoogte > self.plafond:
+            self.y = self.plafond - self.hoogte
             if gy > 0:
                 self._val_snelheid = 0
                 self.staat_op_grond = True

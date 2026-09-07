@@ -156,6 +156,9 @@ class PlatformerSpel(arcade.View):
         # Portalen kunnen dit tijdens het spelen nog omzetten (ufo/bal/golf)!
         self.speler.modus = "vliegtuig" if self.vlucht else "blok"
         self.speler.zwaartekracht_richting = 1
+        # Geen plafond voor de spelers: je kunt oneindig omhoog (de camera gaat mee).
+        for sp in self.spelers:
+            sp.plafond = None
         # Onthoud de vorige x van de speler (voor de snelheid-portaal 'sweep'-check)
         self._vorige_speler_x = self.speler.x
         # --- Meerdere spelers: zet alle spelers klaar en verdeel het scherm ---
@@ -530,8 +533,7 @@ class PlatformerSpel(arcade.View):
         # --- Camera laten meebewegen met de speler ---
         cam_x = self.speler.x + self.speler.breedte / 2
         cam_x = max(SCHERM_BREEDTE / 2, min(cam_x, self.level_breedte - SCHERM_BREEDTE / 2))
-        cam_y = SCHERM_HOOGTE / 2
-        self.camera.position = cam_x, cam_y
+        self.camera.position = cam_x, self._camera_y(self.speler)
 
         # --- Power-ups bijwerken en oppakken ---
         for powerup in self.powerups:
@@ -776,6 +778,13 @@ class PlatformerSpel(arcade.View):
         if nieuwe_modus != "vliegtuig":
             sp.rotatie = 0               # weer recht (behalve vliegtuig kantelt)
 
+    def _camera_y(self, sp):
+        """Hoogte van de camera: normaal onderin (grond in beeld), maar gaat mee
+        omhoog zodra je hoog komt — zo kun je oneindig omhoog en zie je jezelf nog."""
+        top_grens = SCHERM_HOOGTE * 0.70          # pas boven deze lijn beweegt de camera mee
+        speler_midden = sp.y + sp.hoogte / 2
+        return SCHERM_HOOGTE / 2 + max(0, speler_midden - top_grens)
+
     def _check_teleport(self, sp):
         """Raakt de speler een teleporter? Dan spring je naar de dichtstbijzijnde
         teleporter van de ANDERE kleur (blauw <-> oranje)."""
@@ -853,6 +862,7 @@ class PlatformerSpel(arcade.View):
         k.snelheid_factor = sp.snelheid_factor
         k.kleur = sp.kleur
         k.zwaartekracht_richting = -1     # de kloon valt naar BOVEN
+        k.plafond = VLIEG_PLAFOND         # de kloon houdt WEL een plafond (rolt langs het dak)
         sp.kloon = k
 
     def _kloon_actie(self, sp):
@@ -1108,7 +1118,7 @@ class PlatformerSpel(arcade.View):
         for sp, cam in zip(self.spelers, self.cameras):
             cx = sp.x + sp.breedte / 2
             cx = max(SCHERM_BREEDTE / 2, min(cx, self.level_breedte - SCHERM_BREEDTE / 2))
-            cam.position = cx, SCHERM_HOOGTE / 2
+            cam.position = cx, self._camera_y(sp)
 
     def _actie_druk(self, sp, i):
         """Speler i drukt op zijn knop: doe de actie die bij zijn modus hoort."""
