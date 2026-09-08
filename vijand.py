@@ -1539,6 +1539,65 @@ class Draaimolen(Vijand):
             arcade.draw_circle_outline(bx, by, self.bal_r, (120, 20, 20), 3)
 
 
+class DraaiPaar:
+    """Twee zelfgekozen voorwerpen aan een ONZICHTBAAR draad.
+
+    Ze draaien om het midden van het draad. Is een voorwerp gevaarlijk (spike,
+    vijand of molen), dan ga je af als je het raakt. Andere voorwerpen draaien
+    gewoon mooi mee (geen botsing)."""
+
+    is_spike = True                 # zodat het spel het als een obstakel behandelt
+
+    def __init__(self, soortA, soortB, mx, my, straal, rotA=0, rotB=0):
+        self.soortA = soortA        # het 'soort'-plaatje van voorwerp A (bv. "spike_vuur")
+        self.soortB = soortB
+        self.rotA = rotA
+        self.rotB = rotB
+        self.mx = mx                # midden van het draad
+        self.my = my
+        self.straal = straal        # halve lengte van het draad (afstand voorwerp -> midden)
+        self.hoek = 0
+        self.draaisnelheid = 2
+        self.levens = 999999
+        # breedte/hoogte voor de 'in beeld'-check (de hele draaicirkel)
+        self.breedte = straal * 2 + 40
+        self.hoogte = straal * 2 + 40
+        self.x = mx - self.breedte / 2
+        self.y = my - self.breedte / 2
+
+    def bijwerken(self, speler_x=None):
+        self.hoek = (self.hoek + self.draaisnelheid) % 360   # blijf ronddraaien
+
+    def _posities(self):
+        """De twee voorwerpen staan tegenover elkaar aan het draad."""
+        h = math.radians(self.hoek)
+        dx = math.cos(h) * self.straal
+        dy = math.sin(h) * self.straal
+        return (self.mx + dx, self.my + dy), (self.mx - dx, self.my - dy)
+
+    def _gevaarlijk(self, soort):
+        return soort.startswith("spike") or soort == "vijand" or soort == "molen"
+
+    def raakt_speler(self, px, py, pw, ph):
+        scx, scy = px + pw / 2, py + ph / 2
+        grens = 16 + min(pw, ph) / 2
+        (ax, ay), (bx, by) = self._posities()
+        for soort, (ox, oy) in ((self.soortA, (ax, ay)), (self.soortB, (bx, by))):
+            if self._gevaarlijk(soort) and (scx - ox) ** 2 + (scy - oy) ** 2 < grens ** 2:
+                return True
+        return False
+
+    def speler_springt_erop(self, px, py, pw, ph):
+        return False
+
+    def teken(self):
+        # We tekenen elk voorwerp met zijn eigen bouw-plaatje op de gedraaide plek.
+        from bouwer import teken_item, CEL      # hier importeren voorkomt een import-lus
+        (ax, ay), (bx, by) = self._posities()
+        teken_item(self.soortA, ax - CEL / 2, ay - CEL / 2, CEL, self.rotA)
+        teken_item(self.soortB, bx - CEL / 2, by - CEL / 2, CEL, self.rotB)
+
+
 # =============================================
 # 🧱 BLOK
 # Een stevig blok waar je OVERHEEN moet springen. Niet te doden.

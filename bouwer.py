@@ -17,11 +17,12 @@ BESTAND = "eigen_level.json"   # hier wordt je level opgeslagen
 
 # De dingen die je kunt plaatsen (op volgorde in het palet)
 ITEMS = ["grond", "blok", "spike", "vijand", "molen", "hart", "vlag", "portaal", "snel",
-         "deco", "spring", "tele", "gum"]
+         "deco", "spring", "tele", "draad", "gum"]
 ITEM_NAAM = {
     "grond": "Grond", "blok": "Blok", "spike": "Spike", "vijand": "Vijand",
     "molen": "Molen", "hart": "Hartje", "vlag": "Finish", "portaal": "Portaal",
-    "snel": "Snel", "deco": "Deco", "spring": "Spring", "tele": "Tele", "gum": "Gum",
+    "snel": "Snel", "deco": "Deco", "spring": "Spring", "tele": "Tele",
+    "draad": "Draad", "gum": "Gum",
 }
 
 # De teleporter-kleuren waar je met de Tele-knop doorheen klikt
@@ -118,6 +119,13 @@ def teken_item(soort, x, y, grootte, rotatie=0):
         arcade.draw_circle_filled(cx - 12, cy - 12, 6, (210, 60, 60))
         arcade.draw_circle_filled(cx + 12, cy + 12, 6, (210, 60, 60))
         arcade.draw_circle_filled(cx, cy, 3, (60, 60, 70))
+    elif soort == "draad":
+        # Draad-gereedschap: twee blokjes met een stippellijn ertussen
+        cx, cy = x + g / 2, y + g / 2
+        arcade.draw_line(cx - 11, cy - 8, cx + 11, cy + 8, (255, 255, 255), 2)
+        arcade.draw_circle_filled(cx - 11, cy - 8, 5, (120, 200, 255))
+        arcade.draw_circle_filled(cx + 11, cy + 8, 5, (255, 180, 90))
+        arcade.draw_circle_filled(cx, cy, 3, (255, 255, 0))
     elif soort == "hart":
         cx, cy = x + g // 2, y + g // 2
         arcade.draw_circle_filled(cx - 5, cy + 3, 6, arcade.color.RED)
@@ -191,6 +199,8 @@ class BouwerView(arcade.View):
         self.rotaties = {}             # (kol, rij) -> draai-hoek (0/90/180/270)
         self.deco = {}                 # decoratie zit in een APARTE laag (kan bovenop een blok)
         self.deco_rotaties = {}        # (kol, rij) -> draai-hoek van de decoratie
+        self.draden = []               # lijst met paren: ((kolA,rijA),(kolB,rijB)) = onzichtbaar draad
+        self._draad_start = None       # het eerste aangeklikte voorwerp bij het maken van een draad
         self.rotatie = 0               # de draai-stand waarmee je nu plaatst
         self.gekozen = "grond"         # welk item je nu plaatst
         self.portaal_soort = "vlucht"  # welk vorm-portaal je plaatst (klik op Portaal)
@@ -210,8 +220,8 @@ class BouwerView(arcade.View):
         # Palet-knoppen (links) en actie-knoppen (rechts) uitrekenen
         self.palet_knoppen = {}        # soort -> (l, r)
         for i, soort in enumerate(ITEMS):
-            l = 6 + i * 31
-            self.palet_knoppen[soort] = (l, l + 29)
+            l = 6 + i * 29
+            self.palet_knoppen[soort] = (l, l + 27)
         self.actie_knoppen = {         # naam -> (l, r)
             "spelen": (410, 460),
             "opslaan": (464, 524),
@@ -246,6 +256,9 @@ class BouwerView(arcade.View):
                         self.deco[(int(kr[0]), int(kr[1]))] = kr[2]
                     for kr in data.get("deco_rotaties", []):
                         self.deco_rotaties[(int(kr[0]), int(kr[1]))] = int(kr[2])
+                    # Onzichtbare draden (paren van voorwerpen die om elkaar draaien)
+                    for d in data.get("draden", []):
+                        self.draden.append(((int(d[0]), int(d[1])), (int(d[2]), int(d[3]))))
                 else:
                     tiles = data   # oud formaat (alleen een lijst met vakjes)
                 self.grid = {(int(k), int(r)): s for k, r, s in tiles}
@@ -267,7 +280,8 @@ class BouwerView(arcade.View):
                 "mode": self.mode,
                 "rotaties": [[k, r, rot] for (k, r), rot in self.rotaties.items()],
                 "deco": [[k, r, s] for (k, r), s in self.deco.items()],
-                "deco_rotaties": [[k, r, rot] for (k, r), rot in self.deco_rotaties.items()]}
+                "deco_rotaties": [[k, r, rot] for (k, r), rot in self.deco_rotaties.items()],
+                "draden": [[a[0], a[1], b[0], b[1]] for (a, b) in self.draden]}
         with open(BESTAND, "w", encoding="utf-8") as f:
             json.dump(data, f)
         self._melding = "💾 Opgeslagen!"
@@ -314,6 +328,20 @@ class BouwerView(arcade.View):
                 continue
             teken_item(soort, sx, rij * CEL, CEL, self.deco_rotaties.get((kol, rij), 0))
 
+        # De draden tonen we hier met een stippellijn (in het spel zijn ze onzichtbaar)
+        def cel_midden(cel):
+            return (cel[0] * CEL - self.scroll + CEL / 2, cel[1] * CEL + CEL / 2)
+        for a, b in self.draden:
+            ax, ay = cel_midden(a)
+            bx, by = cel_midden(b)
+            arcade.draw_line(ax, ay, bx, by, (255, 255, 255, 130), 2)
+            mx, my = (ax + bx) / 2, (ay + by) / 2
+            arcade.draw_circle_filled(mx, my, 3, (255, 255, 0))   # het draaimidden
+        # Het al gekozen eerste voorwerp oplichten
+        if self._draad_start is not None:
+            sx, sy = cel_midden(self._draad_start)
+            arcade.draw_circle_outline(sx, sy, CEL / 2, (255, 255, 0), 3)
+
     def _teken_startmarker(self):
         """Teken waar de speler begint (linksonder)."""
         sx = 50 - self.scroll
@@ -333,28 +361,28 @@ class BouwerView(arcade.View):
             arcade.draw_lrbt_rectangle_outline(l, r, BALK_Y + 6, SCHERM_HOOGTE - 18, rand, 3 if gekozen else 1)
             # De Portaal-, Snel- en Deco-knop tonen welk soort je nu plaatst
             if soort == "portaal":
-                teken_item("portaal_" + self.portaal_soort, l + 2, BALK_Y + 10, 29)
+                teken_item("portaal_" + self.portaal_soort, l + 2, BALK_Y + 10, 27)
                 naam = "P:" + PORTAAL_NAAM[self.portaal_soort]
             elif soort == "snel":
-                teken_item("portaal_" + self.snel_soort, l + 2, BALK_Y + 10, 29)
+                teken_item("portaal_" + self.snel_soort, l + 2, BALK_Y + 10, 27)
                 naam = self.snel_soort
             elif soort == "deco":
-                teken_item("deco_" + self.deco_soort, l + 2, BALK_Y + 10, 29, self.rotatie)
+                teken_item("deco_" + self.deco_soort, l + 2, BALK_Y + 10, 27, self.rotatie)
                 naam = DECO_NAAM[self.deco_soort]
             elif soort == "spring":
-                teken_item("spring_" + self.spring_soort, l + 2, BALK_Y + 10, 29)
+                teken_item("spring_" + self.spring_soort, l + 2, BALK_Y + 10, 27)
                 naam = SPRING_NAAM[self.spring_soort]
             elif soort == "spike":
-                teken_item("spike_" + self.spike_soort, l + 2, BALK_Y + 10, 29, self.rotatie)
+                teken_item("spike_" + self.spike_soort, l + 2, BALK_Y + 10, 27, self.rotatie)
                 naam = SPIKE_NAAM[self.spike_soort]
             elif soort == "blok":
-                teken_item("blok_" + self.blok_soort, l + 2, BALK_Y + 10, 29)
+                teken_item("blok_" + self.blok_soort, l + 2, BALK_Y + 10, 27)
                 naam = BLOK_NAAM[self.blok_soort]
             elif soort == "tele":
-                teken_item("tele_" + self.tele_soort, l + 2, BALK_Y + 10, 29)
+                teken_item("tele_" + self.tele_soort, l + 2, BALK_Y + 10, 27)
                 naam = TELE_NAAM[self.tele_soort]
             else:
-                teken_item(soort, l + 2, BALK_Y + 10, 29)
+                teken_item(soort, l + 2, BALK_Y + 10, 27)
                 naam = ITEM_NAAM[soort]
             arcade.draw_text(naam, (l + r) // 2, BALK_Y + 1,
                              arcade.color.WHITE, 8, anchor_x="center")
@@ -401,6 +429,9 @@ class BouwerView(arcade.View):
         wereld_x = x + self.scroll
         kol = int(wereld_x // CEL)
         rij = int(y // CEL)
+        if self.gekozen == "draad":
+            self._klik_draad(kol, rij)
+            return
         if self.gekozen == "gum":
             # Gum wist eerst de decoratie (die ligt bovenop), anders het gewone item
             if (kol, rij) in self.deco:
@@ -409,6 +440,8 @@ class BouwerView(arcade.View):
             else:
                 self.grid.pop((kol, rij), None)
                 self.rotaties.pop((kol, rij), None)
+            # Draden die aan dit vakje vastzitten ook weghalen
+            self.draden = [d for d in self.draden if (kol, rij) not in d]
         elif self.gekozen == "deco":
             # Decoratie in de aparte laag -> die kan dus BOVENOP een blok liggen
             self.deco[(kol, rij)] = "deco_" + self.deco_soort
@@ -441,6 +474,26 @@ class BouwerView(arcade.View):
                 self.rotaties[(kol, rij)] = self.rotatie
             else:
                 self.rotaties.pop((kol, rij), None)
+
+    def _klik_draad(self, kol, rij):
+        """Maak een onzichtbaar draad tussen twee voorwerpen (twee keer klikken)."""
+        cel = (kol, rij)
+        if cel not in self.grid:
+            self._draad_start = None      # geen voorwerp hier -> opnieuw beginnen
+            self._melding = "Klik op een voorwerp om een draad te maken"
+            self._melding_teller = 90
+            return
+        if self._draad_start is None:
+            self._draad_start = cel        # eerste voorwerp gekozen
+            self._melding = "Nu op het 2de voorwerp klikken"
+            self._melding_teller = 90
+        elif self._draad_start == cel:
+            self._draad_start = None        # zelfde vakje -> annuleer
+        else:
+            self.draden.append((self._draad_start, cel))   # draad klaar!
+            self._draad_start = None
+            self._melding = "🔗 Draad gemaakt!"
+            self._melding_teller = 90
 
     def _klik_balk(self, x, y):
         for soort, (l, r) in self.palet_knoppen.items():
@@ -486,6 +539,8 @@ class BouwerView(arcade.View):
                     self.rotaties = {}
                     self.deco = {}
                     self.deco_rotaties = {}
+                    self.draden = []
+                    self._draad_start = None
                 elif naam == "kaart":
                     self._naar_kaart()
                 elif naam == "draai":
@@ -527,7 +582,8 @@ class BouwerView(arcade.View):
     def _bouw_level(self):
         """Zet het raster om in echte level-gegevens voor het spel."""
         from platforms import Platform, BlokPlatform, SchuinBlok, StuiterBlok, VerdwijnBlok
-        from vijand import Vijand, Spikes, maak_spike, Draaimolen
+        from vijand import Vijand, Spikes, maak_spike, Draaimolen, DraaiPaar
+        import math
         from powerup import ExtraLevenPowerUp
         from portaal import Portaal
         from decoratie import Decoratie
@@ -544,7 +600,17 @@ class BouwerView(arcade.View):
         vlag_x, vlag_y = None, None
         max_x = 300
 
+        # Vakjes die aan een draad hangen: die zetten we NIET los neer,
+        # maar laten we straks als draaiend paar ronddraaien.
+        aan_draad = set()
+        for a, b in self.draden:
+            if a in self.grid and b in self.grid:
+                aan_draad.add(a)
+                aan_draad.add(b)
+
         for (kol, rij), soort in self.grid.items():
+            if (kol, rij) in aan_draad:
+                continue                     # dit voorwerp hangt aan een draad
             wx, wy = kol * CEL, rij * CEL
             rot = self.rotaties.get((kol, rij), 0)
             max_x = max(max_x, wx + CEL)
@@ -604,6 +670,20 @@ class BouwerView(arcade.View):
             rot = self.deco_rotaties.get((kol, rij), 0)
             max_x = max(max_x, wx + CEL)
             decoraties.append(Decoratie(wx, wy, soort.split("_", 1)[1], rot))
+
+        # Onzichtbare draden: elk paar voorwerpen draait om het midden van het draad
+        for a, b in self.draden:
+            if a not in self.grid or b not in self.grid:
+                continue                          # een voorwerp is weggehaald -> sla over
+            ax = a[0] * CEL + CEL / 2
+            ay = a[1] * CEL + CEL / 2
+            bx = b[0] * CEL + CEL / 2
+            by = b[1] * CEL + CEL / 2
+            mx, my = (ax + bx) / 2, (ay + by) / 2                 # midden van het draad
+            straal = math.hypot(bx - ax, by - ay) / 2            # halve lengte van het draad
+            max_x = max(max_x, mx + straal + CEL)
+            vijanden.append(DraaiPaar(self.grid[a], self.grid[b], mx, my, straal,
+                                      self.rotaties.get(a, 0), self.rotaties.get(b, 0)))
 
         if vlag_x is None:                       # geen vlag geplaatst? zet er een aan het eind
             vlag_x, vlag_y = max_x + 60, 40
