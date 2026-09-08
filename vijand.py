@@ -1477,6 +1477,68 @@ def maak_spike(soort, x, y, rotatie=0):
     return Spikes(x, y, aantal, rotatie, kleur)
 
 
+class Draaimolen(Vijand):
+    """Twee gevaarlijke ballen aan een balk die om elkaar heen draaien.
+
+    Terwijl je speelt zie je hem ronddraaien. Raak je een bal, dan ga je af —
+    dus je moet er goed langs of overheen zien te komen!"""
+
+    def __init__(self, x, y, straal=50):
+        # (x, y) is het MIDDEN waar de molen omheen draait
+        super().__init__(x, y, x, x, 0)
+        self.mx = x                 # midden-x
+        self.my = y                 # midden-y
+        self.straal = straal        # lengte van de arm (afstand bal -> midden)
+        self.bal_r = 15             # straal van een bal
+        self.hoek = 0               # huidige draaihoek (graden)
+        self.draaisnelheid = 3      # graden per stapje (hoger = sneller draaien)
+        # breedte/hoogte voor de 'in beeld'-check (de hele draaicirkel)
+        self.breedte = straal * 2
+        self.hoogte = straal * 2
+        self.x = x - straal
+        self.y = y - straal
+        self.is_spike = True        # onkwetsbaar obstakel (net als spikes)
+        self.levens = 999999        # gaat nooit dood
+
+    def bijwerken(self, speler_x=None):
+        self.hoek = (self.hoek + self.draaisnelheid) % 360   # blijf ronddraaien
+
+    def _bal_posities(self):
+        """De twee balletjes staan tegenover elkaar aan de arm."""
+        h = math.radians(self.hoek)
+        dx = math.cos(h) * self.straal
+        dy = math.sin(h) * self.straal
+        return [(self.mx + dx, self.my + dy), (self.mx - dx, self.my - dy)]
+
+    def raakt_speler(self, px, py, pw, ph):
+        """Raakt de speler een van de twee draaiende ballen?"""
+        scx, scy = px + pw / 2, py + ph / 2
+        grens = self.bal_r + min(pw, ph) / 2 - 4     # eerlijke hitbox (iets kleiner)
+        for bx, by in self._bal_posities():
+            if (scx - bx) ** 2 + (scy - by) ** 2 < grens ** 2:
+                return True
+        return False
+
+    def speler_springt_erop(self, px, py, pw, ph):
+        return False                # je kunt er niet op stompen — spring er langs!
+
+    def teken(self):
+        posities = self._bal_posities()
+        # De balk (arm) tussen de twee ballen
+        arcade.draw_line(posities[0][0], posities[0][1],
+                         posities[1][0], posities[1][1], (90, 90, 100), 5)
+        # Het asje in het midden
+        arcade.draw_circle_filled(self.mx, self.my, 5, (60, 60, 70))
+        # De twee gevaarlijke ballen (rood, met stekeltjes eromheen)
+        for bx, by in posities:
+            for a in range(0, 360, 45):
+                r = math.radians(a)
+                arcade.draw_line(bx, by, bx + math.cos(r) * (self.bal_r + 5),
+                                 by + math.sin(r) * (self.bal_r + 5), (120, 20, 20), 2)
+            arcade.draw_circle_filled(bx, by, self.bal_r, (210, 60, 60))
+            arcade.draw_circle_outline(bx, by, self.bal_r, (120, 20, 20), 3)
+
+
 # =============================================
 # 🧱 BLOK
 # Een stevig blok waar je OVERHEEN moet springen. Niet te doden.

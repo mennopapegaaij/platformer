@@ -16,12 +16,12 @@ CEL = 40                       # grootte van één raster-vakje
 BESTAND = "eigen_level.json"   # hier wordt je level opgeslagen
 
 # De dingen die je kunt plaatsen (op volgorde in het palet)
-ITEMS = ["grond", "blok", "spike", "vijand", "hart", "vlag", "portaal", "snel",
+ITEMS = ["grond", "blok", "spike", "vijand", "molen", "hart", "vlag", "portaal", "snel",
          "deco", "spring", "tele", "gum"]
 ITEM_NAAM = {
     "grond": "Grond", "blok": "Blok", "spike": "Spike", "vijand": "Vijand",
-    "hart": "Hartje", "vlag": "Finish", "portaal": "Portaal", "snel": "Snel",
-    "deco": "Deco", "spring": "Spring", "tele": "Tele", "gum": "Gum",
+    "molen": "Molen", "hart": "Hartje", "vlag": "Finish", "portaal": "Portaal",
+    "snel": "Snel", "deco": "Deco", "spring": "Spring", "tele": "Tele", "gum": "Gum",
 }
 
 # De teleporter-kleuren waar je met de Tele-knop doorheen klikt
@@ -111,6 +111,13 @@ def teken_item(soort, x, y, grootte, rotatie=0):
         arcade.draw_lrbt_rectangle_filled(x + 5, x + g - 5, y + 5, y + g - 5, (220, 40, 40))
         arcade.draw_circle_filled(x + g // 2 - 6, y + g - 12, 3, arcade.color.BLACK)
         arcade.draw_circle_filled(x + g // 2 + 6, y + g - 12, 3, arcade.color.BLACK)
+    elif soort == "molen":
+        # Draaimolen: twee rode balletjes aan een schuine balk
+        cx, cy = x + g / 2, y + g / 2
+        arcade.draw_line(cx - 12, cy - 12, cx + 12, cy + 12, (90, 90, 100), 3)
+        arcade.draw_circle_filled(cx - 12, cy - 12, 6, (210, 60, 60))
+        arcade.draw_circle_filled(cx + 12, cy + 12, 6, (210, 60, 60))
+        arcade.draw_circle_filled(cx, cy, 3, (60, 60, 70))
     elif soort == "hart":
         cx, cy = x + g // 2, y + g // 2
         arcade.draw_circle_filled(cx - 5, cy + 3, 6, arcade.color.RED)
@@ -203,8 +210,8 @@ class BouwerView(arcade.View):
         # Palet-knoppen (links) en actie-knoppen (rechts) uitrekenen
         self.palet_knoppen = {}        # soort -> (l, r)
         for i, soort in enumerate(ITEMS):
-            l = 6 + i * 33
-            self.palet_knoppen[soort] = (l, l + 31)
+            l = 6 + i * 31
+            self.palet_knoppen[soort] = (l, l + 29)
         self.actie_knoppen = {         # naam -> (l, r)
             "spelen": (410, 460),
             "opslaan": (464, 524),
@@ -326,28 +333,28 @@ class BouwerView(arcade.View):
             arcade.draw_lrbt_rectangle_outline(l, r, BALK_Y + 6, SCHERM_HOOGTE - 18, rand, 3 if gekozen else 1)
             # De Portaal-, Snel- en Deco-knop tonen welk soort je nu plaatst
             if soort == "portaal":
-                teken_item("portaal_" + self.portaal_soort, l + 2, BALK_Y + 10, 31)
+                teken_item("portaal_" + self.portaal_soort, l + 2, BALK_Y + 10, 29)
                 naam = "P:" + PORTAAL_NAAM[self.portaal_soort]
             elif soort == "snel":
-                teken_item("portaal_" + self.snel_soort, l + 2, BALK_Y + 10, 31)
+                teken_item("portaal_" + self.snel_soort, l + 2, BALK_Y + 10, 29)
                 naam = self.snel_soort
             elif soort == "deco":
-                teken_item("deco_" + self.deco_soort, l + 2, BALK_Y + 10, 31, self.rotatie)
+                teken_item("deco_" + self.deco_soort, l + 2, BALK_Y + 10, 29, self.rotatie)
                 naam = DECO_NAAM[self.deco_soort]
             elif soort == "spring":
-                teken_item("spring_" + self.spring_soort, l + 2, BALK_Y + 10, 31)
+                teken_item("spring_" + self.spring_soort, l + 2, BALK_Y + 10, 29)
                 naam = SPRING_NAAM[self.spring_soort]
             elif soort == "spike":
-                teken_item("spike_" + self.spike_soort, l + 2, BALK_Y + 10, 31, self.rotatie)
+                teken_item("spike_" + self.spike_soort, l + 2, BALK_Y + 10, 29, self.rotatie)
                 naam = SPIKE_NAAM[self.spike_soort]
             elif soort == "blok":
-                teken_item("blok_" + self.blok_soort, l + 2, BALK_Y + 10, 31)
+                teken_item("blok_" + self.blok_soort, l + 2, BALK_Y + 10, 29)
                 naam = BLOK_NAAM[self.blok_soort]
             elif soort == "tele":
-                teken_item("tele_" + self.tele_soort, l + 2, BALK_Y + 10, 31)
+                teken_item("tele_" + self.tele_soort, l + 2, BALK_Y + 10, 29)
                 naam = TELE_NAAM[self.tele_soort]
             else:
-                teken_item(soort, l + 2, BALK_Y + 10, 31)
+                teken_item(soort, l + 2, BALK_Y + 10, 29)
                 naam = ITEM_NAAM[soort]
             arcade.draw_text(naam, (l + r) // 2, BALK_Y + 1,
                              arcade.color.WHITE, 8, anchor_x="center")
@@ -520,7 +527,7 @@ class BouwerView(arcade.View):
     def _bouw_level(self):
         """Zet het raster om in echte level-gegevens voor het spel."""
         from platforms import Platform, BlokPlatform, SchuinBlok, StuiterBlok, VerdwijnBlok
-        from vijand import Vijand, Spikes, maak_spike
+        from vijand import Vijand, Spikes, maak_spike, Draaimolen
         from powerup import ExtraLevenPowerUp
         from portaal import Portaal
         from decoratie import Decoratie
@@ -562,6 +569,9 @@ class BouwerView(arcade.View):
                 vijanden.append(maak_spike(s, wx + 4, wy, rot))   # 5 soorten, met draaiing
             elif soort == "vijand":
                 vijanden.append(Vijand(wx, wy, wx - 80, wx + CEL + 80, 2))
+            elif soort == "molen":
+                # Draaimolen: draait rond het MIDDEN van dit vakje
+                vijanden.append(Draaimolen(wx + CEL // 2, wy + CEL // 2))
             elif soort == "hart":
                 powerups.append(ExtraLevenPowerUp(wx + 6, wy + 6))
             elif soort.startswith("portaal_"):
