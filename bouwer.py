@@ -671,6 +671,48 @@ class BouwerView(arcade.View):
             max_x = max(max_x, wx + CEL)
             decoraties.append(Decoratie(wx, wy, soort.split("_", 1)[1], rot))
 
+        # Hulpje: maak het ECHTE voorwerp (zoals het in het spel eruitziet) met
+        # zijn midden op (cx, cy). Zo draait aan een draad geen klein bouw-icoontje,
+        # maar het echte voorwerp (bv. de echte draaimolen).
+        def maak_voorwerp(soort, cx, cy, rot):
+            wx, wy = cx - CEL / 2, cy - CEL / 2
+            if soort == "grond":
+                return Platform(wx, wy, CEL, CEL)
+            if soort == "blok" or soort.startswith("blok_"):
+                s = soort.split("_", 1)[1] if "_" in soort else "gewoon"
+                if s == "schuinop": return SchuinBlok(wx, wy, CEL, CEL, "op")
+                if s == "schuinaf": return SchuinBlok(wx, wy, CEL, CEL, "af")
+                if s == "half":     return BlokPlatform(wx, wy, CEL, CEL // 2)
+                if s == "stuiter":  return StuiterBlok(wx, wy, CEL, CEL)
+                if s == "verdwijn": return VerdwijnBlok(wx, wy, CEL, CEL)
+                return BlokPlatform(wx, wy, CEL, CEL)
+            if soort == "spike" or soort.startswith("spike_"):
+                s = soort.split("_", 1)[1] if "_" in soort else "gewoon"
+                return maak_spike(s, wx + 4, wy, rot)
+            if soort == "vijand":
+                return Vijand(wx, wy, wx - 80, wx + CEL + 80, 2)
+            if soort == "molen":
+                return Draaimolen(cx, cy)
+            if soort == "hart":
+                return ExtraLevenPowerUp(wx + 6, wy + 6)
+            if soort.startswith("portaal_"):
+                return Portaal(wx + 5, wy, soort.split("_", 1)[1])
+            if soort.startswith("tele_"):
+                return Teleporter(wx + 5, wy, soort.split("_", 1)[1])
+            if soort.startswith("deco_"):
+                return Decoratie(wx, wy, soort.split("_", 1)[1], rot)
+            if soort == "spring_draai":
+                return SpringBol(wx + 3, wy + 3, draai=True)
+            if soort == "spring_neer":
+                return SpringBol(wx + 3, wy + 3, NEER_KRACHT)
+            if soort.startswith("spring_bol"):
+                n = soort[10:]
+                return SpringBol(wx + 3, wy + 3, KRACHT_PER_STAND[int(n) if n.isdigit() else 3])
+            if soort.startswith("spring_mat"):
+                n = soort[10:]
+                return SpringMat(wx, wy, KRACHT_PER_STAND[int(n) if n.isdigit() else 3])
+            return None
+
         # Onzichtbare draden: elk paar voorwerpen draait om het midden van het draad
         for a, b in self.draden:
             if a not in self.grid or b not in self.grid:
@@ -681,9 +723,12 @@ class BouwerView(arcade.View):
             by = b[1] * CEL + CEL / 2
             mx, my = (ax + bx) / 2, (ay + by) / 2                 # midden van het draad
             straal = math.hypot(bx - ax, by - ay) / 2            # halve lengte van het draad
+            objA = maak_voorwerp(self.grid[a], ax, ay, self.rotaties.get(a, 0))
+            objB = maak_voorwerp(self.grid[b], bx, by, self.rotaties.get(b, 0))
+            if objA is None or objB is None:
+                continue
             max_x = max(max_x, mx + straal + CEL)
-            vijanden.append(DraaiPaar(self.grid[a], self.grid[b], mx, my, straal,
-                                      self.rotaties.get(a, 0), self.rotaties.get(b, 0)))
+            vijanden.append(DraaiPaar(objA, objB, mx, my, straal))
 
         if vlag_x is None:                       # geen vlag geplaatst? zet er een aan het eind
             vlag_x, vlag_y = max_x + 60, 40

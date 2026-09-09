@@ -1542,17 +1542,15 @@ class Draaimolen(Vijand):
 class DraaiPaar:
     """Twee zelfgekozen voorwerpen aan een ONZICHTBAAR draad.
 
-    Ze draaien om het midden van het draad. Is een voorwerp gevaarlijk (spike,
-    vijand of molen), dan ga je af als je het raakt. Andere voorwerpen draaien
-    gewoon mooi mee (geen botsing)."""
+    Ze draaien om het midden van het draad. De voorwerpen worden getekend zoals
+    ze er in het spel ECHT uitzien (dus niet de kleine bouw-icoontjes). Is een
+    voorwerp gevaarlijk (spike, vijand of molen), dan ga je af als je het raakt."""
 
     is_spike = True                 # zodat het spel het als een obstakel behandelt
 
-    def __init__(self, soortA, soortB, mx, my, straal, rotA=0, rotB=0):
-        self.soortA = soortA        # het 'soort'-plaatje van voorwerp A (bv. "spike_vuur")
-        self.soortB = soortB
-        self.rotA = rotA
-        self.rotB = rotB
+    def __init__(self, objA, objB, mx, my, straal):
+        self.objA = objA            # het ECHTE voorwerp A (bv. een Spikes of Draaimolen)
+        self.objB = objB
         self.mx = mx                # midden van het draad
         self.my = my
         self.straal = straal        # halve lengte van het draad (afstand voorwerp -> midden)
@@ -1560,13 +1558,10 @@ class DraaiPaar:
         self.draaisnelheid = 2
         self.levens = 999999
         # breedte/hoogte voor de 'in beeld'-check (de hele draaicirkel)
-        self.breedte = straal * 2 + 40
-        self.hoogte = straal * 2 + 40
+        self.breedte = straal * 2 + 60
+        self.hoogte = straal * 2 + 60
         self.x = mx - self.breedte / 2
         self.y = my - self.breedte / 2
-
-    def bijwerken(self, speler_x=None):
-        self.hoek = (self.hoek + self.draaisnelheid) % 360   # blijf ronddraaien
 
     def _posities(self):
         """De twee voorwerpen staan tegenover elkaar aan het draad."""
@@ -1575,15 +1570,32 @@ class DraaiPaar:
         dy = math.sin(h) * self.straal
         return (self.mx + dx, self.my + dy), (self.mx - dx, self.my - dy)
 
-    def _gevaarlijk(self, soort):
-        return soort.startswith("spike") or soort == "vijand" or soort == "molen"
+    def _zet_midden(self, o, cx, cy):
+        """Zet een voorwerp zo neer dat zijn MIDDEN op (cx, cy) staat."""
+        b = getattr(o, "breedte", 32)
+        h = getattr(o, "hoogte", 32)
+        o.x = cx - b / 2
+        o.y = cy - h / 2
+        if hasattr(o, "mx"):            # bv. een Draaimolen draait rond zijn eigen mx/my
+            o.mx = cx
+            o.my = cy
+
+    def bijwerken(self, speler_x=None):
+        self.hoek = (self.hoek + self.draaisnelheid) % 360    # blijf ronddraaien
+        (ax, ay), (bx, by) = self._posities()
+        self._zet_midden(self.objA, ax, ay)
+        self._zet_midden(self.objB, bx, by)
+        # Laat een molen-kind ook zijn eigen ballen draaien
+        for o in (self.objA, self.objB):
+            if isinstance(o, Draaimolen):
+                o.bijwerken()
+
+    def _gevaarlijk(self, o):
+        return getattr(o, "is_spike", False) or isinstance(o, Vijand)
 
     def raakt_speler(self, px, py, pw, ph):
-        scx, scy = px + pw / 2, py + ph / 2
-        grens = 16 + min(pw, ph) / 2
-        (ax, ay), (bx, by) = self._posities()
-        for soort, (ox, oy) in ((self.soortA, (ax, ay)), (self.soortB, (bx, by))):
-            if self._gevaarlijk(soort) and (scx - ox) ** 2 + (scy - oy) ** 2 < grens ** 2:
+        for o in (self.objA, self.objB):
+            if self._gevaarlijk(o) and o.raakt_speler(px, py, pw, ph):
                 return True
         return False
 
@@ -1591,11 +1603,9 @@ class DraaiPaar:
         return False
 
     def teken(self):
-        # We tekenen elk voorwerp met zijn eigen bouw-plaatje op de gedraaide plek.
-        from bouwer import teken_item, CEL      # hier importeren voorkomt een import-lus
-        (ax, ay), (bx, by) = self._posities()
-        teken_item(self.soortA, ax - CEL / 2, ay - CEL / 2, CEL, self.rotA)
-        teken_item(self.soortB, bx - CEL / 2, by - CEL / 2, CEL, self.rotB)
+        # Teken elk voorwerp zoals het er ECHT uitziet, op de gedraaide plek
+        self.objA.teken()
+        self.objB.teken()
 
 
 # =============================================
