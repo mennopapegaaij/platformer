@@ -7,9 +7,12 @@ import arcade
 import math
 
 # De soorten decoratie waar je met de Deco-knop doorheen klikt
-DECO_SOORTEN = ["bloem", "boom", "wolk", "ster", "struik"]
+DECO_SOORTEN = ["bloem", "boom", "wolk", "ster", "struik",
+                "zon", "maan", "regenboog", "paddenstoel", "steen", "vlinder"]
 DECO_NAAM = {"bloem": "Bloem", "boom": "Boom", "wolk": "Wolk",
-             "ster": "Ster", "struik": "Struik"}
+             "ster": "Ster", "struik": "Struik", "zon": "Zon", "maan": "Maan",
+             "regenboog": "Regenboog", "paddenstoel": "Paddenstoel",
+             "steen": "Steen", "vlinder": "Vlinder"}
 
 
 def teken_deco(soort, x, y, g, rotatie=0):
@@ -68,6 +71,58 @@ def teken_deco(soort, x, y, g, rotatie=0):
         for ddx, r in [(0.3, 0.22), (0.5, 0.3), (0.7, 0.22)]:
             bx, by = d(x + g * ddx, y + g * 0.3)
             arcade.draw_circle_filled(bx, by, g * r, (50, 150, 60))
+    elif soort == "zon":
+        cy = y + g * 0.5
+        scx, scy = d(cx, cy)
+        for hoek in range(0, 360, 45):                     # stralen rondom
+            r = math.radians(hoek)
+            x1, y1 = d(cx + math.cos(r) * g * 0.32, cy + math.sin(r) * g * 0.32)
+            x2, y2 = d(cx + math.cos(r) * g * 0.48, cy + math.sin(r) * g * 0.48)
+            arcade.draw_line(x1, y1, x2, y2, (255, 200, 40), 3)
+        arcade.draw_circle_filled(scx, scy, g * 0.28, (255, 210, 50))
+    elif soort == "maan":
+        cy = y + g * 0.5
+        mcx, mcy = d(cx, cy)
+        arcade.draw_circle_filled(mcx, mcy, g * 0.32, (240, 235, 180))     # bleke maan
+        for ddx, ddy, rr in [(-0.09, 0.06, 0.06), (0.1, -0.02, 0.05), (0.02, 0.15, 0.045)]:
+            kx, ky = d(cx + g * ddx, cy + g * ddy)
+            arcade.draw_circle_filled(kx, ky, g * rr, (210, 205, 150))     # kratertjes
+    elif soort == "regenboog":
+        cy = y + g * 0.15                                  # boog vanaf onderaan
+        kleuren = [(230, 60, 60), (240, 150, 40), (240, 220, 60),
+                   (70, 180, 80), (60, 120, 220)]
+        for i, kl in enumerate(kleuren):
+            maat = g * (0.9 - i * 0.15)
+            arcade.draw_arc_outline(cx, cy, maat, maat, kl, 0, 180, 4)
+    elif soort == "paddenstoel":
+        # steeltje
+        arcade.draw_polygon_filled([d(cx - g * 0.1, y), d(cx + g * 0.1, y),
+                                    d(cx + g * 0.1, y + g * 0.45), d(cx - g * 0.1, y + g * 0.45)],
+                                   (240, 230, 200))
+        # rode hoed
+        hx, hy = d(cx, y + g * 0.5)
+        arcade.draw_ellipse_filled(hx, hy, g * 0.72, g * 0.5, (220, 50, 50))
+        # witte stippen op de hoed
+        for ddx, ddy in [(-0.18, 0.08), (0.16, 0.05), (0.0, 0.16)]:
+            sx, sy = d(cx + g * ddx, y + g * 0.5 + g * ddy)
+            arcade.draw_circle_filled(sx, sy, g * 0.06, (255, 255, 255))
+    elif soort == "steen":
+        punten = [d(cx - g * 0.35, y + g * 0.12), d(cx - g * 0.28, y + g * 0.5),
+                  d(cx, y + g * 0.62), d(cx + g * 0.32, y + g * 0.46),
+                  d(cx + g * 0.3, y + g * 0.14)]
+        arcade.draw_polygon_filled(punten, (140, 140, 150))
+        arcade.draw_polygon_outline(punten, (90, 90, 100), 2)
+    elif soort == "vlinder":
+        cy = y + g * 0.5
+        for kant in (-1, 1):                               # twee vleugels
+            w1 = d(cx + kant * g * 0.05, cy)
+            w2 = d(cx + kant * g * 0.36, cy + g * 0.22)
+            w3 = d(cx + kant * g * 0.36, cy - g * 0.22)
+            arcade.draw_triangle_filled(w1[0], w1[1], w2[0], w2[1], w3[0], w3[1],
+                                        (180, 100, 220))
+        b1 = d(cx, cy + g * 0.22)
+        b2 = d(cx, cy - g * 0.22)
+        arcade.draw_line(b1[0], b1[1], b2[0], b2[1], (60, 40, 30), 3)      # lijfje
 
 
 class Decoratie:
