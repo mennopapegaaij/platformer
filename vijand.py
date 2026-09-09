@@ -1540,16 +1540,17 @@ class Draaimolen(Vijand):
 
 
 class DraaiPaar:
-    """Twee zelfgekozen voorwerpen aan een ONZICHTBAAR draad.
+    """De onzichtbare 'motor' van een draad: draait twee ECHTE voorwerpen rond.
 
-    Ze draaien om het midden van het draad. De voorwerpen worden getekend zoals
-    ze er in het spel ECHT uitzien (dus niet de kleine bouw-icoontjes). Is een
-    voorwerp gevaarlijk (spike, vijand of molen), dan ga je af als je het raakt."""
+    De voorwerpen zitten gewoon in hun eigen lijstjes van het spel (blokken zijn
+    dus vast, portalen werken, matten stuiteren, monsters kun je stompen). Deze
+    motor zet ze elke stap op hun gedraaide plek. De motor tekent zelf niets en
+    raakt de speler zelf niet — dat doen de voorwerpen zelf."""
 
-    is_spike = True                 # zodat het spel het als een obstakel behandelt
+    is_spike = True                 # zelf niet gevaarlijk en niet te stompen/schieten
 
     def __init__(self, objA, objB, mx, my, straal):
-        self.objA = objA            # het ECHTE voorwerp A (bv. een Spikes of Draaimolen)
+        self.objA = objA            # het ECHTE voorwerp A (bv. een Spikes of BlokPlatform)
         self.objB = objB
         self.mx = mx                # midden van het draad
         self.my = my
@@ -1562,13 +1563,7 @@ class DraaiPaar:
         self.hoogte = straal * 2 + 60
         self.x = mx - self.breedte / 2
         self.y = my - self.breedte / 2
-
-    def _posities(self):
-        """De twee voorwerpen staan tegenover elkaar aan het draad."""
-        h = math.radians(self.hoek)
-        dx = math.cos(h) * self.straal
-        dy = math.sin(h) * self.straal
-        return (self.mx + dx, self.my + dy), (self.mx - dx, self.my - dy)
+        self._zet_beide()           # meteen op hun plek zetten
 
     def _zet_midden(self, o, cx, cy):
         """Zet een voorwerp zo neer dat zijn MIDDEN op (cx, cy) staat."""
@@ -1580,32 +1575,25 @@ class DraaiPaar:
             o.mx = cx
             o.my = cy
 
+    def _zet_beide(self):
+        h = math.radians(self.hoek)
+        dx = math.cos(h) * self.straal
+        dy = math.sin(h) * self.straal
+        self._zet_midden(self.objA, self.mx + dx, self.my + dy)
+        self._zet_midden(self.objB, self.mx - dx, self.my - dy)
+
     def bijwerken(self, speler_x=None):
         self.hoek = (self.hoek + self.draaisnelheid) % 360    # blijf ronddraaien
-        (ax, ay), (bx, by) = self._posities()
-        self._zet_midden(self.objA, ax, ay)
-        self._zet_midden(self.objB, bx, by)
-        # Laat een molen-kind ook zijn eigen ballen draaien
-        for o in (self.objA, self.objB):
-            if isinstance(o, Draaimolen):
-                o.bijwerken()
-
-    def _gevaarlijk(self, o):
-        return getattr(o, "is_spike", False) or isinstance(o, Vijand)
+        self._zet_beide()
 
     def raakt_speler(self, px, py, pw, ph):
-        for o in (self.objA, self.objB):
-            if self._gevaarlijk(o) and o.raakt_speler(px, py, pw, ph):
-                return True
-        return False
+        return False                # de voorwerpen zelf raken de speler, niet de motor
 
     def speler_springt_erop(self, px, py, pw, ph):
         return False
 
     def teken(self):
-        # Teken elk voorwerp zoals het er ECHT uitziet, op de gedraaide plek
-        self.objA.teken()
-        self.objB.teken()
+        pass                        # de voorwerpen worden door hun eigen lijstjes getekend
 
 
 # =============================================

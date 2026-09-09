@@ -713,6 +713,26 @@ class BouwerView(arcade.View):
                 return SpringMat(wx, wy, KRACHT_PER_STAND[int(n) if n.isdigit() else 3])
             return None
 
+        # Hulpje: zet een voorwerp in het JUISTE lijstje, zodat het gewoon werkt
+        # (blok = vast, portaal = wisselt vorm, mat = stuitert, monster = te stompen).
+        def voeg_toe(o, soort):
+            if o is None:
+                return
+            if soort == "grond" or soort == "blok" or soort.startswith("blok_"):
+                platforms.append(o)
+            elif soort.startswith("portaal_"):
+                portalen.append(o)
+            elif soort.startswith("tele_"):
+                teleporters.append(o)
+            elif soort.startswith("spring_"):
+                springers.append(o)
+            elif soort.startswith("deco_"):
+                decoraties.append(o)
+            elif soort == "hart":
+                powerups.append(o)
+            else:                       # spike / vijand / molen
+                vijanden.append(o)
+
         # Onzichtbare draden: elk paar voorwerpen draait om het midden van het draad
         for a, b in self.draden:
             if a not in self.grid or b not in self.grid:
@@ -727,7 +747,11 @@ class BouwerView(arcade.View):
             objB = maak_voorwerp(self.grid[b], bx, by, self.rotaties.get(b, 0))
             if objA is None or objB is None:
                 continue
+            voeg_toe(objA, self.grid[a])          # in hun eigen lijstje -> ze werken echt
+            voeg_toe(objB, self.grid[b])
             max_x = max(max_x, mx + straal + CEL)
+            # De motor komt NA de voorwerpen in de lijst, zodat hij ze als laatste
+            # op hun gedraaide plek zet (anders lopen monsters weg van het draad).
             vijanden.append(DraaiPaar(objA, objB, mx, my, straal))
 
         if vlag_x is None:                       # geen vlag geplaatst? zet er een aan het eind
