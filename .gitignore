@@ -3,3 +3,4 @@ __pycache__/
 .env
 voortgang.json
 eigen_level.json
+eigen_level_*.json

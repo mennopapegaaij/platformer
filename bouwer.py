@@ -13,7 +13,8 @@ from platforms import BLOK_SOORTEN, BLOK_NAAM
 from teleport import teken_tele_icoon
 
 CEL = 40                       # grootte van één raster-vakje
-BESTAND = "eigen_level.json"   # hier wordt je level opgeslagen
+BESTAND = "eigen_level.json"   # oude opslag (1 level) — wordt naar plek 1 verhuisd
+MAX_SLOTS = 5                  # je kunt 5 eigen levels opslaan (plek 1 t/m 5)
 
 # De dingen die je kunt plaatsen (op volgorde in het palet)
 ITEMS = ["grond", "blok", "spike", "vijand", "molen", "hart", "vlag", "portaal", "snel",
@@ -195,6 +196,7 @@ class BouwerView(arcade.View):
         self.vlucht_record = vlucht_record
         self.aantal_spelers = aantal_spelers   # met hoeveel spelers je je level speelt (1-4)
 
+        self.slot = 1                  # welke opslag-plek (1 t/m 5) je nu bewerkt
         self.grid = {}                 # (kol, rij) -> soort
         self.rotaties = {}             # (kol, rij) -> draai-hoek (0/90/180/270)
         self.deco = {}                 # decoratie zit in een APARTE laag (kan bovenop een blok)
@@ -223,22 +225,49 @@ class BouwerView(arcade.View):
             l = 6 + i * 29
             self.palet_knoppen[soort] = (l, l + 27)
         self.actie_knoppen = {         # naam -> (l, r)
-            "spelen": (410, 460),
-            "opslaan": (464, 524),
-            "wissen": (528, 582),
-            "kaart": (586, 628),
-            "draai": (632, 688),
-            "type": (692, 792),
+            "spelen": (408, 452),
+            "opslaan": (455, 501),
+            "wissen": (504, 546),
+            "level": (549, 591),
+            "kaart": (594, 632),
+            "draai": (635, 677),
+            "type": (680, 796),
         }
 
         self._laad()
 
     # ---------- Opslaan en laden ----------
+    def _bestand(self, slot=None):
+        """De bestandsnaam van een opslag-plek (bv. 'eigen_level_1.json')."""
+        return "eigen_level_%d.json" % (self.slot if slot is None else slot)
+
+    def _wissel_slot(self, nieuw):
+        """Sla het huidige level op en ga naar een andere opslag-plek."""
+        self._opslaan()                 # eerst het huidige level bewaren
+        self.slot = max(1, min(MAX_SLOTS, nieuw))
+        self._laad()                    # het level van de nieuwe plek inladen
+        self._melding = "📁 Level %d" % self.slot
+        self._melding_teller = 120
+
     def _laad(self):
-        """Laad een opgeslagen level, of maak een klein start-level."""
-        if os.path.exists(BESTAND):
+        """Laad het level van de huidige plek, of maak een klein start-level."""
+        # Begin helemaal schoon (belangrijk bij het wisselen van plek)
+        self.grid = {}
+        self.rotaties = {}
+        self.deco = {}
+        self.deco_rotaties = {}
+        self.draden = []
+        self._draad_start = None
+        self.mode = "gewoon"
+        self.scroll = 0
+
+        bestand = self._bestand()
+        # Oud losbestand? Verhuis het naar plek 1 (zodat je oude werk niet weg is)
+        if not os.path.exists(bestand) and self.slot == 1 and os.path.exists(BESTAND):
+            bestand = BESTAND
+        if os.path.exists(bestand):
             try:
-                with open(BESTAND, encoding="utf-8") as f:
+                with open(bestand, encoding="utf-8") as f:
                     data = json.load(f)
                 if isinstance(data, dict):
                     tiles = data.get("tiles", [])
@@ -282,9 +311,9 @@ class BouwerView(arcade.View):
                 "deco": [[k, r, s] for (k, r), s in self.deco.items()],
                 "deco_rotaties": [[k, r, rot] for (k, r), rot in self.deco_rotaties.items()],
                 "draden": [[a[0], a[1], b[0], b[1]] for (a, b) in self.draden]}
-        with open(BESTAND, "w", encoding="utf-8") as f:
+        with open(self._bestand(), "w", encoding="utf-8") as f:
             json.dump(data, f)
-        self._melding = "💾 Opgeslagen!"
+        self._melding = "💾 Level %d opgeslagen!" % self.slot
         self._melding_teller = 120
 
     # ---------- Tekenen ----------
@@ -394,11 +423,11 @@ class BouwerView(arcade.View):
                       "vlucht": "✈️ Vliegen"}[self.mode]
         # Actie-knoppen
         kleuren = {"spelen": (40, 160, 60), "opslaan": (40, 110, 180),
-                   "wissen": (170, 60, 60), "kaart": (100, 100, 120),
-                   "draai": (150, 110, 40), "type": type_kleur}
+                   "wissen": (170, 60, 60), "level": (150, 60, 160),
+                   "kaart": (100, 100, 120), "draai": (150, 110, 40), "type": type_kleur}
         teksten = {"spelen": ("▶ %dP Spelen" % self.aantal_spelers) if self.aantal_spelers > 1 else "▶ Spelen",
-                   "opslaan": "💾 Opslaan", "wissen": "🗑 Wissen", "kaart": "🗺 Kaart",
-                   "draai": "↻ %d°" % self.rotatie, "type": type_tekst}
+                   "opslaan": "💾 Opslaan", "wissen": "🗑 Wissen", "level": "📁 %d" % self.slot,
+                   "kaart": "🗺 Kaart", "draai": "↻ %d°" % self.rotatie, "type": type_tekst}
         for naam, (l, r) in self.actie_knoppen.items():
             arcade.draw_lrbt_rectangle_filled(l, r, BALK_Y + 8, SCHERM_HOOGTE - 8, kleuren[naam])
             arcade.draw_lrbt_rectangle_outline(l, r, BALK_Y + 8, SCHERM_HOOGTE - 8, arcade.color.WHITE, 2)
@@ -416,9 +445,10 @@ class BouwerView(arcade.View):
             arcade.draw_text(self._melding, SCHERM_BREEDTE // 2, 10,
                              arcade.color.YELLOW, 16, bold=True, anchor_x="center")
         else:
-            arcade.draw_text("Klik om te plaatsen  •  ←→ = schuiven  •  Draai-knop of D = draaien"
-                             "  •  Klik nog eens op Portaal/Snel/Deco voor een ander soort",
-                             SCHERM_BREEDTE // 2, 8, arcade.color.WHITE, 10, anchor_x="center")
+            arcade.draw_text("Klik om te plaatsen  •  ←→ = schuiven  •  D = draaien  •  "
+                             "📁-knop of toets 1-5 = ander opslag-level  •  "
+                             "Klik nog eens op Portaal/Snel/Deco voor een ander soort",
+                             SCHERM_BREEDTE // 2, 8, arcade.color.WHITE, 9, anchor_x="center")
 
     # ---------- Muis ----------
     def on_mouse_press(self, x, y, knop, modifiers):
@@ -541,6 +571,9 @@ class BouwerView(arcade.View):
                     self.deco_rotaties = {}
                     self.draden = []
                     self._draad_start = None
+                elif naam == "level":
+                    # Naar de volgende opslag-plek (1 -> 2 -> ... -> 5 -> 1)
+                    self._wissel_slot(self.slot % MAX_SLOTS + 1)
                 elif naam == "kaart":
                     self._naar_kaart()
                 elif naam == "draai":
@@ -567,6 +600,14 @@ class BouwerView(arcade.View):
             self.rotatie = (self.rotatie + 90) % 360
         elif toets == arcade.key.K or toets == arcade.key.ESCAPE:
             self._naar_kaart()
+        else:
+            # Cijfertoetsen 1 t/m 5: spring direct naar die opslag-plek
+            cijfers = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3,
+                       arcade.key.KEY_4: 4, arcade.key.KEY_5: 5,
+                       arcade.key.NUM_1: 1, arcade.key.NUM_2: 2, arcade.key.NUM_3: 3,
+                       arcade.key.NUM_4: 4, arcade.key.NUM_5: 5}
+            if toets in cijfers and cijfers[toets] != self.slot:
+                self._wissel_slot(cijfers[toets])
 
     def on_key_release(self, toets, modifiers):
         if toets in (arcade.key.LEFT, arcade.key.RIGHT):
