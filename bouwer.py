@@ -241,6 +241,8 @@ class BouwerView(arcade.View):
         self.mode = "gewoon"
         self.scroll = 0                # hoe ver je naar rechts hebt geschoven
         self._scroll_richting = 0      # -1 links, +1 rechts (met pijltjestoetsen)
+        self.scroll_y = 0              # hoe ver je naar boven hebt geschoven
+        self._scroll_y_richting = 0    # -1 omlaag, +1 omhoog (met pijltjestoetsen)
         self._melding = ""             # kort berichtje (bv. "Opgeslagen!")
         self._melding_teller = 0
 
@@ -286,6 +288,7 @@ class BouwerView(arcade.View):
         self.verf = set()
         self.mode = "gewoon"
         self.scroll = 0
+        self.scroll_y = 0
 
         bestand = self._bestand()
         # Oud losbestand? Verhuis het naar plek 1 (zodat je oude werk niet weg is)
@@ -367,39 +370,47 @@ class BouwerView(arcade.View):
         for kol in range(eerste_kol, eerste_kol + SCHERM_BREEDTE // CEL + 2):
             sx = kol * CEL - self.scroll
             arcade.draw_line(sx, 0, sx, BALK_Y, (255, 255, 255, 40), 1)
-        # Horizontale lijnen
-        for rij in range(0, BALK_Y // CEL + 1):
-            arcade.draw_line(0, rij * CEL, SCHERM_BREEDTE, rij * CEL, (255, 255, 255, 40), 1)
+        # Horizontale lijnen (schuiven mee met omhoog/omlaag scrollen)
+        eerste_rij = int(self.scroll_y // CEL)
+        for rij in range(eerste_rij, eerste_rij + BALK_Y // CEL + 2):
+            sy = rij * CEL - self.scroll_y
+            arcade.draw_line(0, sy, SCHERM_BREEDTE, sy, (255, 255, 255, 40), 1)
         # De grondlijn wat duidelijker
-        arcade.draw_line(0, CEL, SCHERM_BREEDTE, CEL, (255, 255, 255, 110), 2)
+        arcade.draw_line(0, CEL - self.scroll_y, SCHERM_BREEDTE, CEL - self.scroll_y, (255, 255, 255, 110), 2)
+
+    def _in_beeld(self, sx, sy):
+        """Is een vakje (op scherm-plek sx, sy) zichtbaar in het bouwgebied?"""
+        return -CEL <= sx <= SCHERM_BREEDTE and -CEL <= sy <= BALK_Y
 
     def _teken_items(self):
         """Teken alle geplaatste items (alleen die in beeld zijn)."""
         for (kol, rij), soort in self.grid.items():
             sx = kol * CEL - self.scroll
-            if sx < -CEL or sx > SCHERM_BREEDTE:
+            sy = rij * CEL - self.scroll_y
+            if not self._in_beeld(sx, sy):
                 continue
-            teken_item(soort, sx, rij * CEL, CEL, self.rotaties.get((kol, rij), 0))
+            teken_item(soort, sx, sy, CEL, self.rotaties.get((kol, rij), 0))
         # Geverfde (onzichtbare) blokken: hier laten we ze faded zien met een raster,
         # zodat JIJ nog weet waar ze zitten. In het spel zijn ze echt onzichtbaar.
         for (kol, rij) in self.verf:
             sx = kol * CEL - self.scroll
-            if sx < -CEL or sx > SCHERM_BREEDTE:
+            sy = rij * CEL - self.scroll_y
+            if not self._in_beeld(sx, sy):
                 continue
-            sy = rij * CEL
             arcade.draw_lrbt_rectangle_filled(sx, sx + CEL, sy, sy + CEL, (150, 220, 255, 90))
             arcade.draw_lrbt_rectangle_outline(sx, sx + CEL, sy, sy + CEL, (255, 255, 255, 170), 2)
             arcade.draw_line(sx + 4, sy + CEL - 4, sx + CEL - 4, sy + 4, (255, 255, 255, 170), 1)
         # Decoratie ligt in een aparte laag, dus die tekenen we BOVENOP de blokken
         for (kol, rij), soort in self.deco.items():
             sx = kol * CEL - self.scroll
-            if sx < -CEL or sx > SCHERM_BREEDTE:
+            sy = rij * CEL - self.scroll_y
+            if not self._in_beeld(sx, sy):
                 continue
-            teken_item(soort, sx, rij * CEL, CEL, self.deco_rotaties.get((kol, rij), 0))
+            teken_item(soort, sx, sy, CEL, self.deco_rotaties.get((kol, rij), 0))
 
         # De draden tonen we hier met een stippellijn (in het spel zijn ze onzichtbaar)
         def cel_midden(cel):
-            return (cel[0] * CEL - self.scroll + CEL / 2, cel[1] * CEL + CEL / 2)
+            return (cel[0] * CEL - self.scroll + CEL / 2, cel[1] * CEL - self.scroll_y + CEL / 2)
         for a, b in self.draden:
             ax, ay = cel_midden(a)
             bx, by = cel_midden(b)
@@ -414,9 +425,10 @@ class BouwerView(arcade.View):
     def _teken_startmarker(self):
         """Teken waar de speler begint (linksonder)."""
         sx = 50 - self.scroll
-        if -40 < sx < SCHERM_BREEDTE:
-            arcade.draw_lrbt_rectangle_filled(sx, sx + 32, CEL, CEL + 32, arcade.color.YELLOW)
-            arcade.draw_text("start", sx - 4, CEL + 34, arcade.color.BLACK, 9, bold=True)
+        sy = CEL - self.scroll_y
+        if -40 < sx < SCHERM_BREEDTE and -40 < sy < BALK_Y:
+            arcade.draw_lrbt_rectangle_filled(sx, sx + 32, sy, sy + 32, arcade.color.YELLOW)
+            arcade.draw_text("start", sx - 4, sy + 34, arcade.color.BLACK, 9, bold=True)
 
     def _teken_balk(self):
         """Teken de bovenbalk met het palet en de knoppen."""
@@ -485,7 +497,7 @@ class BouwerView(arcade.View):
             arcade.draw_text(self._melding, SCHERM_BREEDTE // 2, 10,
                              arcade.color.YELLOW, 16, bold=True, anchor_x="center")
         else:
-            arcade.draw_text("Klik om te plaatsen  •  ←→ = schuiven  •  D = draaien  •  "
+            arcade.draw_text("Klik om te plaatsen  •  ←→↑↓ = schuiven (ook omhoog!)  •  D = draaien  •  "
                              "📁-knop of toets 1-5 = ander opslag-level  •  "
                              "Klik nog eens op Portaal/Snel/Deco voor een ander soort",
                              SCHERM_BREEDTE // 2, 8, arcade.color.WHITE, 9, anchor_x="center")
@@ -497,8 +509,9 @@ class BouwerView(arcade.View):
             return
         # In het bouwgebied: plaats of gum het gekozen item
         wereld_x = x + self.scroll
+        wereld_y = y + self.scroll_y
         kol = int(wereld_x // CEL)
-        rij = int(y // CEL)
+        rij = int(wereld_y // CEL)
         if self.gekozen == "draad":
             self._klik_draad(kol, rij)
             return
@@ -642,6 +655,10 @@ class BouwerView(arcade.View):
             self._scroll_richting = -1
         elif toets == arcade.key.RIGHT:
             self._scroll_richting = 1
+        elif toets == arcade.key.UP:
+            self._scroll_y_richting = 1       # naar boven kijken (hoog bouwen)
+        elif toets == arcade.key.DOWN:
+            self._scroll_y_richting = -1      # weer naar beneden
         elif toets in (arcade.key.ENTER, arcade.key.NUM_ENTER):
             self._speel()
         elif toets == arcade.key.S:
@@ -663,10 +680,14 @@ class BouwerView(arcade.View):
     def on_key_release(self, toets, modifiers):
         if toets in (arcade.key.LEFT, arcade.key.RIGHT):
             self._scroll_richting = 0
+        if toets in (arcade.key.UP, arcade.key.DOWN):
+            self._scroll_y_richting = 0
 
     def on_update(self, dt):
         if self._scroll_richting != 0:
             self.scroll = max(0, self.scroll + self._scroll_richting * 9)
+        if self._scroll_y_richting != 0:
+            self.scroll_y = max(0, self.scroll_y + self._scroll_y_richting * 9)
         if self._melding_teller > 0:
             self._melding_teller -= 1
 
