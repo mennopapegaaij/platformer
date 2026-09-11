@@ -224,9 +224,9 @@ class PlatformerSpel(arcade.View):
         # Alles binnen dit blok beweegt mee met de camera
         with self.camera.activate():
 
-            # Teken alleen de platforms die in beeld zijn
+            # Teken alleen de platforms die in beeld zijn (onzichtbare verf-blokken NIET)
             for platform in self.platforms:
-                if in_beeld(platform, platform.breedte):
+                if in_beeld(platform, platform.breedte) and not getattr(platform, "onzichtbaar", False):
                     platform.teken()
 
             # Teken de decoratie ná de platforms, zodat het ervóór staat (geen botsing)
@@ -1172,7 +1172,7 @@ class PlatformerSpel(arcade.View):
                     return o.x + b >= links and o.x <= rechts
 
                 for p in self.platforms:
-                    if zicht(p, p.breedte):
+                    if zicht(p, p.breedte) and not getattr(p, "onzichtbaar", False):
                         p.teken()
                 # Decoratie ná de platforms, zodat het ervóór staat
                 for deco in self.decoraties:
