@@ -533,9 +533,9 @@ class BouwerView(arcade.View):
             self._klik_draad(kol, rij)
             return
         if self.gekozen == "verf":
-            # Onzichtbare verf: alleen op een blok/grond. Klik = onzichtbaar, klik weer = terug.
-            s = self.grid.get((kol, rij))
-            if s == "grond" or s == "blok" or (s and s.startswith("blok_")):
+            # Onzichtbare verf: op ELK voorwerp (grid of decoratie).
+            # Klik = onzichtbaar, klik weer = terug.
+            if (kol, rij) in self.grid or (kol, rij) in self.deco:
                 if (kol, rij) in self.verf:
                     self.verf.discard((kol, rij))
                 else:
@@ -754,11 +754,12 @@ class BouwerView(arcade.View):
             wx, wy = kol * CEL, rij * CEL
             rot = self.rotaties.get((kol, rij), 0)
             max_x = max(max_x, wx + CEL)
+            # Onthoud hoeveel voorwerpen er nu zijn (om de verf straks toe te passen)
+            onz = (kol, rij) in self.verf
+            voor = [len(platforms), len(vijanden), len(portalen),
+                    len(teleporters), len(springers), len(powerups)]
             if soort == "grond":
-                plat = Platform(wx, wy, CEL, CEL)
-                if (kol, rij) in self.verf:
-                    plat.onzichtbaar = True        # met verf: wel vast, niet zichtbaar
-                platforms.append(plat)
+                platforms.append(Platform(wx, wy, CEL, CEL))
             elif soort == "blok" or soort.startswith("blok_"):
                 s = soort.split("_", 1)[1] if "_" in soort else "gewoon"
                 if s == "schuinop":
@@ -773,8 +774,6 @@ class BouwerView(arcade.View):
                     plat = VerdwijnBlok(wx, wy, CEL, CEL)
                 else:
                     plat = BlokPlatform(wx, wy, CEL, CEL)
-                if (kol, rij) in self.verf:
-                    plat.onzichtbaar = True        # met verf: wel vast, niet zichtbaar
                 platforms.append(plat)
             elif soort == "spike" or soort.startswith("spike_"):
                 s = soort.split("_", 1)[1] if "_" in soort else "gewoon"
@@ -823,13 +822,24 @@ class BouwerView(arcade.View):
                                            KRACHT_PER_STAND[int(n) if n.isdigit() else 3]))
             elif soort == "vlag":
                 vlag_x, vlag_y = wx, wy
+            # Onzichtbare verf: elk voorwerp dat we net voor dit vakje maakten,
+            # onzichtbaar zetten (het blijft wel gewoon werken/botsen).
+            if onz:
+                for lijst, n in ((platforms, voor[0]), (vijanden, voor[1]),
+                                 (portalen, voor[2]), (teleporters, voor[3]),
+                                 (springers, voor[4]), (powerups, voor[5])):
+                    for o in lijst[n:]:
+                        o.onzichtbaar = True
 
         # Decoratie uit de aparte laag (ligt bovenop blokken, geen botsing)
         for (kol, rij), soort in self.deco.items():
             wx, wy = kol * CEL, rij * CEL
             rot = self.deco_rotaties.get((kol, rij), 0)
             max_x = max(max_x, wx + CEL)
-            decoraties.append(Decoratie(wx, wy, soort.split("_", 1)[1], rot))
+            deco = Decoratie(wx, wy, soort.split("_", 1)[1], rot)
+            if (kol, rij) in self.verf:
+                deco.onzichtbaar = True      # met verf ook de decoratie onzichtbaar
+            decoraties.append(deco)
 
         # Hulpje: maak het ECHTE voorwerp (zoals het in het spel eruitziet) met
         # zijn midden op (cx, cy). Zo draait aan een draad geen klein bouw-icoontje,

@@ -229,24 +229,26 @@ class PlatformerSpel(arcade.View):
                 if in_beeld(platform, platform.breedte) and not getattr(platform, "onzichtbaar", False):
                     platform.teken()
 
-            # Teken de decoratie ná de platforms, zodat het ervóór staat (geen botsing)
+            # Teken de decoratie ná de platforms, zodat het ervóór staat (geen botsing).
+            # Met onzichtbare verf overgeschilderde voorwerpen tekenen we NIET.
             for deco in self.decoraties:
-                if in_beeld(deco, deco.breedte):
+                if in_beeld(deco, deco.breedte) and not getattr(deco, "onzichtbaar", False):
                     deco.teken()
 
             # Teken alleen de vijanden die in beeld zijn
             for vijand in self.vijanden:
-                if in_beeld(vijand, vijand.breedte):
+                if in_beeld(vijand, vijand.breedte) and not getattr(vijand, "onzichtbaar", False):
                     vijand.teken()
 
             # Teken de spring-bollen en spring-matten
             for springer in self.springers:
-                if in_beeld(springer, springer.breedte):
+                if in_beeld(springer, springer.breedte) and not getattr(springer, "onzichtbaar", False):
                     springer.teken()
 
             # Teken de power-ups die nog niet opgepakt zijn en in beeld zijn
             for powerup in self.powerups:
-                if not powerup.opgepakt and in_beeld(powerup, powerup.breedte):
+                if (not powerup.opgepakt and in_beeld(powerup, powerup.breedte)
+                        and not getattr(powerup, "onzichtbaar", False)):
                     powerup.teken()
 
             # Teken de vlag (in de arena is er geen vlag)
@@ -255,12 +257,12 @@ class PlatformerSpel(arcade.View):
 
             # Teken de portalen die in beeld zijn (vorm-wissel poortjes)
             for portaal in self.portalen:
-                if in_beeld(portaal, portaal.breedte):
+                if in_beeld(portaal, portaal.breedte) and not getattr(portaal, "onzichtbaar", False):
                     portaal.teken()
 
             # Teken de teleporters (blauw <-> oranje paren)
             for tele in self.teleporters:
-                if in_beeld(tele, tele.breedte):
+                if in_beeld(tele, tele.breedte) and not getattr(tele, "onzichtbaar", False):
                     tele.teken()
 
             # Teken de kogels
@@ -1176,19 +1178,19 @@ class PlatformerSpel(arcade.View):
                         p.teken()
                 # Decoratie ná de platforms, zodat het ervóór staat
                 for deco in self.decoraties:
-                    if zicht(deco, deco.breedte):
+                    if zicht(deco, deco.breedte) and not getattr(deco, "onzichtbaar", False):
                         deco.teken()
                 for v in self.vijanden:
-                    if zicht(v, v.breedte):
+                    if zicht(v, v.breedte) and not getattr(v, "onzichtbaar", False):
                         v.teken()
                 for springer in self.springers:
-                    if zicht(springer, springer.breedte):
+                    if zicht(springer, springer.breedte) and not getattr(springer, "onzichtbaar", False):
                         springer.teken()
                 for portaal in self.portalen:
-                    if zicht(portaal, portaal.breedte):
+                    if zicht(portaal, portaal.breedte) and not getattr(portaal, "onzichtbaar", False):
                         portaal.teken()
                 for tele in self.teleporters:
-                    if zicht(tele, tele.breedte):
+                    if zicht(tele, tele.breedte) and not getattr(tele, "onzichtbaar", False):
                         tele.teken()
                 if not self.arena:                 # in de vechtmodus is er geen vlag
                     self._teken_vlag(self.vlag_x, self.vlag_y)
