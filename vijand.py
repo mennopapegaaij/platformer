@@ -1459,9 +1459,9 @@ class Spikes(Vijand):
 
 
 # De 5 soorten spikes die je in de bouwmodus kunt kiezen: soort -> (aantal punten, kleur)
-SPIKE_SOORTEN = ["gewoon", "dubbel", "drie", "ijs", "vuur"]
+SPIKE_SOORTEN = ["gewoon", "dubbel", "drie", "ijs", "vuur", "draai"]
 SPIKE_NAAM = {"gewoon": "Spike", "dubbel": "Dubbel", "drie": "Drie",
-              "ijs": "IJs", "vuur": "Vuur"}
+              "ijs": "IJs", "vuur": "Vuur", "draai": "Draai"}
 SPIKE_INFO = {
     "gewoon": (1, (185, 185, 200)),   # grijze losse spike
     "dubbel": (2, (185, 185, 200)),   # twee grijze punten
@@ -1657,6 +1657,77 @@ class Achtervolger(Vijand):
         for i in range(1, 4):
             tx = x + 8 + i * (w - 16) / 4
             arcade.draw_line(tx, my, tx, my + 14, (80, 0, 30), 2)
+
+
+class DraaiSpike(Vijand):
+    """Een balk met spikes die met kwartslagen ronddraait: draait 90°, wacht, draait weer.
+
+    Wijzen de spikes net een andere kant op, dan kun je erlangs. Goed timen dus!"""
+
+    def __init__(self, x, y, reach=34, breed=30, kleur=(185, 185, 200)):
+        super().__init__(x, y, x, x, 0)
+        self.cx = x                      # het midden waar hij omheen draait
+        self.cy = y
+        self.reach = reach               # hoe ver de balk uitsteekt
+        self.breed = breed               # breedte van de balk
+        self.kleur = kleur
+        self.hoek = 0.0                  # huidige hoek (graden), 0 = omhoog
+        self.doel = 0.0                  # waar hij naartoe draait
+        self._wacht = 45                 # frames stilstaan tussen de kwartslagen
+        self._timer = self._wacht
+        self.is_spike = True             # onkwetsbaar obstakel (net als spikes)
+        self.levens = 999999
+        self.breedte = (reach + 14) * 2  # voor de 'in beeld'-check (hele draaicirkel)
+        self.hoogte = (reach + 14) * 2
+        self.x = x - self.breedte / 2
+        self.y = y - self.hoogte / 2
+
+    def bijwerken(self, speler_x=None):
+        if abs(self.hoek - self.doel) < 0.5:
+            self.hoek = self.doel        # klaar met draaien -> even wachten
+            self._timer -= 1
+            if self._timer <= 0:
+                self.doel += 90          # volgende kwartslag
+                self._timer = self._wacht
+        else:
+            self.hoek += 6               # soepel naar de volgende kwartslag draaien
+
+    def _punt(self, lx, ly):
+        """Een punt (lx, ly) t.o.v. het midden, gedraaid met de huidige hoek."""
+        r = math.radians(self.hoek)
+        c, s = math.cos(r), math.sin(r)
+        return (self.cx + lx * c - ly * s, self.cy + lx * s + ly * c)
+
+    def _grenzen(self):
+        hoeken = [self._punt(-self.breed / 2, 0), self._punt(self.breed / 2, 0),
+                  self._punt(self.breed / 2, self.reach + 12),
+                  self._punt(-self.breed / 2, self.reach + 12)]
+        xs = [p[0] for p in hoeken]
+        ys = [p[1] for p in hoeken]
+        return min(xs), max(xs), min(ys), max(ys)
+
+    def raakt_speler(self, px, py, pw, ph):
+        x0, x1, y0, y1 = self._grenzen()
+        m = 4                            # kleine marge -> eerlijke hitbox
+        return px < x1 - m and px + pw > x0 + m and py < y1 - m and py + ph > y0 + m
+
+    def speler_springt_erop(self, px, py, pw, ph):
+        return False
+
+    def teken(self):
+        # De schacht (grijze balk vanaf het midden naar buiten)
+        schacht = [self._punt(-6, 0), self._punt(6, 0),
+                   self._punt(6, self.reach), self._punt(-6, self.reach)]
+        arcade.draw_polygon_filled(schacht, (120, 120, 130))
+        arcade.draw_circle_filled(self.cx, self.cy, 8, (80, 80, 95))    # draai-as
+        # Drie scherpe punten aan het uiteinde, naar buiten wijzend
+        for i in range(3):
+            a = -self.breed / 2 + self.breed * i / 3
+            b = -self.breed / 2 + self.breed * (i + 1) / 3
+            p1 = self._punt(a, self.reach)
+            p2 = self._punt(b, self.reach)
+            tip = self._punt((a + b) / 2, self.reach + 14)
+            arcade.draw_triangle_filled(p1[0], p1[1], p2[0], p2[1], tip[0], tip[1], self.kleur)
 
 
 # =============================================

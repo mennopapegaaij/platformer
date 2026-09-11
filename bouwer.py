@@ -102,13 +102,21 @@ def teken_item(soort, x, y, grootte, rotatie=0):
             arcade.draw_lrbt_rectangle_outline(x, x + g, y, y + g, (90, 60, 40), 2)
     elif soort == "spike" or soort.startswith("spike_"):
         s = soort.split("_", 1)[1] if "_" in soort else "gewoon"
-        aantal, kleur = SPIKE_INFO.get(s, SPIKE_INFO["gewoon"])
-        n = min(aantal, 3)
-        bw = (g - 6) / n
-        for i in range(n):
-            bx = x + 3 + i * bw
-            p1, p2, p3 = d(bx, y + 3), d(bx + bw - 1, y + 3), d(bx + bw / 2, y + g - 5)
-            arcade.draw_triangle_filled(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1], kleur)
+        if s == "draai":
+            # Draai-spike: een balkje met punten en een draai-pijl eromheen
+            cx, cy = x + g / 2, y + g / 2
+            arcade.draw_circle_filled(cx, cy, 4, (80, 80, 95))
+            arcade.draw_line(cx, cy, cx, y + g - 4, (120, 120, 130), 3)
+            arcade.draw_triangle_filled(cx - 5, y + g - 8, cx + 5, y + g - 8, cx, y + g, (185, 185, 200))
+            arcade.draw_arc_outline(cx, cy, g * 0.7, g * 0.7, (255, 255, 255), 200, 340, 2)
+        else:
+            aantal, kleur = SPIKE_INFO.get(s, SPIKE_INFO["gewoon"])
+            n = min(aantal, 3)
+            bw = (g - 6) / n
+            for i in range(n):
+                bx = x + 3 + i * bw
+                p1, p2, p3 = d(bx, y + 3), d(bx + bw - 1, y + 3), d(bx + bw / 2, y + g - 5)
+                arcade.draw_triangle_filled(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1], kleur)
     elif soort == "vijand":
         arcade.draw_lrbt_rectangle_filled(x + 5, x + g - 5, y + 5, y + g - 5, (220, 40, 40))
         arcade.draw_circle_filled(x + g // 2 - 6, y + g - 12, 3, arcade.color.BLACK)
@@ -632,7 +640,8 @@ class BouwerView(arcade.View):
     def _bouw_level(self):
         """Zet het raster om in echte level-gegevens voor het spel."""
         from platforms import Platform, BlokPlatform, SchuinBlok, StuiterBlok, VerdwijnBlok
-        from vijand import Vijand, Spikes, maak_spike, Draaimolen, DraaiPaar, Achtervolger
+        from vijand import (Vijand, Spikes, maak_spike, Draaimolen, DraaiPaar,
+                            Achtervolger, DraaiSpike)
         import math
         from powerup import ExtraLevenPowerUp
         from portaal import Portaal
@@ -682,7 +691,11 @@ class BouwerView(arcade.View):
                     platforms.append(BlokPlatform(wx, wy, CEL, CEL))
             elif soort == "spike" or soort.startswith("spike_"):
                 s = soort.split("_", 1)[1] if "_" in soort else "gewoon"
-                vijanden.append(maak_spike(s, wx + 4, wy, rot))   # 5 soorten, met draaiing
+                if s == "draai":
+                    # Draai-spike: draait met kwartslagen rond het midden van dit vakje
+                    vijanden.append(DraaiSpike(wx + CEL // 2, wy + CEL // 2))
+                else:
+                    vijanden.append(maak_spike(s, wx + 4, wy, rot))   # gewone spikes
             elif soort == "vijand":
                 vijanden.append(Vijand(wx, wy, wx - 80, wx + CEL + 80, 2))
             elif soort == "molen":
@@ -741,6 +754,8 @@ class BouwerView(arcade.View):
                 return BlokPlatform(wx, wy, CEL, CEL)
             if soort == "spike" or soort.startswith("spike_"):
                 s = soort.split("_", 1)[1] if "_" in soort else "gewoon"
+                if s == "draai":
+                    return DraaiSpike(cx, cy)
                 return maak_spike(s, wx + 4, wy, rot)
             if soort == "vijand":
                 return Vijand(wx, wy, wx - 80, wx + CEL + 80, 2)
