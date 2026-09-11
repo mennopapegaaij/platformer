@@ -30,6 +30,11 @@ ITEM_NAAM = {
 TELE_SOORTEN = ["blauw", "oranje"]
 TELE_NAAM = {"blauw": "Blauw", "oranje": "Oranje"}
 
+# De boss-standen waar je met de Boss-knop doorheen klikt:
+# "start" = waar de boss begint, "stop" = de lijn waar hij doodgaat
+BOSS_SOORTEN = ["start", "stop"]
+BOSS_NAAM = {"start": "Boss", "stop": "Boss-uit"}
+
 # De spring-dingen waar je met de Spring-knop doorheen klikt:
 # bol1..bol5 en mat1..mat5 (kracht 1 t/m 5), en "neer" (paarse bol waarmee je valt)
 SPRING_SOORTEN = ["bol1", "bol2", "bol3", "bol4", "bol5",
@@ -135,6 +140,13 @@ def teken_item(soort, x, y, grootte, rotatie=0):
         arcade.draw_lrbt_rectangle_outline(cx - 8, cx + 8, y + 6, y + g * 0.55, (40, 110, 180), 2)
         arcade.draw_line(cx + 6, y + g * 0.55, cx + 12, y + g - 4, (150, 110, 70), 3)  # steel
         arcade.draw_circle_filled(cx + 12, y + g - 4, 3, (200, 230, 255))              # kwast
+    elif soort == "bossuit":
+        # De stop-lijn waar de boss doodgaat: rood-witte streepjeslijn
+        cx = x + g / 2
+        for k in range(4):
+            kleur = (230, 40, 40) if k % 2 == 0 else (255, 255, 255)
+            arcade.draw_lrbt_rectangle_filled(cx - 3, cx + 3, y + 4 + k * (g - 8) / 4,
+                                              y + 4 + (k + 1) * (g - 8) / 4, kleur)
     elif soort == "boss":
         # Boss die je achtervolgt: paars monstertje met boze rode ogen
         arcade.draw_lrbt_rectangle_filled(x + 6, x + g - 6, y + 5, y + g - 6, (80, 30, 100))
@@ -237,6 +249,7 @@ class BouwerView(arcade.View):
         self.spike_soort = "gewoon"    # welke spike je plaatst (klik op Spike)
         self.blok_soort = "gewoon"     # welk blok je plaatst (klik op Blok)
         self.tele_soort = "blauw"      # welke teleporter-kleur je plaatst (klik op Tele)
+        self.boss_soort = "start"      # "start" (waar de boss begint) of "stop" (waar hij doodgaat)
         # Type van je level: "gewoon" (lopen), "race" (auto-run), "vlucht" (vliegen)
         self.mode = "gewoon"
         self.scroll = 0                # hoe ver je naar rechts hebt geschoven
@@ -462,6 +475,10 @@ class BouwerView(arcade.View):
             elif soort == "tele":
                 teken_item("tele_" + self.tele_soort, l + 2, BALK_Y + 10, 23)
                 naam = TELE_NAAM[self.tele_soort]
+            elif soort == "boss":
+                teken_item("boss" if self.boss_soort == "start" else "bossuit",
+                           l + 2, BALK_Y + 10, 23)
+                naam = BOSS_NAAM[self.boss_soort]
             else:
                 teken_item(soort, l + 2, BALK_Y + 10, 23)
                 naam = ITEM_NAAM[soort]
@@ -560,6 +577,9 @@ class BouwerView(arcade.View):
                 self.grid[(kol, rij)] = "spike_" + self.spike_soort
             elif self.gekozen == "blok":
                 self.grid[(kol, rij)] = "blok_" + self.blok_soort
+            elif self.gekozen == "boss":
+                # "boss" = waar hij begint, "bossuit" = de lijn waar hij doodgaat
+                self.grid[(kol, rij)] = "boss" if self.boss_soort == "start" else "bossuit"
             else:
                 self.grid[(kol, rij)] = self.gekozen
             # Onthoud de draai-stand voor dit vakje (0 = niet onthouden)
@@ -619,6 +639,10 @@ class BouwerView(arcade.View):
                     # Nog een keer op Tele klikken: wissel tussen blauw en oranje
                     i = TELE_SOORTEN.index(self.tele_soort)
                     self.tele_soort = TELE_SOORTEN[(i + 1) % len(TELE_SOORTEN)]
+                elif soort == "boss" and self.gekozen == "boss":
+                    # Nog een keer op Boss klikken: wissel tussen 'start' en 'stop'
+                    i = BOSS_SOORTEN.index(self.boss_soort)
+                    self.boss_soort = BOSS_SOORTEN[(i + 1) % len(BOSS_SOORTEN)]
                 self.gekozen = soort
                 return
         for naam, (l, r) in self.actie_knoppen.items():
@@ -696,7 +720,7 @@ class BouwerView(arcade.View):
         """Zet het raster om in echte level-gegevens voor het spel."""
         from platforms import Platform, BlokPlatform, SchuinBlok, StuiterBlok, VerdwijnBlok
         from vijand import (Vijand, Spikes, maak_spike, Draaimolen, DraaiPaar,
-                            Achtervolger, DraaiSpike)
+                            Achtervolger, DraaiSpike, BossLijn)
         import math
         from powerup import ExtraLevenPowerUp
         from portaal import Portaal
@@ -711,6 +735,8 @@ class BouwerView(arcade.View):
         decoraties = []
         springers = []
         teleporters = []
+        bosses = []                    # de achtervolger-bossen (om hun stop-plek te zetten)
+        boss_stops = []                # x-plekken waar de boss doodgaat (van "boss-uit")
         vlag_x, vlag_y = None, None
         max_x = 300
 
@@ -764,7 +790,14 @@ class BouwerView(arcade.View):
                 vijanden.append(Draaimolen(wx + CEL // 2, wy + CEL // 2))
             elif soort == "boss":
                 # Achtervolger-boss: begint hier en jaagt de speler achterna
-                vijanden.append(Achtervolger(wx, wy))
+                b = Achtervolger(wx, wy)
+                vijanden.append(b)
+                bosses.append(b)
+            elif soort == "bossuit":
+                # De stop-lijn waar de boss doodgaat
+                lijn_x = wx + CEL // 2
+                boss_stops.append(lijn_x)
+                vijanden.append(BossLijn(lijn_x))
             elif soort == "hart":
                 powerups.append(ExtraLevenPowerUp(wx + 6, wy + 6))
             elif soort.startswith("portaal_"):
@@ -882,6 +915,14 @@ class BouwerView(arcade.View):
             # De motor komt NA de voorwerpen in de lijst, zodat hij ze als laatste
             # op hun gedraaide plek zet (anders lopen monsters weg van het draad).
             vijanden.append(DraaiPaar(objA, objB, mx, my, straal))
+
+        # Zet voor elke boss de stop-plek: de dichtstbijzijnde 'boss-uit'-lijn vóór hem
+        for b in bosses:
+            vooruit = [sx for sx in boss_stops if sx > b.start_x]
+            if vooruit:
+                b.stop_x = min(vooruit)
+            elif boss_stops:
+                b.stop_x = min(boss_stops)
 
         if vlag_x is None:                       # geen vlag geplaatst? zet er een aan het eind
             vlag_x, vlag_y = max_x + 60, 40

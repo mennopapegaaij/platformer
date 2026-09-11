@@ -1612,6 +1612,8 @@ class Achtervolger(Vijand):
         self.is_spike = True             # niet te stompen en niet dood te schieten (het is een boss)
         self.levens = 999999
         self._wiebel = 0
+        self.stop_x = None               # x waar de boss stopt/doodgaat (None = nooit)
+        self._gestopt = False            # is hij bij de stop-lijn aangekomen?
 
     def bijwerken(self, speler_x=None):
         self._wiebel += 0.25             # kleine wiebel voor de oogjes
@@ -1621,6 +1623,14 @@ class Achtervolger(Vijand):
         # De boss jaagt normaal van achteren, dus dit gebeurt alleen bij een herstart.
         if speler_x < self.x:
             self.x = self.start_x
+            self._gestopt = False        # de boss leeft weer bij een herstart
+            return
+        if self._gestopt:
+            return                       # bij de stop-lijn aangekomen -> hij blijft daar dood
+        # Bij de ingestelde stop-plek gaat de boss dood (hij komt niet verder)
+        if self.stop_x is not None and self.x + self.breedte / 2 >= self.stop_x:
+            self.x = self.stop_x - self.breedte / 2
+            self._gestopt = True
             return
         # Jaag naar rechts, achter de speler aan (net zo snel)
         if self.x + self.breedte / 2 < speler_x:
@@ -1630,33 +1640,71 @@ class Achtervolger(Vijand):
         return False                     # je kunt de boss niet stompen — wegrennen!
 
     def raakt_speler(self, px, py, pw, ph):
+        if self._gestopt:
+            return False                 # gestopte (dode) boss doet geen kwaad meer
         return (px < self.x + self.breedte and px + pw > self.x and
                 py < self.y + self.hoogte and py + ph > self.y)
 
     def teken(self):
         x, y, w, h = self.x, self.y, self.breedte, self.hoogte
         cx = x + w / 2
-        # Groot donkerpaars lijf
-        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (80, 30, 100))
-        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (30, 10, 45), 3)
+        # Als hij gestopt (dood) is, ziet hij er grijs en verslagen uit
+        lijf = (110, 110, 120) if self._gestopt else (80, 30, 100)
+        rand = (70, 70, 80) if self._gestopt else (30, 10, 45)
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, lijf)
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, rand, 3)
         # Twee horentjes bovenop
-        arcade.draw_triangle_filled(x + 6, y + h, x + 18, y + h, x + 12, y + h + 14, (30, 10, 45))
-        arcade.draw_triangle_filled(x + w - 6, y + h, x + w - 18, y + h, x + w - 12, y + h + 14, (30, 10, 45))
-        # Boze rode ogen (wiebelen een beetje)
-        import math as _m
-        oy = y + h * 0.72 + _m.sin(self._wiebel) * 2
-        for dx in (-13, 13):
-            arcade.draw_circle_filled(cx + dx, oy, 9, (255, 255, 255))
-            arcade.draw_circle_filled(cx + dx, oy, 5, (220, 30, 30))
-        # Boze wenkbrauwen
-        arcade.draw_line(cx - 22, oy + 9, cx - 4, oy + 3, (20, 0, 25), 3)
-        arcade.draw_line(cx + 22, oy + 9, cx + 4, oy + 3, (20, 0, 25), 3)
+        arcade.draw_triangle_filled(x + 6, y + h, x + 18, y + h, x + 12, y + h + 14, rand)
+        arcade.draw_triangle_filled(x + w - 6, y + h, x + w - 18, y + h, x + w - 12, y + h + 14, rand)
+        oy = y + h * 0.72
+        if self._gestopt:
+            # X-ogen (verslagen)
+            for dx in (-13, 13):
+                arcade.draw_line(cx + dx - 6, oy - 6, cx + dx + 6, oy + 6, (40, 40, 50), 3)
+                arcade.draw_line(cx + dx - 6, oy + 6, cx + dx + 6, oy - 6, (40, 40, 50), 3)
+        else:
+            # Boze rode ogen (wiebelen een beetje)
+            import math as _m
+            oy = oy + _m.sin(self._wiebel) * 2
+            for dx in (-13, 13):
+                arcade.draw_circle_filled(cx + dx, oy, 9, (255, 255, 255))
+                arcade.draw_circle_filled(cx + dx, oy, 5, (220, 30, 30))
+            arcade.draw_line(cx - 22, oy + 9, cx - 4, oy + 3, (20, 0, 25), 3)
+            arcade.draw_line(cx + 22, oy + 9, cx + 4, oy + 3, (20, 0, 25), 3)
         # Grote tandenmond
         my = y + h * 0.38
         arcade.draw_lrbt_rectangle_filled(x + 8, x + w - 8, my, my + 14, (255, 255, 255))
         for i in range(1, 4):
             tx = x + 8 + i * (w - 16) / 4
             arcade.draw_line(tx, my, tx, my + 14, (80, 0, 30), 2)
+
+
+class BossLijn:
+    """De stop-lijn waar de boss doodgaat. Alleen ter versiering (rood-witte lijn)."""
+
+    is_spike = True                      # geen monster (telt niet mee, niet te schieten)
+    levens = 999999
+
+    def __init__(self, x):
+        self.x = x                       # midden van de lijn
+        self.breedte = 8
+        self.hoogte = 2000
+        self.y = 0
+
+    def bijwerken(self, speler_x=None):
+        pass
+
+    def raakt_speler(self, px, py, pw, ph):
+        return False                     # de lijn zelf doet niks
+
+    def speler_springt_erop(self, px, py, pw, ph):
+        return False
+
+    def teken(self):
+        # Een rood-witte streepjeslijn omhoog (zo zie je waar je veilig bent)
+        for yy in range(0, 1600, 24):
+            kleur = (230, 40, 40) if (yy // 24) % 2 == 0 else (255, 255, 255)
+            arcade.draw_lrbt_rectangle_filled(self.x - 3, self.x + 3, yy, yy + 14, kleur)
 
 
 class DraaiSpike(Vijand):
