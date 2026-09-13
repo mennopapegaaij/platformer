@@ -304,15 +304,21 @@ class BouwerView(arcade.View):
         self._melding_teller = 120
 
     def _verf_alles(self):
-        """Geef ALLE voorwerpen ineens de gekozen verf (kleur of onzichtbaar)."""
+        """Voeg de gekozen verf bij ALLE voorwerpen tegelijk. Druk je nog eens op L
+        met een andere kleur, dan komt die kleur er overal bij (dan vloeit alles
+        door meerdere kleuren heen)."""
         alle = set(self.grid) | set(self.deco)
         for cel in alle:
             if self.verf_soort == "onzichtbaar":
                 self.verf[cel] = "onzichtbaar"
             else:
-                self.verf[cel] = [self.verf_soort]     # één kleur op elk voorwerp
+                huidig = self.verf.get(cel)
+                if not isinstance(huidig, list):
+                    self.verf[cel] = [self.verf_soort]      # begin met deze kleur
+                elif self.verf_soort not in huidig:
+                    huidig.append(self.verf_soort)          # kleur erbij (overvloeien)
         naam = VERF_NAAM.get(self.verf_soort, self.verf_soort)
-        self._melding = "🎨 Alles %s geverfd!" % naam
+        self._melding = "🎨 %s bij alles gedaan!" % naam
         self._melding_teller = 120
 
     def _laad(self):
@@ -567,7 +573,7 @@ class BouwerView(arcade.View):
         else:
             arcade.draw_text("Klik om te plaatsen  •  ←→↑↓ = schuiven (ook omhoog!)  •  D = draaien  •  "
                              "📁-knop = volgend level (oneindig), toets 1-9 = naar dat level  •  "
-                             "L = alles verven met de gekozen kleur  •  "
+                             "L = kleur bij alles (vaker = meer kleuren)  •  "
                              "Klik nog eens op Portaal/Snel/Deco voor een ander soort",
                              SCHERM_BREEDTE // 2, 8, arcade.color.WHITE, 9, anchor_x="center")
 
