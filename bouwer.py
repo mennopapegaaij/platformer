@@ -14,7 +14,8 @@ from teleport import teken_tele_icoon
 
 CEL = 40                       # grootte van één raster-vakje
 BESTAND = "eigen_level.json"   # oude opslag (1 level) — wordt naar plek 1 verhuisd
-MAX_SLOTS = 5                  # je kunt 5 eigen levels opslaan (plek 1 t/m 5)
+# Je kunt oneindig veel eigen levels opslaan (plek 1, 2, 3, ...).
+# Met de 📁-knop ga je naar het volgende level; met toets 1-9 spring je meteen.
 
 # De dingen die je kunt plaatsen (op volgorde in het palet)
 ITEMS = ["grond", "blok", "spike", "vijand", "molen", "boss", "hart", "vlag", "portaal",
@@ -296,7 +297,7 @@ class BouwerView(arcade.View):
     def _wissel_slot(self, nieuw):
         """Sla het huidige level op en ga naar een andere opslag-plek."""
         self._opslaan()                 # eerst het huidige level bewaren
-        self.slot = max(1, min(MAX_SLOTS, nieuw))
+        self.slot = max(1, nieuw)       # geen bovengrens: oneindig veel plekken
         self._laad()                    # het level van de nieuwe plek inladen
         self._melding = "📁 Level %d" % self.slot
         self._melding_teller = 120
@@ -552,7 +553,7 @@ class BouwerView(arcade.View):
                              arcade.color.YELLOW, 16, bold=True, anchor_x="center")
         else:
             arcade.draw_text("Klik om te plaatsen  •  ←→↑↓ = schuiven (ook omhoog!)  •  D = draaien  •  "
-                             "📁-knop of toets 1-5 = ander opslag-level  •  "
+                             "📁-knop = volgend level (oneindig), toets 1-9 = naar dat level  •  "
                              "Klik nog eens op Portaal/Snel/Deco voor een ander soort",
                              SCHERM_BREEDTE // 2, 8, arcade.color.WHITE, 9, anchor_x="center")
 
@@ -717,7 +718,7 @@ class BouwerView(arcade.View):
                     self.verf = {}
                 elif naam == "level":
                     # Naar de volgende opslag-plek (1 -> 2 -> ... -> 5 -> 1)
-                    self._wissel_slot(self.slot % MAX_SLOTS + 1)
+                    self._wissel_slot(self.slot + 1)   # naar het volgende level (oneindig)
                 elif naam == "kaart":
                     self._naar_kaart()
                 elif naam == "draai":
@@ -749,11 +750,13 @@ class BouwerView(arcade.View):
         elif toets == arcade.key.K or toets == arcade.key.ESCAPE:
             self._naar_kaart()
         else:
-            # Cijfertoetsen 1 t/m 5: spring direct naar die opslag-plek
+            # Cijfertoetsen 1 t/m 9: spring direct naar die opslag-plek
             cijfers = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3,
-                       arcade.key.KEY_4: 4, arcade.key.KEY_5: 5,
+                       arcade.key.KEY_4: 4, arcade.key.KEY_5: 5, arcade.key.KEY_6: 6,
+                       arcade.key.KEY_7: 7, arcade.key.KEY_8: 8, arcade.key.KEY_9: 9,
                        arcade.key.NUM_1: 1, arcade.key.NUM_2: 2, arcade.key.NUM_3: 3,
-                       arcade.key.NUM_4: 4, arcade.key.NUM_5: 5}
+                       arcade.key.NUM_4: 4, arcade.key.NUM_5: 5, arcade.key.NUM_6: 6,
+                       arcade.key.NUM_7: 7, arcade.key.NUM_8: 8, arcade.key.NUM_9: 9}
             if toets in cijfers and cijfers[toets] != self.slot:
                 self._wissel_slot(cijfers[toets])
 
