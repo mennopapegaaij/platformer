@@ -303,6 +303,18 @@ class BouwerView(arcade.View):
         self._melding = "📁 Level %d" % self.slot
         self._melding_teller = 120
 
+    def _verf_alles(self):
+        """Geef ALLE voorwerpen ineens de gekozen verf (kleur of onzichtbaar)."""
+        alle = set(self.grid) | set(self.deco)
+        for cel in alle:
+            if self.verf_soort == "onzichtbaar":
+                self.verf[cel] = "onzichtbaar"
+            else:
+                self.verf[cel] = [self.verf_soort]     # één kleur op elk voorwerp
+        naam = VERF_NAAM.get(self.verf_soort, self.verf_soort)
+        self._melding = "🎨 Alles %s geverfd!" % naam
+        self._melding_teller = 120
+
     def _laad(self):
         """Laad het level van de huidige plek, of maak een klein start-level."""
         # Begin helemaal schoon (belangrijk bij het wisselen van plek)
@@ -555,6 +567,7 @@ class BouwerView(arcade.View):
         else:
             arcade.draw_text("Klik om te plaatsen  •  ←→↑↓ = schuiven (ook omhoog!)  •  D = draaien  •  "
                              "📁-knop = volgend level (oneindig), toets 1-9 = naar dat level  •  "
+                             "K = alles verven met de gekozen kleur  •  "
                              "Klik nog eens op Portaal/Snel/Deco voor een ander soort",
                              SCHERM_BREEDTE // 2, 8, arcade.color.WHITE, 9, anchor_x="center")
 
@@ -748,8 +761,10 @@ class BouwerView(arcade.View):
         elif toets == arcade.key.D:
             # D = draaien (kwartslag verder)
             self.rotatie = (self.rotatie + 90) % 360
-        elif toets == arcade.key.K or toets == arcade.key.ESCAPE:
+        elif toets == arcade.key.ESCAPE:
             self._naar_kaart()
+        elif toets == arcade.key.K:
+            self._verf_alles()          # alles ineens de gekozen verf-kleur geven
         else:
             # Cijfertoetsen 1 t/m 9: spring direct naar die opslag-plek
             cijfers = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3,
