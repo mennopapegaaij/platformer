@@ -234,7 +234,8 @@ class BouwerView(arcade.View):
 
     # Knoppen in de bovenbalk: naam -> (links, rechts)
     def __init__(self, voltooid_levels, punten=0, levens=None,
-                 arena_record=0, race_record=0, vlucht_record=0, aantal_spelers=1):
+                 arena_record=0, race_record=0, vlucht_record=0, aantal_spelers=1,
+                 start_slot=1):
         super().__init__()
         self.voltooid = voltooid_levels
         self.punten = punten
@@ -244,7 +245,7 @@ class BouwerView(arcade.View):
         self.vlucht_record = vlucht_record
         self.aantal_spelers = aantal_spelers   # met hoeveel spelers je je level speelt (1-4)
 
-        self.slot = 1                  # welke opslag-plek (1 t/m 5) je nu bewerkt
+        self.slot = max(1, start_slot) # welke opslag-plek je nu bewerkt (terug op dezelfde plek)
         self.grid = {}                 # (kol, rij) -> soort
         self.rotaties = {}             # (kol, rij) -> draai-hoek (0/90/180/270)
         self.deco = {}                 # decoratie zit in een APARTE laag (kan bovenop een blok)
@@ -1020,7 +1021,8 @@ class BouwerView(arcade.View):
         spel = PlatformerSpel(1, self.voltooid, punten=0, levens=None,
                               eigen_level=data, race=(self.mode == "race"),
                               vlucht=(self.mode == "vlucht"), aantal_spelers=self.aantal_spelers,
-                              kaart_punten=self.punten, kaart_levens=self.levens)
+                              kaart_punten=self.punten, kaart_levens=self.levens,
+                              bouw_slot=self.slot)   # onthoud op welke plek je bouwde
         self.window.show_view(spel)
 
     def _naar_kaart(self):

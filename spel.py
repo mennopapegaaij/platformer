@@ -22,8 +22,11 @@ class PlatformerSpel(arcade.View):
 
     def __init__(self, level_nummer, voltooid_levels, punten=0, levens=None,
                  arena=False, kaart_punten=0, kaart_levens=None, race=False,
-                 eigen_level=None, vlucht=False, twee=False, aantal_spelers=None):
+                 eigen_level=None, vlucht=False, twee=False, aantal_spelers=None,
+                 bouw_slot=1):
         super().__init__()
+        # Op welke bouw-plek dit eigen level hoort (om er weer op terug te komen)
+        self.bouw_slot = bouw_slot
         # Eigen (zelfgebouwd) level uit de bouwmodus (of None)
         self.eigen = eigen_level is not None
         self.eigen_level_data = eigen_level
@@ -1497,7 +1500,8 @@ class PlatformerSpel(arcade.View):
         data = voortgang_module.laad_voortgang()
         b = BouwerView(self.voltooid, self.kaart_punten, self.kaart_levens,
                        data.get("arena_record", 0), data.get("race_record", 0),
-                       data.get("vlucht_record", 0), aantal_spelers=self.aantal)
+                       data.get("vlucht_record", 0), aantal_spelers=self.aantal,
+                       start_slot=self.bouw_slot)   # terug naar dezelfde plek
         self.window.show_view(b)
 
     def _volgende_arena_level(self):
