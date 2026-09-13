@@ -31,6 +31,9 @@ class Teleporter:
         cx = self.x + self.breedte / 2
         cy = self.y + self.hoogte / 2
         buiten, binnen = TELE_KLEUREN.get(self.kleur, TELE_KLEUREN["blauw"])
+        verf = getattr(self, "verf_kleur", None)   # verf-kleur (of None)
+        if verf:
+            buiten = binnen = verf                 # verf vervangt de ring-kleuren
         # Twee ringen over elkaar (zo lijkt het een draaikolk)
         arcade.draw_ellipse_outline(cx, cy, self.breedte, self.hoogte, buiten, 6)
         arcade.draw_ellipse_outline(cx, cy, self.breedte - 12, self.hoogte - 18, binnen, 3)

@@ -793,7 +793,6 @@ class BouwerView(arcade.View):
         teleporters = []
         bosses = []                    # de achtervolger-bossen (om hun stop-plek te zetten)
         boss_stops = []                # x-plekken waar de boss doodgaat (van "boss-uit")
-        verf_vlekken = []              # gekleurde verf-vlekken: (x, y, kleur)
         vlag_x, vlag_y = None, None
         max_x = 300
 
@@ -812,7 +811,11 @@ class BouwerView(arcade.View):
             rot = self.rotaties.get((kol, rij), 0)
             max_x = max(max_x, wx + CEL)
             # Onthoud hoeveel voorwerpen er nu zijn (om de verf straks toe te passen)
-            onz = self.verf.get((kol, rij)) == "onzichtbaar"
+            waarde_v = self.verf.get((kol, rij))
+            onz = waarde_v == "onzichtbaar"
+            verf_rgbs = None
+            if isinstance(waarde_v, list):
+                verf_rgbs = [VERF_KLEUREN[c] for c in waarde_v if c in VERF_KLEUREN] or None
             voor = [len(platforms), len(vijanden), len(portalen),
                     len(teleporters), len(springers), len(powerups)]
             if soort == "grond":
@@ -879,14 +882,17 @@ class BouwerView(arcade.View):
                                            KRACHT_PER_STAND[int(n) if n.isdigit() else 3]))
             elif soort == "vlag":
                 vlag_x, vlag_y = wx, wy
-            # Onzichtbare verf: elk voorwerp dat we net voor dit vakje maakten,
-            # onzichtbaar zetten (het blijft wel gewoon werken/botsen).
-            if onz:
+            # Verf toepassen op elk voorwerp dat we net voor dit vakje maakten:
+            # onzichtbaar (blijft wel werken/botsen) of een gekleurde-verf-lijst.
+            if onz or verf_rgbs:
                 for lijst, n in ((platforms, voor[0]), (vijanden, voor[1]),
                                  (portalen, voor[2]), (teleporters, voor[3]),
                                  (springers, voor[4]), (powerups, voor[5])):
                     for o in lijst[n:]:
-                        o.onzichtbaar = True
+                        if onz:
+                            o.onzichtbaar = True
+                        else:
+                            o.verf_kleuren = verf_rgbs
 
         # Decoratie uit de aparte laag (ligt bovenop blokken, geen botsing)
         for (kol, rij), soort in self.deco.items():
@@ -894,8 +900,13 @@ class BouwerView(arcade.View):
             rot = self.deco_rotaties.get((kol, rij), 0)
             max_x = max(max_x, wx + CEL)
             deco = Decoratie(wx, wy, soort.split("_", 1)[1], rot)
-            if self.verf.get((kol, rij)) == "onzichtbaar":
-                deco.onzichtbaar = True      # met verf ook de decoratie onzichtbaar
+            w = self.verf.get((kol, rij))
+            if w == "onzichtbaar":
+                deco.onzichtbaar = True       # met verf ook de decoratie onzichtbaar
+            elif isinstance(w, list):
+                rgbs = [VERF_KLEUREN[c] for c in w if c in VERF_KLEUREN]
+                if rgbs:
+                    deco.verf_kleuren = rgbs  # gekleurde decoratie
             decoraties.append(deco)
 
         # Hulpje: maak het ECHTE voorwerp (zoals het in het spel eruitziet) met
@@ -991,19 +1002,12 @@ class BouwerView(arcade.View):
             elif boss_stops:
                 b.stop_x = min(boss_stops)
 
-        # Gekleurde verf: maak een waas-vlekje met de kleurenlijst (voor overvloeien)
-        for (kol, rij), waarde in self.verf.items():
-            if isinstance(waarde, list):
-                rgbs = [VERF_KLEUREN[c] for c in waarde if c in VERF_KLEUREN]
-                if rgbs:
-                    verf_vlekken.append((kol * CEL, rij * CEL, rgbs))
-
         if vlag_x is None:                       # geen vlag geplaatst? zet er een aan het eind
             vlag_x, vlag_y = max_x + 60, 40
             max_x += 200
         level_breedte = max_x + 200
         return (platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte,
-                portalen, decoraties, springers, teleporters, verf_vlekken)
+                portalen, decoraties, springers, teleporters)
 
     def _speel(self):
         """Sla het level op en speel het."""

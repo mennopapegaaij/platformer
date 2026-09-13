@@ -8,6 +8,11 @@ import random
 from instellingen import VIJAND_SNELHEID, VIJAND_KLEUR, OOG_KLEUR, SPELER_SNELHEID
 
 
+def verf_of(obj, standaard):
+    """De verf-kleur van dit voorwerp als die er is, anders de standaardkleur."""
+    return getattr(obj, "verf_kleur", None) or standaard
+
+
 class Vijand:
     """Een vijand die heen en weer loopt op de grond of een platform."""
 
@@ -35,7 +40,7 @@ class Vijand:
         arcade.draw_lrbt_rectangle_filled(
             self.x, self.x + self.breedte,
             self.y, self.y + self.hoogte,
-            VIJAND_KLEUR
+            verf_of(self, VIJAND_KLEUR)
         )
         # Linker oog
         arcade.draw_circle_filled(self.x + 8, self.y + 20, 4, OOG_KLEUR)
@@ -1446,13 +1451,14 @@ class Spikes(Vijand):
         # Donkere voet onderaan (draait mee)
         arcade.draw_polygon_filled([d(x, y), d(x + w, y), d(x + w, y + 12), d(x, y + 12)],
                                    (70, 70, 80))
-        # Lichtere glimp-kleur (van de eigen kleur)
-        glimp = tuple(min(255, c + 55) for c in self.kleur)
+        # Kleur van de punten (verf-kleur als je die erop deed, anders de eigen kleur)
+        kl = verf_of(self, self.kleur)
+        glimp = tuple(min(255, c + 55) for c in kl)
         # Rij scherpe punten (elk driehoekje draait mee)
         for i in range(self.aantal):
             sx = x + i * pb
             arcade.draw_polygon_filled([d(sx, y + 7), d(sx + pb, y + 7), d(sx + pb / 2, y + h)],
-                                       self.kleur)
+                                       kl)
             # Lichtglimp op elke punt zodat hij scherp glimt
             arcade.draw_polygon_filled([d(sx + pb * 0.32, y + 7), d(sx + pb * 0.55, y + 7),
                                         d(sx + pb / 2, y + h - 7)], glimp)
@@ -1535,7 +1541,7 @@ class Draaimolen(Vijand):
                 r = math.radians(a)
                 arcade.draw_line(bx, by, bx + math.cos(r) * (self.bal_r + 5),
                                  by + math.sin(r) * (self.bal_r + 5), (120, 20, 20), 2)
-            arcade.draw_circle_filled(bx, by, self.bal_r, (210, 60, 60))
+            arcade.draw_circle_filled(bx, by, self.bal_r, verf_of(self, (210, 60, 60)))
             arcade.draw_circle_outline(bx, by, self.bal_r, (120, 20, 20), 3)
 
 
@@ -1649,7 +1655,7 @@ class Achtervolger(Vijand):
         x, y, w, h = self.x, self.y, self.breedte, self.hoogte
         cx = x + w / 2
         # Als hij gestopt (dood) is, ziet hij er grijs en verslagen uit
-        lijf = (110, 110, 120) if self._gestopt else (80, 30, 100)
+        lijf = (110, 110, 120) if self._gestopt else verf_of(self, (80, 30, 100))
         rand = (70, 70, 80) if self._gestopt else (30, 10, 45)
         arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, lijf)
         arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, rand, 3)
@@ -1769,13 +1775,14 @@ class DraaiSpike(Vijand):
         arcade.draw_polygon_filled(schacht, (120, 120, 130))
         arcade.draw_circle_filled(self.cx, self.cy, 8, (80, 80, 95))    # draai-as
         # Drie scherpe punten aan het uiteinde, naar buiten wijzend
+        kl = verf_of(self, self.kleur)
         for i in range(3):
             a = -self.breed / 2 + self.breed * i / 3
             b = -self.breed / 2 + self.breed * (i + 1) / 3
             p1 = self._punt(a, self.reach)
             p2 = self._punt(b, self.reach)
             tip = self._punt((a + b) / 2, self.reach + 14)
-            arcade.draw_triangle_filled(p1[0], p1[1], p2[0], p2[1], tip[0], tip[1], self.kleur)
+            arcade.draw_triangle_filled(p1[0], p1[1], p2[0], p2[1], tip[0], tip[1], kl)
 
 
 # =============================================

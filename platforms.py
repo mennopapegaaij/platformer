@@ -5,6 +5,14 @@ import arcade
 from instellingen import GROND_KLEUR
 
 
+def verf_of(obj, standaard):
+    """Geef de verf-kleur van dit voorwerp als die er is, anders de standaardkleur.
+
+    Zo krijgt een voorwerp waar je verf op deed helemaal de nieuwe kleur (je ziet
+    de oude kleur niet meer), maar alleen op de plek waar het voorwerp echt is."""
+    return getattr(obj, "verf_kleur", None) or standaard
+
+
 class Platform:
     """Een platform (een stuk grond waar je op kunt staan)."""
 
@@ -20,14 +28,15 @@ class Platform:
         arcade.draw_lrbt_rectangle_filled(
             self.x, self.x + self.breedte,
             self.y, self.y + self.hoogte,
-            GROND_KLEUR
+            verf_of(self, GROND_KLEUR)
         )
-        # Lichtere rand bovenop voor een 3D-effect
-        arcade.draw_lrbt_rectangle_filled(
-            self.x, self.x + self.breedte,
-            self.y + self.hoogte - 6, self.y + self.hoogte,
-            arcade.color.GREEN
-        )
+        # Lichtere rand bovenop voor een 3D-effect (alleen zonder verf)
+        if getattr(self, "verf_kleur", None) is None:
+            arcade.draw_lrbt_rectangle_filled(
+                self.x, self.x + self.breedte,
+                self.y + self.hoogte - 6, self.y + self.hoogte,
+                arcade.color.GREEN
+            )
 
     def raakt(self, px, py, pw, ph):
         """Controleer of de speler dit platform raakt van bovenaf."""
@@ -72,7 +81,7 @@ class BlokPlatform(Platform):
     def teken(self):
         """Teken het blok als een bruin bakstenen blok."""
         x, y, w, h = self.x, self.y, self.breedte, self.hoogte
-        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (150, 110, 80))
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, verf_of(self, (150, 110, 80)))
         arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (90, 60, 40), 3)
         # Voegen (streepjes) voor een bakstenen-look
         arcade.draw_line(x, y + h / 2, x + w, y + h / 2, (90, 60, 40), 2)
@@ -118,7 +127,7 @@ class SchuinBlok:
             punten = [(x, y), (x + w, y), (x + w, y + h)]     # driehoek /
         else:
             punten = [(x, y), (x + w, y), (x, y + h)]         # driehoek \
-        arcade.draw_polygon_filled(punten, (150, 110, 80))
+        arcade.draw_polygon_filled(punten, verf_of(self, (150, 110, 80)))
         arcade.draw_polygon_outline(punten, (90, 60, 40), 3)
 
 
@@ -132,7 +141,7 @@ class StuiterBlok(BlokPlatform):
 
     def teken(self):
         x, y, w, h = self.x, self.y, self.breedte, self.hoogte
-        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (60, 180, 90))
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, verf_of(self, (60, 180, 90)))
         arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (30, 120, 50), 3)
         # pijltje omhoog erop (zo zie je: hier stuiter je)
         cx = x + w / 2
@@ -185,7 +194,7 @@ class VerdwijnBlok(BlokPlatform):
             kleur = (230, 120, 60)
         else:
             kleur = (200, 160, 90)
-        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, kleur)
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, verf_of(self, kleur))
         arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (120, 80, 40), 3)
         # barstjes (zodat je ziet dat het kan breken)
         arcade.draw_line(x + w * 0.3, y + h, x + w * 0.42, y, (120, 80, 40), 1)

@@ -42,14 +42,16 @@ class SpringBol:
     def teken(self):
         cx = self.x + self.breedte / 2
         cy = self.y + self.hoogte / 2
+        verf = getattr(self, "verf_kleur", None)   # verf-kleur (of None)
         if self.draai:
             # Draai-bol: blauwe ring met twee pijltjes (omhoog + omlaag)
-            arcade.draw_circle_outline(cx, cy, 16, (70, 150, 255), 4)
+            ring = verf or (70, 150, 255)
+            arcade.draw_circle_outline(cx, cy, 16, ring, 4)
             arcade.draw_circle_outline(cx, cy, 9, (200, 230, 255), 2)
-            arcade.draw_triangle_filled(cx - 7, cy + 1, cx - 3, cy + 1, cx - 5, cy + 7, (70, 150, 255))
-            arcade.draw_triangle_filled(cx + 3, cy - 1, cx + 7, cy - 1, cx + 5, cy - 7, (70, 150, 255))
+            arcade.draw_triangle_filled(cx - 7, cy + 1, cx - 3, cy + 1, cx - 5, cy + 7, ring)
+            arcade.draw_triangle_filled(cx + 3, cy - 1, cx + 7, cy - 1, cx + 5, cy - 7, ring)
             return
-        kleur = spring_kleur(self.kracht)
+        kleur = verf or spring_kleur(self.kracht)
         arcade.draw_circle_outline(cx, cy, 16, kleur, 4)
         arcade.draw_circle_outline(cx, cy, 9, (255, 245, 200), 2)
         # pijltje: omhoog bij een gewone bol, omlaag bij de neer-bol
@@ -76,7 +78,7 @@ class SpringMat:
 
     def teken(self):
         x, y, w, h = self.x, self.y, self.breedte, self.hoogte
-        kleur = spring_kleur(self.kracht)
+        kleur = getattr(self, "verf_kleur", None) or spring_kleur(self.kracht)
         arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (200, 110, 30))     # voet
         arcade.draw_lrbt_rectangle_filled(x, x + w, y + h - 4, y + h, kleur)      # gekleurde rand
         # twee pijltjes omhoog erbovenop

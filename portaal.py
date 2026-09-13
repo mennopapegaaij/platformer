@@ -54,6 +54,9 @@ class Portaal:
         cx = self.x + self.breedte / 2
         cy = self.y + self.hoogte / 2
         buiten, binnen = PORTAAL_KLEUREN.get(self.soort, PORTAAL_KLEUREN["blok"])
+        verf = getattr(self, "verf_kleur", None)   # verf-kleur (of None)
+        if verf:
+            buiten = binnen = verf                 # verf vervangt de ring-kleuren
 
         # Twee ringen over elkaar
         arcade.draw_ellipse_outline(cx, cy, self.breedte, self.hoogte, buiten, 6)
