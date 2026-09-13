@@ -303,6 +303,106 @@ class BouwerView(arcade.View):
         self._melding = "📁 Level %d" % self.slot
         self._melding_teller = 120
 
+    def _hoogste_slot(self):
+        """Het hoogste plek-nummer waar een level is opgeslagen."""
+        import glob, re
+        hoog = 1
+        for f in glob.glob("eigen_level_*.json"):
+            m = re.match(r"eigen_level_(\d+)\.json$", os.path.basename(f))
+            if m:
+                hoog = max(hoog, int(m.group(1)))
+        return hoog
+
+    def _lees_slot(self, slot):
+        """Lees een opgeslagen plek in (zonder de bouwmodus zelf te veranderen).
+        Geeft (grid, rotaties, deco, deco_rotaties, draden, verf) terug, of None."""
+        bestand = self._bestand(slot)
+        if not os.path.exists(bestand):
+            return None
+        try:
+            with open(bestand, encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            return None
+        if not isinstance(data, dict):
+            data = {"tiles": data}
+        grid = {(int(k), int(r)): s for k, r, s in data.get("tiles", [])}
+        rot = {(int(a), int(b)): int(c) for a, b, c in data.get("rotaties", [])}
+        deco = {(int(a), int(b)): c for a, b, c in data.get("deco", [])}
+        deco_rot = {(int(a), int(b)): int(c) for a, b, c in data.get("deco_rotaties", [])}
+        draden = [((int(d[0]), int(d[1])), (int(d[2]), int(d[3]))) for d in data.get("draden", [])]
+        verf = {}
+        for kr in data.get("verf", []):
+            w = kr[2] if len(kr) > 2 else "onzichtbaar"
+            if isinstance(w, str) and w != "onzichtbaar":
+                w = [w]
+            verf[(int(kr[0]), int(kr[1]))] = w
+        # Oude levels: decoratie zat in het gewone raster -> naar de deco-laag
+        for cel in [c for c, s in list(grid.items()) if s.startswith("deco_")]:
+            deco[cel] = grid.pop(cel)
+            if cel in rot:
+                deco_rot[cel] = rot.pop(cel)
+        return grid, rot, deco, deco_rot, draden, verf
+
+    def _plak_alles(self):
+        """Plak alle opgeslagen levels achter elkaar tot één grote baan.
+        Geeft de gecombineerde (grid, rotaties, deco, deco_rotaties, draden, verf)."""
+        cg, cr, cd, cdr, cdraden, cverf = {}, {}, {}, {}, [], {}
+        offset = 0
+        iets = False
+        for slot in range(1, self._hoogste_slot() + 1):
+            gelezen = self._lees_slot(slot)
+            if gelezen is None:
+                continue
+            grid, rot, deco, deco_rot, draden, verf = gelezen
+            if not grid and not deco:
+                continue
+            iets = True
+            kolommen = [k for (k, r) in grid] + [k for (k, r) in deco]
+            breedte = (max(kolommen) + 1) if kolommen else 0
+            for (k, r), s in grid.items():
+                if s == "vlag":
+                    continue            # tussen-finishvlaggen overslaan (één aan het eind)
+                cg[(k + offset, r)] = s
+                if (k, r) in rot:
+                    cr[(k + offset, r)] = rot[(k, r)]
+                if (k, r) in verf:
+                    cverf[(k + offset, r)] = verf[(k, r)]
+            for (k, r), s in deco.items():
+                cd[(k + offset, r)] = s
+                if (k, r) in deco_rot:
+                    cdr[(k + offset, r)] = deco_rot[(k, r)]
+                if (k, r) in verf:
+                    cverf[(k + offset, r)] = verf[(k, r)]
+            for a, b in draden:
+                cdraden.append(((a[0] + offset, a[1]), (b[0] + offset, b[1])))
+            offset += breedte
+        if not iets:
+            return None
+        cg[(offset + 1, 1)] = "vlag"     # één finishvlag helemaal aan het eind
+        return cg, cr, cd, cdr, cdraden, cverf
+
+    def _speel_geplakt(self):
+        """Speel alle levels aan elkaar geplakt als één lange baan."""
+        self._opslaan()                  # huidige plek eerst bewaren
+        combi = self._plak_alles()
+        if combi is None:
+            self._melding = "Geen levels om te plakken"
+            self._melding_teller = 120
+            return
+        # Wissel tijdelijk de bouw-gegevens om naar de gecombineerde baan
+        bewaar = (self.grid, self.rotaties, self.deco, self.deco_rotaties, self.draden, self.verf)
+        (self.grid, self.rotaties, self.deco, self.deco_rotaties, self.draden, self.verf) = combi
+        data = self._bouw_level()
+        (self.grid, self.rotaties, self.deco, self.deco_rotaties, self.draden, self.verf) = bewaar
+        from spel import PlatformerSpel
+        spel = PlatformerSpel(1, self.voltooid, punten=0, levens=None,
+                              eigen_level=data, race=(self.mode == "race"),
+                              vlucht=(self.mode == "vlucht"), aantal_spelers=self.aantal_spelers,
+                              kaart_punten=self.punten, kaart_levens=self.levens,
+                              bouw_slot=self.slot)
+        self.window.show_view(spel)
+
     def _verf_alles(self):
         """Voeg de gekozen verf bij ALLE voorwerpen tegelijk. Druk je nog eens op L
         met een andere kleur, dan komt die kleur er overal bij (dan vloeit alles
@@ -574,6 +674,7 @@ class BouwerView(arcade.View):
             arcade.draw_text("Klik om te plaatsen  •  ←→↑↓ = schuiven (ook omhoog!)  •  D = draaien  •  "
                              "📁-knop = volgend level (oneindig), toets 1-9 = naar dat level  •  "
                              "L = kleur bij alles (vaker = meer kleuren)  •  "
+                             "P = alle levels aan elkaar plakken en spelen  •  "
                              "Klik nog eens op Portaal/Snel/Deco voor een ander soort",
                              SCHERM_BREEDTE // 2, 8, arcade.color.WHITE, 9, anchor_x="center")
 
@@ -771,6 +872,8 @@ class BouwerView(arcade.View):
             self._naar_kaart()          # terug naar de kaart
         elif toets == arcade.key.L:
             self._verf_alles()          # alles ineens de gekozen verf-kleur geven
+        elif toets == arcade.key.P:
+            self._speel_geplakt()       # alle levels aan elkaar geplakt spelen
         else:
             # Cijfertoetsen 1 t/m 9: spring direct naar die opslag-plek
             cijfers = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3,
