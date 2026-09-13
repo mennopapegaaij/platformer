@@ -151,8 +151,9 @@ class PlatformerSpel(arcade.View):
         self.springers = list(data[8]) if len(data) > 8 else []
         # Teleporters (een 10e onderdeel): blauw <-> oranje paren
         self.teleporters = list(data[9]) if len(data) > 9 else []
-        # Gekleurde verf-vlekken (een 11e onderdeel): (x, y, kleur)
+        # Gekleurde verf-vlekken (een 11e onderdeel): (x, y, lijst-van-kleuren)
         self.verf_vlekken = list(data[10]) if len(data) > 10 else []
+        self._verf_tijd = 0           # tikt door zodat meerdere kleuren overvloeien
         self.platforms = platforms
         # Zet de begin-modus: vliegtuig in de vluchtmodus, anders het gewone blokje.
         # Portalen kunnen dit tijdens het spelen nog omzetten (ufo/bal/golf)!
@@ -267,11 +268,11 @@ class PlatformerSpel(arcade.View):
                 if in_beeld(tele, tele.breedte) and not getattr(tele, "onzichtbaar", False):
                     tele.teken()
 
-            # Gekleurde verf-vlekken (een gekleurd waas over een voorwerp)
+            # Gekleurde verf-vlekken (een gekleurd waas; vloeit door de kleuren heen)
             for vx, vy, vk in self.verf_vlekken:
                 if vx + 40 >= links_zicht and vx <= rechts_zicht:
                     arcade.draw_lrbt_rectangle_filled(vx, vx + 40, vy, vy + 40,
-                                                      (vk[0], vk[1], vk[2], 120))
+                                                      self._verf_kleur(vk))
 
             # Teken de kogels
             for kogel in self.kogels:
@@ -483,6 +484,8 @@ class PlatformerSpel(arcade.View):
 
     def on_update(self, delta_time):
         """Werk het spel bij — dit wordt heel snel herhaald."""
+
+        self._verf_tijd += 1        # tikt door voor de overvloeiende verf-kleuren
 
         # 2-spelers-modus heeft zijn eigen (split-screen) update
         if self.twee:
@@ -787,6 +790,22 @@ class PlatformerSpel(arcade.View):
         sp._val_snelheid = 0
         if nieuwe_modus != "vliegtuig":
             sp.rotatie = 0               # weer recht (behalve vliegtuig kantelt)
+
+    def _verf_kleur(self, kleuren):
+        """Geef de huidige waas-kleur van een verf-vlek. Bij meer kleuren vloeit
+        hij langzaam van de ene kleur naar de andere (en weer terug)."""
+        if len(kleuren) == 1:
+            c = kleuren[0]
+            return (c[0], c[1], c[2], 120)
+        per = 45                                  # frames per kleur-overgang
+        n = len(kleuren)
+        t = self._verf_tijd % (per * n)
+        i = t // per
+        f = (t % per) / per                       # 0.0 -> 1.0 binnen deze overgang
+        a = kleuren[i]
+        b = kleuren[(i + 1) % n]
+        meng = lambda p, q: int(p + (q - p) * f)  # tussen twee getallen in
+        return (meng(a[0], b[0]), meng(a[1], b[1]), meng(a[2], b[2]), 120)
 
     def _camera_y(self, sp):
         """Hoogte van de camera: normaal onderin (grond in beeld), maar gaat mee
@@ -1203,7 +1222,7 @@ class PlatformerSpel(arcade.View):
                 for vx, vy, vk in self.verf_vlekken:
                     if vx + 40 >= links and vx <= rechts:
                         arcade.draw_lrbt_rectangle_filled(vx, vx + 40, vy, vy + 40,
-                                                          (vk[0], vk[1], vk[2], 120))
+                                                          self._verf_kleur(vk))
                 if not self.arena:                 # in de vechtmodus is er geen vlag
                     self._teken_vlag(self.vlag_x, self.vlag_y)
                 # Teken ALLE spelers (en hun spiegel-klonen), zodat je elkaar ziet

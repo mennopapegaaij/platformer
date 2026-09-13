@@ -342,10 +342,16 @@ class BouwerView(arcade.View):
                     # Onzichtbare draden (paren van voorwerpen die om elkaar draaien)
                     for d in data.get("draden", []):
                         self.draden.append(((int(d[0]), int(d[1])), (int(d[2]), int(d[3]))))
-                    # Verf: (kol, rij, soort). Oud formaat had geen soort -> "onzichtbaar".
+                    # Verf: (kol, rij, waarde). waarde = "onzichtbaar", een kleurnaam
+                    # (oud), of een lijst van kleurnamen (nieuw: overvloeien).
                     for kr in data.get("verf", []):
-                        soort_v = kr[2] if len(kr) > 2 else "onzichtbaar"
-                        self.verf[(int(kr[0]), int(kr[1]))] = soort_v
+                        if len(kr) > 2:
+                            waarde = kr[2]
+                            if isinstance(waarde, str) and waarde != "onzichtbaar":
+                                waarde = [waarde]        # oude enkele kleur -> lijstje
+                        else:
+                            waarde = "onzichtbaar"
+                        self.verf[(int(kr[0]), int(kr[1]))] = waarde
                 else:
                     tiles = data   # oud formaat (alleen een lijst met vakjes)
                 self.grid = {(int(k), int(r)): s for k, r, s in tiles}
@@ -427,9 +433,14 @@ class BouwerView(arcade.View):
                 arcade.draw_lrbt_rectangle_filled(sx, sx + CEL, sy, sy + CEL, (150, 220, 255, 90))
                 arcade.draw_lrbt_rectangle_outline(sx, sx + CEL, sy, sy + CEL, (255, 255, 255, 170), 2)
                 arcade.draw_line(sx + 4, sy + CEL - 4, sx + CEL - 4, sy + 4, (255, 255, 255, 170), 1)
-            else:
-                kl = VERF_KLEUREN.get(verf_soort, (255, 255, 255))
-                arcade.draw_lrbt_rectangle_filled(sx, sx + CEL, sy, sy + CEL, (kl[0], kl[1], kl[2], 120))
+            elif isinstance(verf_soort, list):
+                # De gekozen kleuren als strepen (zo zie je welke kleuren erin zitten)
+                n = len(verf_soort)
+                for i, cnaam in enumerate(verf_soort):
+                    kl = VERF_KLEUREN.get(cnaam, (255, 255, 255))
+                    y0 = sy + i * CEL / n
+                    y1 = sy + (i + 1) * CEL / n
+                    arcade.draw_lrbt_rectangle_filled(sx, sx + CEL, y0, y1, (kl[0], kl[1], kl[2], 140))
         # Decoratie ligt in een aparte laag, dus die tekenen we BOVENOP de blokken
         for (kol, rij), soort in self.deco.items():
             sx = kol * CEL - self.scroll
@@ -559,13 +570,28 @@ class BouwerView(arcade.View):
             self._klik_draad(kol, rij)
             return
         if self.gekozen == "verf":
-            # Verf op ELK voorwerp (grid of decoratie). Klik = deze soort,
-            # klik weer met dezelfde soort = terug (weghalen).
-            if (kol, rij) in self.grid or (kol, rij) in self.deco:
-                if self.verf.get((kol, rij)) == self.verf_soort:
-                    self.verf.pop((kol, rij), None)
+            # Verf op ELK voorwerp (grid of decoratie).
+            # Onzichtbaar: klik aan/uit. Kleur: elke kleur die je erbij klikt wordt
+            # aan het vakje toegevoegd; het vloeit dan langzaam door die kleuren heen.
+            cel = (kol, rij)
+            if not (cel in self.grid or cel in self.deco):
+                return
+            s = self.verf_soort
+            if s == "onzichtbaar":
+                if self.verf.get(cel) == "onzichtbaar":
+                    self.verf.pop(cel, None)
                 else:
-                    self.verf[(kol, rij)] = self.verf_soort
+                    self.verf[cel] = "onzichtbaar"
+            else:
+                huidig = self.verf.get(cel)
+                if not isinstance(huidig, list):
+                    self.verf[cel] = [s]              # begin een nieuwe kleurenlijst
+                elif s in huidig:
+                    huidig.remove(s)                 # deze kleur weer weghalen
+                    if not huidig:
+                        self.verf.pop(cel, None)
+                else:
+                    huidig.append(s)                 # nog een kleur erbij
             return
         if self.gekozen == "gum":
             # Gum wist eerst de decoratie (die ligt bovenop), anders het gewone item
@@ -965,10 +991,12 @@ class BouwerView(arcade.View):
             elif boss_stops:
                 b.stop_x = min(boss_stops)
 
-        # Gekleurde verf: maak een gekleurd waas-vlekje op elk geverfd (gekleurd) vakje
-        for (kol, rij), verf_soort in self.verf.items():
-            if verf_soort != "onzichtbaar" and verf_soort in VERF_KLEUREN:
-                verf_vlekken.append((kol * CEL, rij * CEL, VERF_KLEUREN[verf_soort]))
+        # Gekleurde verf: maak een waas-vlekje met de kleurenlijst (voor overvloeien)
+        for (kol, rij), waarde in self.verf.items():
+            if isinstance(waarde, list):
+                rgbs = [VERF_KLEUREN[c] for c in waarde if c in VERF_KLEUREN]
+                if rgbs:
+                    verf_vlekken.append((kol * CEL, rij * CEL, rgbs))
 
         if vlag_x is None:                       # geen vlag geplaatst? zet er een aan het eind
             vlag_x, vlag_y = max_x + 60, 40
