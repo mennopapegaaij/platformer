@@ -35,6 +35,17 @@ TELE_NAAM = {"blauw": "Blauw", "oranje": "Oranje"}
 BOSS_SOORTEN = ["start", "stop"]
 BOSS_NAAM = {"start": "Boss", "stop": "Boss-uit"}
 
+# De verf-soorten waar je met de Verf-knop doorheen klikt:
+# "onzichtbaar" of een kleur (die je als een gekleurd waas over een voorwerp legt)
+VERF_KLEUREN = {
+    "rood": (230, 50, 50), "blauw": (60, 120, 230), "groen": (60, 180, 80),
+    "geel": (240, 220, 60), "roze": (255, 120, 190), "oranje": (240, 150, 40),
+    "paars": (160, 80, 210),
+}
+VERF_SOORTEN = ["onzichtbaar"] + list(VERF_KLEUREN.keys())
+VERF_NAAM = {"onzichtbaar": "Onzicht", "rood": "Rood", "blauw": "Blauw", "groen": "Groen",
+             "geel": "Geel", "roze": "Roze", "oranje": "Oranje", "paars": "Paars"}
+
 # De spring-dingen waar je met de Spring-knop doorheen klikt:
 # bol1..bol5 en mat1..mat5 (kracht 1 t/m 5), en "neer" (paarse bol waarmee je valt)
 SPRING_SOORTEN = ["bol1", "bol2", "bol3", "bol4", "bol5",
@@ -239,7 +250,8 @@ class BouwerView(arcade.View):
         self.deco_rotaties = {}        # (kol, rij) -> draai-hoek van de decoratie
         self.draden = []               # lijst met paren: ((kolA,rijA),(kolB,rijB)) = onzichtbaar draad
         self._draad_start = None       # het eerste aangeklikte voorwerp bij het maken van een draad
-        self.verf = set()              # blokken die met onzichtbare verf zijn overgeschilderd
+        self.verf = {}                 # vakje -> verf-soort ("onzichtbaar" of een kleur)
+        self.verf_soort = "onzichtbaar"  # welke verf je nu gebruikt (klik op Verf)
         self.rotatie = 0               # de draai-stand waarmee je nu plaatst
         self.gekozen = "grond"         # welk item je nu plaatst
         self.portaal_soort = "vlucht"  # welk vorm-portaal je plaatst (klik op Portaal)
@@ -298,7 +310,7 @@ class BouwerView(arcade.View):
         self.deco_rotaties = {}
         self.draden = []
         self._draad_start = None
-        self.verf = set()
+        self.verf = {}
         self.mode = "gewoon"
         self.scroll = 0
         self.scroll_y = 0
@@ -330,9 +342,10 @@ class BouwerView(arcade.View):
                     # Onzichtbare draden (paren van voorwerpen die om elkaar draaien)
                     for d in data.get("draden", []):
                         self.draden.append(((int(d[0]), int(d[1])), (int(d[2]), int(d[3]))))
-                    # Met onzichtbare verf overgeschilderde blokken
+                    # Verf: (kol, rij, soort). Oud formaat had geen soort -> "onzichtbaar".
                     for kr in data.get("verf", []):
-                        self.verf.add((int(kr[0]), int(kr[1])))
+                        soort_v = kr[2] if len(kr) > 2 else "onzichtbaar"
+                        self.verf[(int(kr[0]), int(kr[1]))] = soort_v
                 else:
                     tiles = data   # oud formaat (alleen een lijst met vakjes)
                 self.grid = {(int(k), int(r)): s for k, r, s in tiles}
@@ -356,7 +369,7 @@ class BouwerView(arcade.View):
                 "deco": [[k, r, s] for (k, r), s in self.deco.items()],
                 "deco_rotaties": [[k, r, rot] for (k, r), rot in self.deco_rotaties.items()],
                 "draden": [[a[0], a[1], b[0], b[1]] for (a, b) in self.draden],
-                "verf": [[k, r] for (k, r) in self.verf]}
+                "verf": [[k, r, s] for (k, r), s in self.verf.items()]}
         with open(self._bestand(), "w", encoding="utf-8") as f:
             json.dump(data, f)
         self._melding = "💾 Level %d opgeslagen!" % self.slot
@@ -403,16 +416,20 @@ class BouwerView(arcade.View):
             if not self._in_beeld(sx, sy):
                 continue
             teken_item(soort, sx, sy, CEL, self.rotaties.get((kol, rij), 0))
-        # Geverfde (onzichtbare) blokken: hier laten we ze faded zien met een raster,
-        # zodat JIJ nog weet waar ze zitten. In het spel zijn ze echt onzichtbaar.
-        for (kol, rij) in self.verf:
+        # Geverfde vakjes tonen we hier: onzichtbaar = faded met streepje,
+        # een kleur = een gekleurd waas. Zo weet JIJ wat je geverfd hebt.
+        for (kol, rij), verf_soort in self.verf.items():
             sx = kol * CEL - self.scroll
             sy = rij * CEL - self.scroll_y
             if not self._in_beeld(sx, sy):
                 continue
-            arcade.draw_lrbt_rectangle_filled(sx, sx + CEL, sy, sy + CEL, (150, 220, 255, 90))
-            arcade.draw_lrbt_rectangle_outline(sx, sx + CEL, sy, sy + CEL, (255, 255, 255, 170), 2)
-            arcade.draw_line(sx + 4, sy + CEL - 4, sx + CEL - 4, sy + 4, (255, 255, 255, 170), 1)
+            if verf_soort == "onzichtbaar":
+                arcade.draw_lrbt_rectangle_filled(sx, sx + CEL, sy, sy + CEL, (150, 220, 255, 90))
+                arcade.draw_lrbt_rectangle_outline(sx, sx + CEL, sy, sy + CEL, (255, 255, 255, 170), 2)
+                arcade.draw_line(sx + 4, sy + CEL - 4, sx + CEL - 4, sy + 4, (255, 255, 255, 170), 1)
+            else:
+                kl = VERF_KLEUREN.get(verf_soort, (255, 255, 255))
+                arcade.draw_lrbt_rectangle_filled(sx, sx + CEL, sy, sy + CEL, (kl[0], kl[1], kl[2], 120))
         # Decoratie ligt in een aparte laag, dus die tekenen we BOVENOP de blokken
         for (kol, rij), soort in self.deco.items():
             sx = kol * CEL - self.scroll
@@ -479,6 +496,15 @@ class BouwerView(arcade.View):
                 teken_item("boss" if self.boss_soort == "start" else "bossuit",
                            l + 2, BALK_Y + 10, 23)
                 naam = BOSS_NAAM[self.boss_soort]
+            elif soort == "verf":
+                if self.verf_soort == "onzichtbaar":
+                    teken_item("verf", l + 2, BALK_Y + 10, 23)   # het verfpotje
+                else:
+                    # een gekleurd blokje in de gekozen kleur
+                    kl = VERF_KLEUREN[self.verf_soort]
+                    arcade.draw_lrbt_rectangle_filled(l + 6, l + 24, BALK_Y + 12,
+                                                      SCHERM_HOOGTE - 22, kl)
+                naam = VERF_NAAM[self.verf_soort]
             else:
                 teken_item(soort, l + 2, BALK_Y + 10, 23)
                 naam = ITEM_NAAM[soort]
@@ -533,13 +559,13 @@ class BouwerView(arcade.View):
             self._klik_draad(kol, rij)
             return
         if self.gekozen == "verf":
-            # Onzichtbare verf: op ELK voorwerp (grid of decoratie).
-            # Klik = onzichtbaar, klik weer = terug.
+            # Verf op ELK voorwerp (grid of decoratie). Klik = deze soort,
+            # klik weer met dezelfde soort = terug (weghalen).
             if (kol, rij) in self.grid or (kol, rij) in self.deco:
-                if (kol, rij) in self.verf:
-                    self.verf.discard((kol, rij))
+                if self.verf.get((kol, rij)) == self.verf_soort:
+                    self.verf.pop((kol, rij), None)
                 else:
-                    self.verf.add((kol, rij))
+                    self.verf[(kol, rij)] = self.verf_soort
             return
         if self.gekozen == "gum":
             # Gum wist eerst de decoratie (die ligt bovenop), anders het gewone item
@@ -551,7 +577,7 @@ class BouwerView(arcade.View):
                 self.rotaties.pop((kol, rij), None)
             # Draden en verf die aan dit vakje vastzitten ook weghalen
             self.draden = [d for d in self.draden if (kol, rij) not in d]
-            self.verf.discard((kol, rij))
+            self.verf.pop((kol, rij), None)
         elif self.gekozen == "deco":
             # Decoratie in de aparte laag -> die kan dus BOVENOP een blok liggen
             self.deco[(kol, rij)] = "deco_" + self.deco_soort
@@ -643,6 +669,10 @@ class BouwerView(arcade.View):
                     # Nog een keer op Boss klikken: wissel tussen 'start' en 'stop'
                     i = BOSS_SOORTEN.index(self.boss_soort)
                     self.boss_soort = BOSS_SOORTEN[(i + 1) % len(BOSS_SOORTEN)]
+                elif soort == "verf" and self.gekozen == "verf":
+                    # Nog een keer op Verf klikken: door onzichtbaar + de kleuren wisselen
+                    i = VERF_SOORTEN.index(self.verf_soort)
+                    self.verf_soort = VERF_SOORTEN[(i + 1) % len(VERF_SOORTEN)]
                 self.gekozen = soort
                 return
         for naam, (l, r) in self.actie_knoppen.items():
@@ -658,7 +688,7 @@ class BouwerView(arcade.View):
                     self.deco_rotaties = {}
                     self.draden = []
                     self._draad_start = None
-                    self.verf = set()
+                    self.verf = {}
                 elif naam == "level":
                     # Naar de volgende opslag-plek (1 -> 2 -> ... -> 5 -> 1)
                     self._wissel_slot(self.slot % MAX_SLOTS + 1)
@@ -737,6 +767,7 @@ class BouwerView(arcade.View):
         teleporters = []
         bosses = []                    # de achtervolger-bossen (om hun stop-plek te zetten)
         boss_stops = []                # x-plekken waar de boss doodgaat (van "boss-uit")
+        verf_vlekken = []              # gekleurde verf-vlekken: (x, y, kleur)
         vlag_x, vlag_y = None, None
         max_x = 300
 
@@ -755,7 +786,7 @@ class BouwerView(arcade.View):
             rot = self.rotaties.get((kol, rij), 0)
             max_x = max(max_x, wx + CEL)
             # Onthoud hoeveel voorwerpen er nu zijn (om de verf straks toe te passen)
-            onz = (kol, rij) in self.verf
+            onz = self.verf.get((kol, rij)) == "onzichtbaar"
             voor = [len(platforms), len(vijanden), len(portalen),
                     len(teleporters), len(springers), len(powerups)]
             if soort == "grond":
@@ -837,7 +868,7 @@ class BouwerView(arcade.View):
             rot = self.deco_rotaties.get((kol, rij), 0)
             max_x = max(max_x, wx + CEL)
             deco = Decoratie(wx, wy, soort.split("_", 1)[1], rot)
-            if (kol, rij) in self.verf:
+            if self.verf.get((kol, rij)) == "onzichtbaar":
                 deco.onzichtbaar = True      # met verf ook de decoratie onzichtbaar
             decoraties.append(deco)
 
@@ -934,12 +965,17 @@ class BouwerView(arcade.View):
             elif boss_stops:
                 b.stop_x = min(boss_stops)
 
+        # Gekleurde verf: maak een gekleurd waas-vlekje op elk geverfd (gekleurd) vakje
+        for (kol, rij), verf_soort in self.verf.items():
+            if verf_soort != "onzichtbaar" and verf_soort in VERF_KLEUREN:
+                verf_vlekken.append((kol * CEL, rij * CEL, VERF_KLEUREN[verf_soort]))
+
         if vlag_x is None:                       # geen vlag geplaatst? zet er een aan het eind
             vlag_x, vlag_y = max_x + 60, 40
             max_x += 200
         level_breedte = max_x + 200
         return (platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte,
-                portalen, decoraties, springers, teleporters)
+                portalen, decoraties, springers, teleporters, verf_vlekken)
 
     def _speel(self):
         """Sla het level op en speel het."""

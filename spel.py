@@ -151,6 +151,8 @@ class PlatformerSpel(arcade.View):
         self.springers = list(data[8]) if len(data) > 8 else []
         # Teleporters (een 10e onderdeel): blauw <-> oranje paren
         self.teleporters = list(data[9]) if len(data) > 9 else []
+        # Gekleurde verf-vlekken (een 11e onderdeel): (x, y, kleur)
+        self.verf_vlekken = list(data[10]) if len(data) > 10 else []
         self.platforms = platforms
         # Zet de begin-modus: vliegtuig in de vluchtmodus, anders het gewone blokje.
         # Portalen kunnen dit tijdens het spelen nog omzetten (ufo/bal/golf)!
@@ -264,6 +266,12 @@ class PlatformerSpel(arcade.View):
             for tele in self.teleporters:
                 if in_beeld(tele, tele.breedte) and not getattr(tele, "onzichtbaar", False):
                     tele.teken()
+
+            # Gekleurde verf-vlekken (een gekleurd waas over een voorwerp)
+            for vx, vy, vk in self.verf_vlekken:
+                if vx + 40 >= links_zicht and vx <= rechts_zicht:
+                    arcade.draw_lrbt_rectangle_filled(vx, vx + 40, vy, vy + 40,
+                                                      (vk[0], vk[1], vk[2], 120))
 
             # Teken de kogels
             for kogel in self.kogels:
@@ -1192,6 +1200,10 @@ class PlatformerSpel(arcade.View):
                 for tele in self.teleporters:
                     if zicht(tele, tele.breedte) and not getattr(tele, "onzichtbaar", False):
                         tele.teken()
+                for vx, vy, vk in self.verf_vlekken:
+                    if vx + 40 >= links and vx <= rechts:
+                        arcade.draw_lrbt_rectangle_filled(vx, vx + 40, vy, vy + 40,
+                                                          (vk[0], vk[1], vk[2], 120))
                 if not self.arena:                 # in de vechtmodus is er geen vlag
                     self._teken_vlag(self.vlag_x, self.vlag_y)
                 # Teken ALLE spelers (en hun spiegel-klonen), zodat je elkaar ziet
