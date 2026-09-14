@@ -114,6 +114,17 @@ def teken_item(soort, x, y, grootte, rotatie=0):
             arcade.draw_lrbt_rectangle_outline(x, x + g, y, y + g, (120, 80, 40), 2)
             arcade.draw_line(x + g * 0.35, y + g, x + g * 0.45, y, (120, 80, 40), 1)
             arcade.draw_line(x + g * 0.65, y + g, x + g * 0.55, y, (120, 80, 40), 1)
+        elif s in ("beweeghor", "beweegvert"):
+            arcade.draw_lrbt_rectangle_filled(x, x + g, y, y + g, (150, 110, 80))
+            arcade.draw_lrbt_rectangle_outline(x, x + g, y, y + g, (90, 60, 40), 2)
+            cx, cy = x + g / 2, y + g / 2
+            wit = (245, 235, 210)
+            if s == "beweeghor":     # pijltjes links/rechts
+                arcade.draw_triangle_filled(cx - 9, cy, cx - 3, cy - 5, cx - 3, cy + 5, wit)
+                arcade.draw_triangle_filled(cx + 9, cy, cx + 3, cy - 5, cx + 3, cy + 5, wit)
+            else:                     # pijltjes omhoog/omlaag
+                arcade.draw_triangle_filled(cx, cy + 9, cx - 5, cy + 3, cx + 5, cy + 3, wit)
+                arcade.draw_triangle_filled(cx, cy - 9, cx - 5, cy - 3, cx + 5, cy - 3, wit)
         else:  # gewoon
             arcade.draw_lrbt_rectangle_filled(x, x + g, y, y + g, (150, 110, 80))
             arcade.draw_lrbt_rectangle_outline(x, x + g, y, y + g, (90, 60, 40), 2)
@@ -902,7 +913,8 @@ class BouwerView(arcade.View):
     # ---------- Je level bouwen en spelen ----------
     def _bouw_level(self):
         """Zet het raster om in echte level-gegevens voor het spel."""
-        from platforms import Platform, BlokPlatform, SchuinBlok, StuiterBlok, VerdwijnBlok
+        from platforms import (Platform, BlokPlatform, SchuinBlok, StuiterBlok,
+                               VerdwijnBlok, BewegendBlok)
         from vijand import (Vijand, Spikes, maak_spike, Draaimolen, DraaiPaar,
                             Achtervolger, DraaiSpike, BossLijn)
         import math
@@ -960,6 +972,10 @@ class BouwerView(arcade.View):
                     plat = StuiterBlok(wx, wy, CEL, CEL)
                 elif s == "verdwijn":
                     plat = VerdwijnBlok(wx, wy, CEL, CEL)
+                elif s == "beweeghor":
+                    plat = BewegendBlok(wx, wy, CEL, CEL, "hor")
+                elif s == "beweegvert":
+                    plat = BewegendBlok(wx, wy, CEL, CEL, "vert")
                 else:
                     plat = BlokPlatform(wx, wy, CEL, CEL)
                 platforms.append(plat)
@@ -1051,6 +1067,8 @@ class BouwerView(arcade.View):
                 if s == "half":     return BlokPlatform(wx, wy, CEL, CEL // 2)
                 if s == "stuiter":  return StuiterBlok(wx, wy, CEL, CEL)
                 if s == "verdwijn": return VerdwijnBlok(wx, wy, CEL, CEL)
+                if s == "beweeghor":  return BewegendBlok(wx, wy, CEL, CEL, "hor")
+                if s == "beweegvert": return BewegendBlok(wx, wy, CEL, CEL, "vert")
                 return BlokPlatform(wx, wy, CEL, CEL)
             if soort == "spike" or soort.startswith("spike_"):
                 s = soort.split("_", 1)[1] if "_" in soort else "gewoon"

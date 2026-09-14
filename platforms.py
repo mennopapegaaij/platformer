@@ -201,7 +201,61 @@ class VerdwijnBlok(BlokPlatform):
         arcade.draw_line(x + w * 0.7, y + h, x + w * 0.58, y, (120, 80, 40), 1)
 
 
+class BewegendBlok(BlokPlatform):
+    """Een blok dat vanzelf heen-en-weer (hor) of op-en-neer (vert) beweegt.
+
+    Je kunt erop staan en meerijden. Spring op het juiste moment over!"""
+
+    def __init__(self, x, y, breedte, hoogte, richting="hor", afstand=120, snelheid=2):
+        super().__init__(x, y, breedte, hoogte)
+        self.start_x = x
+        self.start_y = y
+        self.richting = richting     # "hor" = links/rechts, "vert" = omhoog/omlaag
+        self.afstand = afstand       # hoe ver het blok heen en weer gaat
+        self.snelheid = snelheid
+        self._d = 1                  # bewegingsrichting (1 of -1)
+        self.dx = 0                  # hoeveel het dit stapje verschoof (om mee te rijden)
+        self.dy = 0
+
+    def bijwerken(self):
+        self.dx = 0
+        self.dy = 0
+        if self.richting == "hor":
+            self.x += self.snelheid * self._d
+            self.dx = self.snelheid * self._d
+            if self.x >= self.start_x + self.afstand:
+                self.x = self.start_x + self.afstand
+                self._d = -1
+            elif self.x <= self.start_x:
+                self.x = self.start_x
+                self._d = 1
+        else:
+            self.y += self.snelheid * self._d
+            self.dy = self.snelheid * self._d
+            if self.y >= self.start_y + self.afstand:
+                self.y = self.start_y + self.afstand
+                self._d = -1
+            elif self.y <= self.start_y:
+                self.y = self.start_y
+                self._d = 1
+
+    def teken(self):
+        super().teken()              # het gewone bruine blok
+        # Twee pijltjes die de bewegingsrichting laten zien
+        cx = self.x + self.breedte / 2
+        cy = self.y + self.hoogte / 2
+        wit = (245, 235, 210)
+        if self.richting == "hor":
+            arcade.draw_triangle_filled(cx - 8, cy, cx - 2, cy - 5, cx - 2, cy + 5, wit)
+            arcade.draw_triangle_filled(cx + 8, cy, cx + 2, cy - 5, cx + 2, cy + 5, wit)
+        else:
+            arcade.draw_triangle_filled(cx, cy + 8, cx - 5, cy + 2, cx + 5, cy + 2, wit)
+            arcade.draw_triangle_filled(cx, cy - 8, cx - 5, cy - 2, cx + 5, cy - 2, wit)
+
+
 # De soorten blokken die je in de bouwmodus kunt kiezen
-BLOK_SOORTEN = ["gewoon", "schuinop", "schuinaf", "half", "stuiter", "verdwijn"]
+BLOK_SOORTEN = ["gewoon", "schuinop", "schuinaf", "half", "stuiter", "verdwijn",
+                "beweeghor", "beweegvert"]
 BLOK_NAAM = {"gewoon": "Blok", "schuinop": "Schuin /", "schuinaf": "Schuin \\",
-             "half": "Half", "stuiter": "Stuiter", "verdwijn": "Verdwijn"}
+             "half": "Half", "stuiter": "Stuiter", "verdwijn": "Verdwijn",
+             "beweeghor": "Beweeg ↔", "beweegvert": "Beweeg ↕"}

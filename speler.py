@@ -212,6 +212,7 @@ class Speler:
             # Landen op het platform (van bovenaf)
             if platform.raakt(self.x, self.y, self.breedte, self.hoogte):
                 self.y = platform.y + platform.hoogte
+                self.x += getattr(platform, "dx", 0)  # meerijden op een bewegend blok
                 self.heeft_dubbel_gesprongen = False  # Op de grond: extra sprong herlaadbaar
                 self._robot_boost = 0                 # robot mag pas na een nieuwe tik duwen
                 # Verdwijnblok: laat het weten dat je erop staat (het gaat dan verdwijnen)
