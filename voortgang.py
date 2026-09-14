@@ -31,11 +31,12 @@ def laad_voortgang():
                     "arena_record": int(data.get("arena_record", 0)),
                     "race_record": int(data.get("race_record", 0)),
                     "vlucht_record": int(data.get("vlucht_record", 0)),
+                    "tijden": data.get("tijden", {}),   # beste tijden per level
                 }
         except Exception:
             pass  # Als het bestand kapot is, begin dan opnieuw
     return {"voltooid": set(), "punten": 0, "levens": None,
-            "arena_record": 0, "race_record": 0, "vlucht_record": 0}
+            "arena_record": 0, "race_record": 0, "vlucht_record": 0, "tijden": {}}
 
 
 def sla_voortgang_op(voltooid, punten=0, levens=None, arena_record=None,
@@ -56,9 +57,37 @@ def sla_voortgang_op(voltooid, punten=0, levens=None, arena_record=None,
         "arena_record": int(arena_record),
         "race_record": int(race_record),
         "vlucht_record": int(vlucht_record),
+        "tijden": huidig.get("tijden", {}),   # beste tijden blijven bewaard
     }
     with open(BESTAND, "w", encoding="utf-8") as f:
         json.dump(data, f)
+
+
+def beste_tijd(level_id):
+    """De beste (kortste) tijd voor dit level, of None als er nog geen is."""
+    return laad_voortgang().get("tijden", {}).get(level_id)
+
+
+def sla_tijd_op(level_id, tijd):
+    """Bewaar de tijd als hij beter (korter) is dan de vorige.
+
+    Geeft (beste_tijd, is_record) terug."""
+    data = {}
+    if os.path.exists(BESTAND):
+        try:
+            with open(BESTAND, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            data = {}
+    tijden = data.get("tijden", {})
+    oud = tijden.get(level_id)
+    record = (oud is None) or (tijd < oud)
+    if record:
+        tijden[level_id] = round(tijd, 2)
+    data["tijden"] = tijden
+    with open(BESTAND, "w", encoding="utf-8") as f:
+        json.dump(data, f)
+    return tijden[level_id], record
 
 
 def markeer_level_voltooid(niveau, voltooid, punten=0, levens=None):

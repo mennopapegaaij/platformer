@@ -190,6 +190,22 @@ class PlatformerSpel(arcade.View):
                          for o in lijst if getattr(o, "verf_kleuren", None)]
         self._werk_verf_bij()   # meteen de goede kleur zetten (voor de eerste frame)
 
+        # --- Tijd & topscore: houd bij hoe snel je het level haalt ---
+        self._speel_tijd = 0.0        # hoe lang je al bezig bent (seconden)
+        self._record = False          # heb je je beste tijd verbeterd?
+        self._tijd_opgeslagen = False
+        if self.twee or self.arena:
+            self._tijd_id = None      # geen klok bij meerdere spelers of in de arena
+        elif self.eigen:
+            self._tijd_id = "eigen_%d" % self.bouw_slot
+        elif self.race:
+            self._tijd_id = "race_%d" % nummer
+        elif self.vlucht:
+            self._tijd_id = "vlucht_%d" % nummer
+        else:
+            self._tijd_id = "level_%d" % nummer
+        self._beste_tijd = voortgang_module.beste_tijd(self._tijd_id) if self._tijd_id else None
+
         # Bepaal of de speler genoeg punten heeft voor dit bonus-level
         # (in de arena bestaat deze waarschuwing niet)
         benodigde_punten = {} if (self.arena or self.race or self.eigen) else {6: 10, 7: 20, 8: 30, 9: 70}
@@ -300,6 +316,14 @@ class PlatformerSpel(arcade.View):
         arcade.draw_text(naam_tekst,
                          10, SCHERM_HOOGTE - 30, arcade.color.WHITE, 16, bold=True)
 
+        # Klok: hoe lang je al bezig bent, en je beste tijd (midden bovenin)
+        if self._tijd_id:
+            tekst = "⏱ %.1fs" % self._speel_tijd
+            if self._beste_tijd is not None:
+                tekst += "   🏆 %.1fs" % self._beste_tijd
+            arcade.draw_text(tekst, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 30,
+                             arcade.color.WHITE, 15, bold=True, anchor_x="center")
+
         # Pijltjes bovenin het midden om van monster-level te wisselen (alleen arena)
         if self.arena:
             self._teken_arena_pijltjes()
@@ -374,6 +398,14 @@ class PlatformerSpel(arcade.View):
             else:
                 bericht(f"Level {self.huidig_level} gehaald! 🎉", 20, grootte=26, vet=True)
                 bericht("Druk op ENTER om terug naar de kaart te gaan", -40)
+            # Je tijd en topscore laten zien
+            if self._tijd_id and self._tijd_opgeslagen:
+                t = "⏱ Tijd: %.1fs" % self._speel_tijd
+                if self._record:
+                    t += "   🏆 Nieuw record!"
+                elif self._beste_tijd is not None:
+                    t += "   Beste: %.1fs" % self._beste_tijd
+                bericht(t, -12, arcade.color.YELLOW, 15, True)
         elif self.dood:
             bericht_box(arcade.color.DARK_RED)
             bericht("Oeps! Je ging af!", 20, grootte=26, vet=True)
@@ -489,6 +521,12 @@ class PlatformerSpel(arcade.View):
         self._verf_tijd += 1        # tikt door voor de overvloeiende verf-kleuren
         self._werk_verf_bij()       # zet de huidige kleur op elk gekleurd voorwerp
 
+        # Level gehaald? Bewaar je tijd (en kijk of het een record is) — één keer.
+        if (self.level_gehaald or self.gewonnen) and self._tijd_id and not self._tijd_opgeslagen:
+            self._tijd_opgeslagen = True
+            self._beste_tijd, self._record = voortgang_module.sla_tijd_op(
+                self._tijd_id, self._speel_tijd)
+
         # 2-spelers-modus heeft zijn eigen (split-screen) update
         if self.twee:
             self._update_twee()
@@ -501,6 +539,10 @@ class PlatformerSpel(arcade.View):
         # Als de speler dood is, wacht op toetsinvoer (wordt hierboven al getekend)
         if self.dood:
             return
+
+        # De klok loopt terwijl je speelt (niet als je dood of klaar bent)
+        if self._tijd_id:
+            self._speel_tijd += delta_time
 
         self._update_platforms()      # verdwijnblokken aftellen
 
