@@ -28,8 +28,11 @@ ITEM_NAAM = {
 }
 
 # De teleporter-kleuren waar je met de Tele-knop doorheen klikt
-TELE_SOORTEN = ["blauw", "oranje"]
-TELE_NAAM = {"blauw": "Blauw", "oranje": "Oranje"}
+TELE_SOORTEN = ["blauw", "oranje", "groen", "rood", "geel", "roze", "paars",
+                "cyaan", "wit", "bruin"]
+TELE_NAAM = {"blauw": "Blauw", "oranje": "Oranje", "groen": "Groen", "rood": "Rood",
+             "geel": "Geel", "roze": "Roze", "paars": "Paars", "cyaan": "Cyaan",
+             "wit": "Wit", "bruin": "Bruin"}
 
 # De achtergronden waar je met de Acht-knop doorheen klikt (1 t/m 9)
 ACHT_SOORTEN = [1, 2, 3, 4, 5, 6, 7, 8, 9]

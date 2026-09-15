@@ -897,7 +897,8 @@ class PlatformerSpel(arcade.View):
 
     def _check_teleport(self, sp):
         """Raakt de speler een teleporter? Dan spring je naar de dichtstbijzijnde
-        teleporter van de ANDERE kleur (blauw <-> oranje)."""
+        teleporter van DEZELFDE kleur. Is er geen andere van die kleur, dan naar de
+        dichtstbijzijnde van een andere kleur (zo blijven oude blauw/oranje-levels werken)."""
         raakt_nu = None
         for t in self.teleporters:
             if t.raakt_speler(sp.x, sp.y, sp.breedte, sp.hoogte):
@@ -909,16 +910,22 @@ class PlatformerSpel(arcade.View):
         # Net geteleporteerd? Eerst even weglopen voordat het weer mag (geen heen-en-weer)
         if not getattr(sp, "_teleport_klaar", True):
             return
-        # Zoek de dichtstbijzijnde teleporter van de ándere kleur
-        doel, beste = None, None
+        # Zoek de dichtstbijzijnde teleporter van DEZELFDE kleur (anders van een andere)
+        doel_zelfde, best_z = None, None
+        doel_ander, best_a = None, None
         for t in self.teleporters:
-            if t.kleur == raakt_nu.kleur:
+            if t is raakt_nu:
                 continue
             afstand = abs(t.x - raakt_nu.x)
-            if beste is None or afstand < beste:
-                beste, doel = afstand, t
+            if t.kleur == raakt_nu.kleur:
+                if best_z is None or afstand < best_z:
+                    best_z, doel_zelfde = afstand, t
+            else:
+                if best_a is None or afstand < best_a:
+                    best_a, doel_ander = afstand, t
+        doel = doel_zelfde if doel_zelfde is not None else doel_ander
         if doel is None:
-            return                        # geen partner van de andere kleur
+            return                        # geen andere teleporter om heen te gaan
         # Spring naar het midden van de doel-teleporter
         sp.x = doel.x + (doel.breedte - sp.breedte) / 2
         sp.y = doel.y + (doel.hoogte - sp.hoogte) / 2
