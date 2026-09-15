@@ -459,21 +459,45 @@ class BouwerView(arcade.View):
         self.window.show_view(spel)
 
     def _verf_alles(self):
-        """Voeg de gekozen verf bij ALLE voorwerpen tegelijk. Druk je nog eens op L
-        met een andere kleur, dan komt die kleur er overal bij (dan vloeit alles
-        door meerdere kleuren heen)."""
-        alle = set(self.grid) | set(self.deco)
-        for cel in alle:
-            if self.verf_soort == "onzichtbaar":
-                self.verf[cel] = "onzichtbaar"
+        """L: schakel de gekozen verf bij ALLE voorwerpen aan of uit.
+
+        Heeft alles die verf al, dan haalt L hem er overal weer AF (andersom).
+        Anders komt de verf er overal bij. Zo werkt L beide kanten op."""
+        alle = list(set(self.grid) | set(self.deco))
+        if not alle:
+            return
+        s = self.verf_soort
+        naam = VERF_NAAM.get(s, s)
+        if s == "onzichtbaar":
+            heeft_alles = all(self.verf.get(c) == "onzichtbaar" for c in alle)
+            if heeft_alles:                              # andersom: overal weer zichtbaar
+                for c in alle:
+                    if self.verf.get(c) == "onzichtbaar":
+                        self.verf.pop(c, None)
+                self._melding = "👁 Alles weer zichtbaar"
             else:
-                huidig = self.verf.get(cel)
-                if not isinstance(huidig, list):
-                    self.verf[cel] = [self.verf_soort]      # begin met deze kleur
-                elif self.verf_soort not in huidig:
-                    huidig.append(self.verf_soort)          # kleur erbij (overvloeien)
-        naam = VERF_NAAM.get(self.verf_soort, self.verf_soort)
-        self._melding = "🎨 %s bij alles gedaan!" % naam
+                for c in alle:
+                    self.verf[c] = "onzichtbaar"
+                self._melding = "👻 Alles onzichtbaar"
+        else:
+            heeft_alles = all(isinstance(self.verf.get(c), list) and s in self.verf[c]
+                              for c in alle)
+            if heeft_alles:                              # andersom: kleur overal weghalen
+                for c in alle:
+                    huidig = self.verf.get(c)
+                    if isinstance(huidig, list) and s in huidig:
+                        huidig.remove(s)
+                        if not huidig:
+                            self.verf.pop(c, None)
+                self._melding = "🧽 %s overal weg" % naam
+            else:
+                for c in alle:
+                    huidig = self.verf.get(c)
+                    if not isinstance(huidig, list):
+                        self.verf[c] = [s]               # begin met deze kleur
+                    elif s not in huidig:
+                        huidig.append(s)                 # kleur erbij (overvloeien)
+                self._melding = "🎨 %s bij alles" % naam
         self._melding_teller = 120
 
     def _laad(self):
@@ -743,7 +767,7 @@ class BouwerView(arcade.View):
         else:
             arcade.draw_text("Klik om te plaatsen  •  ←→↑↓ = schuiven (ook omhoog!)  •  D = draaien  •  "
                              "📁-knop = volgend level (oneindig), toets 1-9 = naar dat level  •  "
-                             "L = kleur bij alles (vaker = meer kleuren)  •  "
+                             "L = kleur aan/uit bij alles  •  "
                              "P = alle levels aan elkaar plakken  •  M = je eigen muziek maken  •  "
                              "Klik nog eens op Portaal/Snel/Deco voor een ander soort",
                              SCHERM_BREEDTE // 2, 8, arcade.color.WHITE, 9, anchor_x="center")
