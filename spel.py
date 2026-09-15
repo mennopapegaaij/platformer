@@ -154,6 +154,8 @@ class PlatformerSpel(arcade.View):
         self.springers = list(data[8]) if len(data) > 8 else []
         # Teleporters (een 10e onderdeel): blauw <-> oranje paren
         self.teleporters = list(data[9]) if len(data) > 9 else []
+        # Achtergrond-zones (een 11e onderdeel): [(x, achtergrond-nummer), ...]
+        self.acht_zones = list(data[10]) if len(data) > 10 else []
         self._verf_tijd = 0           # tikt door zodat meerdere kleuren overvloeien
         self.platforms = platforms
         # Zet de begin-modus: vliegtuig in de vluchtmodus, anders het gewone blokje.
@@ -227,13 +229,14 @@ class PlatformerSpel(arcade.View):
 
         # In de 2-spelers-modus tekenen we het scherm (groot) in twee helften
         if self.twee:
-            achtergrond_module.teken_achtergrond(self.huidig_level,
-                                                 self.window.width, self.window.height)
+            n = self._achtergrond_nummer(self.spelers[0].x)
+            achtergrond_module.teken_achtergrond(n, self.window.width, self.window.height)
             self._teken_twee()
             return
 
-        # --- Teken eerst de achtergrond (altijd op vaste plek, schuift niet mee) ---
-        achtergrond_module.teken_achtergrond(self.huidig_level, SCHERM_BREEDTE, SCHERM_HOOGTE)
+        # --- Teken eerst de achtergrond (kan per plek in het level verschillen) ---
+        achtergrond_module.teken_achtergrond(self._achtergrond_nummer(self.speler.x),
+                                             SCHERM_BREEDTE, SCHERM_HOOGTE)
 
         # --- Alleen tekenen wat in beeld is (scheelt heel veel bij lange banen!) ---
         cam_x = max(SCHERM_BREEDTE / 2,
@@ -854,6 +857,16 @@ class PlatformerSpel(arcade.View):
         """Zet bij elk gekleurd voorwerp de huidige (overvloeiende) verf-kleur."""
         for o in self.gekleurd:
             o.verf_kleur = self._verf_kleur(o.verf_kleuren)
+
+    def _achtergrond_nummer(self, px):
+        """Welke achtergrond hoort bij de plek px? (verandert per zone in eigen levels)."""
+        n = self.huidig_level
+        for zx, zn in self.acht_zones:      # gesorteerd op x
+            if px >= zx:
+                n = zn
+            else:
+                break
+        return n
 
     def _camera_y(self, sp):
         """Hoogte van de camera: normaal onderin (grond in beeld), maar gaat mee

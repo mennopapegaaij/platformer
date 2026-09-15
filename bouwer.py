@@ -19,17 +19,25 @@ BESTAND = "eigen_level.json"   # oude opslag (1 level) — wordt naar plek 1 ver
 
 # De dingen die je kunt plaatsen (op volgorde in het palet)
 ITEMS = ["grond", "blok", "spike", "vijand", "molen", "boss", "hart", "vlag", "portaal",
-         "snel", "deco", "spring", "tele", "draad", "verf", "gum"]
+         "snel", "deco", "spring", "tele", "draad", "verf", "acht", "gum"]
 ITEM_NAAM = {
     "grond": "Grond", "blok": "Blok", "spike": "Spike", "vijand": "Vijand",
     "molen": "Molen", "boss": "Boss", "hart": "Hartje", "vlag": "Finish",
     "portaal": "Portaal", "snel": "Snel", "deco": "Deco", "spring": "Spring",
-    "tele": "Tele", "draad": "Draad", "verf": "Verf", "gum": "Gum",
+    "tele": "Tele", "draad": "Draad", "verf": "Verf", "acht": "Acht", "gum": "Gum",
 }
 
 # De teleporter-kleuren waar je met de Tele-knop doorheen klikt
 TELE_SOORTEN = ["blauw", "oranje"]
 TELE_NAAM = {"blauw": "Blauw", "oranje": "Oranje"}
+
+# De achtergronden waar je met de Acht-knop doorheen klikt (1 t/m 9)
+ACHT_SOORTEN = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+ACHT_NAAM = {1: "Wereld", 2: "Bos", 3: "Bergen", 4: "Kasteel", 5: "Baas",
+             6: "Woestijn", 7: "Wolken", 8: "Ruimte", 9: "Jacht"}
+ACHT_KLEUR = {1: (135, 206, 235), 2: (130, 190, 210), 3: (170, 200, 230),
+              4: (25, 30, 60), 5: (80, 20, 0), 6: (255, 180, 80),
+              7: (120, 180, 255), 8: (20, 20, 80), 9: (80, 10, 10)}
 
 # De draad-soorten waar je met de Draad-knop doorheen klikt (elk beweegt anders)
 DRAAD_SOORTEN = ["draai", "slinger", "rek", "snel", "zweef"]
@@ -161,6 +169,15 @@ def teken_item(soort, x, y, grootte, rotatie=0):
         arcade.draw_circle_filled(cx - 12, cy - 12, 6, (210, 60, 60))
         arcade.draw_circle_filled(cx + 12, cy + 12, 6, (210, 60, 60))
         arcade.draw_circle_filled(cx, cy, 3, (60, 60, 70))
+    elif soort.startswith("acht_"):
+        # Achtergrond-markering: een swatch met de lucht-kleur en het nummer
+        n = int(soort.split("_", 1)[1])
+        kl = ACHT_KLEUR.get(n, (135, 206, 235))
+        arcade.draw_lrbt_rectangle_filled(x + 3, x + g - 3, y + 3, y + g - 3, kl)
+        arcade.draw_lrbt_rectangle_outline(x + 3, x + g - 3, y + 3, y + g - 3, (255, 255, 255), 1)
+        tekstkleur = (255, 255, 255) if n in (4, 5, 8, 9) else (30, 30, 40)
+        arcade.draw_text(str(n), x + g / 2, y + g / 2 - 6, tekstkleur, 12,
+                         bold=True, anchor_x="center")
     elif soort == "verf":
         # Verfpotje met een kwastje (om blokken onzichtbaar te maken)
         cx = x + g / 2
@@ -269,6 +286,7 @@ class BouwerView(arcade.View):
         self.draden = []               # lijst: (celA, celB, soort) = onzichtbaar draad
         self._draad_start = None       # het eerste aangeklikte voorwerp bij het maken van een draad
         self.draad_soort = "draai"     # welke draad-soort je nu maakt (klik op Draad)
+        self.acht_soort = 1            # welke achtergrond je nu neerzet (klik op Acht)
         self.verf = {}                 # vakje -> verf-soort ("onzichtbaar" of een kleur)
         self.verf_soort = "onzichtbaar"  # welke verf je nu gebruikt (klik op Verf)
         self.rotatie = 0               # de draai-stand waarmee je nu plaatst
@@ -293,8 +311,8 @@ class BouwerView(arcade.View):
         # Palet-knoppen (links) en actie-knoppen (rechts) uitrekenen
         self.palet_knoppen = {}        # soort -> (l, r)
         for i, soort in enumerate(ITEMS):
-            l = 6 + i * 25
-            self.palet_knoppen[soort] = (l, l + 23)
+            l = 6 + i * 23
+            self.palet_knoppen[soort] = (l, l + 21)
         self.actie_knoppen = {         # naam -> (l, r)
             "spelen": (408, 452),
             "opslaan": (455, 501),
@@ -624,33 +642,33 @@ class BouwerView(arcade.View):
             arcade.draw_lrbt_rectangle_outline(l, r, BALK_Y + 6, SCHERM_HOOGTE - 18, rand, 3 if gekozen else 1)
             # De Portaal-, Snel- en Deco-knop tonen welk soort je nu plaatst
             if soort == "portaal":
-                teken_item("portaal_" + self.portaal_soort, l + 2, BALK_Y + 10, 23)
+                teken_item("portaal_" + self.portaal_soort, l + 2, BALK_Y + 10, 21)
                 naam = "P:" + PORTAAL_NAAM[self.portaal_soort]
             elif soort == "snel":
-                teken_item("portaal_" + self.snel_soort, l + 2, BALK_Y + 10, 23)
+                teken_item("portaal_" + self.snel_soort, l + 2, BALK_Y + 10, 21)
                 naam = self.snel_soort
             elif soort == "deco":
-                teken_item("deco_" + self.deco_soort, l + 2, BALK_Y + 10, 23, self.rotatie)
+                teken_item("deco_" + self.deco_soort, l + 2, BALK_Y + 10, 21, self.rotatie)
                 naam = DECO_NAAM[self.deco_soort]
             elif soort == "spring":
-                teken_item("spring_" + self.spring_soort, l + 2, BALK_Y + 10, 23)
+                teken_item("spring_" + self.spring_soort, l + 2, BALK_Y + 10, 21)
                 naam = SPRING_NAAM[self.spring_soort]
             elif soort == "spike":
-                teken_item("spike_" + self.spike_soort, l + 2, BALK_Y + 10, 23, self.rotatie)
+                teken_item("spike_" + self.spike_soort, l + 2, BALK_Y + 10, 21, self.rotatie)
                 naam = SPIKE_NAAM[self.spike_soort]
             elif soort == "blok":
-                teken_item("blok_" + self.blok_soort, l + 2, BALK_Y + 10, 23)
+                teken_item("blok_" + self.blok_soort, l + 2, BALK_Y + 10, 21)
                 naam = BLOK_NAAM[self.blok_soort]
             elif soort == "tele":
-                teken_item("tele_" + self.tele_soort, l + 2, BALK_Y + 10, 23)
+                teken_item("tele_" + self.tele_soort, l + 2, BALK_Y + 10, 21)
                 naam = TELE_NAAM[self.tele_soort]
             elif soort == "boss":
                 teken_item("boss" if self.boss_soort == "start" else "bossuit",
-                           l + 2, BALK_Y + 10, 23)
+                           l + 2, BALK_Y + 10, 21)
                 naam = BOSS_NAAM[self.boss_soort]
             elif soort == "verf":
                 if self.verf_soort == "onzichtbaar":
-                    teken_item("verf", l + 2, BALK_Y + 10, 23)   # het verfpotje
+                    teken_item("verf", l + 2, BALK_Y + 10, 21)   # het verfpotje
                 else:
                     # een gekleurd blokje in de gekozen kleur
                     kl = VERF_KLEUREN[self.verf_soort]
@@ -658,10 +676,13 @@ class BouwerView(arcade.View):
                                                       SCHERM_HOOGTE - 22, kl)
                 naam = VERF_NAAM[self.verf_soort]
             elif soort == "draad":
-                teken_item("draad", l + 2, BALK_Y + 10, 23)
+                teken_item("draad", l + 2, BALK_Y + 10, 21)
                 naam = DRAAD_NAAM[self.draad_soort]
+            elif soort == "acht":
+                teken_item("acht_%d" % self.acht_soort, l + 2, BALK_Y + 10, 21)
+                naam = ACHT_NAAM[self.acht_soort]
             else:
-                teken_item(soort, l + 2, BALK_Y + 10, 23)
+                teken_item(soort, l + 2, BALK_Y + 10, 21)
                 naam = ITEM_NAAM[soort]
             arcade.draw_text(naam, (l + r) // 2, BALK_Y + 1,
                              arcade.color.WHITE, 8, anchor_x="center")
@@ -778,6 +799,9 @@ class BouwerView(arcade.View):
             elif self.gekozen == "boss":
                 # "boss" = waar hij begint, "bossuit" = de lijn waar hij doodgaat
                 self.grid[(kol, rij)] = "boss" if self.boss_soort == "start" else "bossuit"
+            elif self.gekozen == "acht":
+                # Achtergrond-markering: vanaf hier die achtergrond
+                self.grid[(kol, rij)] = "acht_%d" % self.acht_soort
             else:
                 self.grid[(kol, rij)] = self.gekozen
             # Onthoud de draai-stand voor dit vakje (0 = niet onthouden)
@@ -850,6 +874,10 @@ class BouwerView(arcade.View):
                     i = DRAAD_SOORTEN.index(self.draad_soort)
                     self.draad_soort = DRAAD_SOORTEN[(i + 1) % len(DRAAD_SOORTEN)]
                     self._draad_start = None      # begin opnieuw met de nieuwe soort
+                elif soort == "acht" and self.gekozen == "acht":
+                    # Nog een keer op Acht klikken: door de achtergronden wisselen
+                    i = ACHT_SOORTEN.index(self.acht_soort)
+                    self.acht_soort = ACHT_SOORTEN[(i + 1) % len(ACHT_SOORTEN)]
                 self.gekozen = soort
                 return
         for naam, (l, r) in self.actie_knoppen.items():
@@ -951,6 +979,7 @@ class BouwerView(arcade.View):
         teleporters = []
         bosses = []                    # de achtervolger-bossen (om hun stop-plek te zetten)
         boss_stops = []                # x-plekken waar de boss doodgaat (van "boss-uit")
+        acht_zones = []                # achtergrond-zones: (x, achtergrond-nummer)
         vlag_x, vlag_y = None, None
         max_x = 300
 
@@ -1044,6 +1073,9 @@ class BouwerView(arcade.View):
                                            KRACHT_PER_STAND[int(n) if n.isdigit() else 3]))
             elif soort == "vlag":
                 vlag_x, vlag_y = wx, wy
+            elif soort.startswith("acht_"):
+                # Achtergrond-markering: vanaf deze x die achtergrond gebruiken
+                acht_zones.append((wx, int(soort.split("_", 1)[1])))
             # Verf toepassen op elk voorwerp dat we net voor dit vakje maakten:
             # onzichtbaar (blijft wel werken/botsen) of een gekleurde-verf-lijst.
             if onz or verf_rgbs:
@@ -1170,8 +1202,9 @@ class BouwerView(arcade.View):
             vlag_x, vlag_y = max_x + 60, 40
             max_x += 200
         level_breedte = max_x + 200
+        acht_zones.sort()            # op x-volgorde
         return (platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte,
-                portalen, decoraties, springers, teleporters)
+                portalen, decoraties, springers, teleporters, acht_zones)
 
     def _speel(self):
         """Sla het level op en speel het."""
