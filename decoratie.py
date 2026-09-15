@@ -145,3 +145,33 @@ class Decoratie:
     def teken(self):
         teken_deco(self.soort, self.x, self.y, self.hoogte, self.rotatie,
                    getattr(self, "verf_kleur", None))
+
+
+class TekstBord:
+    """Een bordje met je eigen tekst erop (geen botsing, alleen om te lezen)."""
+
+    def __init__(self, x, y, tekst=""):
+        self.x = x
+        self.y = y
+        self.tekst = tekst
+        self.breedte = 40
+        self.hoogte = 40
+
+    def teken(self):
+        cx = self.x + self.breedte / 2
+        # Paaltje
+        arcade.draw_lrbt_rectangle_filled(cx - 3, cx + 3, self.y, self.y + 24, (120, 80, 40))
+        # Bord (bruin plankje met rand)
+        arcade.draw_lrbt_rectangle_filled(self.x - 4, self.x + self.breedte + 4,
+                                          self.y + 24, self.y + 46, (200, 160, 90))
+        arcade.draw_lrbt_rectangle_outline(self.x - 4, self.x + self.breedte + 4,
+                                           self.y + 24, self.y + 46, (120, 80, 40), 2)
+        # De tekst zweeft boven het bord (goed leesbaar)
+        if self.tekst:
+            breedte = 8 * len(self.tekst) + 14
+            arcade.draw_lrbt_rectangle_filled(cx - breedte / 2, cx + breedte / 2,
+                                              self.y + 52, self.y + 78, (30, 30, 45))
+            arcade.draw_lrbt_rectangle_outline(cx - breedte / 2, cx + breedte / 2,
+                                               self.y + 52, self.y + 78, (255, 255, 255), 2)
+            arcade.draw_text(self.tekst, cx, self.y + 58, arcade.color.WHITE, 12,
+                             bold=True, anchor_x="center")

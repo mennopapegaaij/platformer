@@ -4,6 +4,7 @@
 
 import arcade
 import copy   # om bij een herstart verse kopieën van je eigen level te maken
+import math   # voor het vuurwerk bij winst
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
@@ -158,6 +159,9 @@ class PlatformerSpel(arcade.View):
         self.acht_zones = list(data[10]) if len(data) > 10 else []
         # Zelfgemaakt deuntje (een 12e onderdeel): lijst noten (-1 = stilte)
         self.muziek = list(data[11]) if len(data) > 11 else []
+        # Tekstbordjes (een 13e onderdeel)
+        self.borden = list(data[12]) if len(data) > 12 else []
+        self._vuurwerk = []           # deeltjes-vuurwerk bij winst
         self._heeft_muziek = any(n != -1 for n in self.muziek)
         self._muziek_stap = 0
         self._muziek_teller = 0.0
@@ -272,6 +276,11 @@ class PlatformerSpel(arcade.View):
             for deco in self.decoraties:
                 if in_beeld(deco, deco.breedte) and not getattr(deco, "onzichtbaar", False):
                     deco.teken()
+
+            # Teken de tekstbordjes die in beeld zijn
+            for bord in self.borden:
+                if in_beeld(bord, bord.breedte):
+                    bord.teken()
 
             # Teken alleen de vijanden die in beeld zijn
             for vijand in self.vijanden:
@@ -433,6 +442,10 @@ class PlatformerSpel(arcade.View):
             else:
                 bericht("Druk op R om dit level opnieuw te spelen", -40)
 
+        # Vrolijk vuurwerk als je gewonnen hebt
+        if self.level_gehaald or self.gewonnen:
+            self._teken_vuurwerk()
+
     def _teken_vlag(self, x, y):
         """Teken een vlag op de gegeven positie."""
         # Vlaggestok
@@ -543,6 +556,10 @@ class PlatformerSpel(arcade.View):
                     import muziek as muziek_module
                     muziek_module.speel_noot(noot)
                 self._muziek_stap = (self._muziek_stap + 1) % len(self.muziek)
+
+        # Vuurwerk zolang je gewonnen hebt
+        if self.level_gehaald or self.gewonnen:
+            self._update_vuurwerk(delta_time)
 
         # Level gehaald? Bewaar je tijd (en kijk of het een record is) — één keer.
         if (self.level_gehaald or self.gewonnen) and self._tijd_id and not self._tijd_opgeslagen:
@@ -877,6 +894,34 @@ class PlatformerSpel(arcade.View):
         """Zet bij elk gekleurd voorwerp de huidige (overvloeiende) verf-kleur."""
         for o in self.gekleurd:
             o.verf_kleur = self._verf_kleur(o.verf_kleuren)
+
+    def _update_vuurwerk(self, dt):
+        """Maak steeds nieuwe vuurwerk-knallen en laat de oude uitdoven."""
+        import random
+        self._vw_teller = getattr(self, "_vw_teller", 0.0) + dt
+        if self._vw_teller >= 0.35:
+            self._vw_teller = 0.0
+            kleur = random.choice([(255, 80, 80), (255, 220, 60), (90, 200, 255),
+                                   (120, 255, 120), (255, 140, 220), (255, 170, 40)])
+            self._vuurwerk.append({
+                "x": random.randint(80, SCHERM_BREEDTE - 80),
+                "y": random.randint(SCHERM_HOOGTE // 2, SCHERM_HOOGTE - 60),
+                "kleur": kleur, "t": 0})
+        for v in self._vuurwerk:
+            v["t"] += 1
+        self._vuurwerk = [v for v in self._vuurwerk if v["t"] < 40]
+
+    def _teken_vuurwerk(self):
+        """Teken de vuurwerk-knallen (gekleurde deeltjes die naar buiten spatten)."""
+        for v in self._vuurwerk:
+            t = v["t"]
+            r = t * 4
+            grootte = max(1, 5 - t * 0.1)
+            for hoek in range(0, 360, 30):
+                rad = math.radians(hoek)
+                px = v["x"] + math.cos(rad) * r
+                py = v["y"] + math.sin(rad) * r
+                arcade.draw_circle_filled(px, py, grootte, v["kleur"])
 
     def _achtergrond_nummer(self, px):
         """Welke achtergrond hoort bij de plek px? (verandert per zone in eigen levels)."""
@@ -1295,6 +1340,9 @@ class PlatformerSpel(arcade.View):
                 for deco in self.decoraties:
                     if zicht(deco, deco.breedte) and not getattr(deco, "onzichtbaar", False):
                         deco.teken()
+                for bord in self.borden:
+                    if zicht(bord, bord.breedte):
+                        bord.teken()
                 for v in self.vijanden:
                     if zicht(v, v.breedte) and not getattr(v, "onzichtbaar", False):
                         v.teken()

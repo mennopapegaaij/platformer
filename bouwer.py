@@ -19,12 +19,13 @@ BESTAND = "eigen_level.json"   # oude opslag (1 level) — wordt naar plek 1 ver
 
 # De dingen die je kunt plaatsen (op volgorde in het palet)
 ITEMS = ["grond", "blok", "spike", "vijand", "molen", "boss", "hart", "vlag", "portaal",
-         "snel", "deco", "spring", "tele", "draad", "verf", "acht", "gum"]
+         "snel", "deco", "spring", "tele", "draad", "verf", "acht", "bord", "gum"]
 ITEM_NAAM = {
     "grond": "Grond", "blok": "Blok", "spike": "Spike", "vijand": "Vijand",
     "molen": "Molen", "boss": "Boss", "hart": "Hartje", "vlag": "Finish",
     "portaal": "Portaal", "snel": "Snel", "deco": "Deco", "spring": "Spring",
-    "tele": "Tele", "draad": "Draad", "verf": "Verf", "acht": "Acht", "gum": "Gum",
+    "tele": "Tele", "draad": "Draad", "verf": "Verf", "acht": "Acht",
+    "bord": "Bord", "gum": "Gum",
 }
 
 # De teleporter-kleuren waar je met de Tele-knop doorheen klikt
@@ -176,6 +177,12 @@ def teken_item(soort, x, y, grootte, rotatie=0):
         arcade.draw_circle_filled(cx - 12, cy - 12, 6, (210, 60, 60))
         arcade.draw_circle_filled(cx + 12, cy + 12, 6, (210, 60, 60))
         arcade.draw_circle_filled(cx, cy, 3, (60, 60, 70))
+    elif soort == "bord":
+        # Bordje: een paaltje met een plankje
+        cx = x + g / 2
+        arcade.draw_lrbt_rectangle_filled(cx - 2, cx + 2, y + 4, y + g * 0.5, (120, 80, 40))
+        arcade.draw_lrbt_rectangle_filled(x + 6, x + g - 6, y + g * 0.5, y + g - 6, (200, 160, 90))
+        arcade.draw_lrbt_rectangle_outline(x + 6, x + g - 6, y + g * 0.5, y + g - 6, (120, 80, 40), 2)
     elif soort.startswith("acht_"):
         # Achtergrond-markering: een swatch met de lucht-kleur en het nummer
         n = int(soort.split("_", 1)[1])
@@ -306,6 +313,8 @@ class BouwerView(arcade.View):
         self.acht_soort = 1            # welke achtergrond je nu neerzet (klik op Acht)
         self.muziek = []               # je eigen deuntje (lijst noten, -1 = stilte)
         self.power_soort = "hart"      # welke power-up je nu plaatst (klik op Hartje)
+        self.bord_teksten = {}         # (kol, rij) -> tekst op een bordje
+        self._bord_bewerk = None       # welk bordje je nu aan het typen bent (of None)
         self.verf = {}                 # vakje -> verf-soort ("onzichtbaar" of een kleur)
         self.verf_soort = "onzichtbaar"  # welke verf je nu gebruikt (klik op Verf)
         self.rotatie = 0               # de draai-stand waarmee je nu plaatst
@@ -330,8 +339,8 @@ class BouwerView(arcade.View):
         # Palet-knoppen (links) en actie-knoppen (rechts) uitrekenen
         self.palet_knoppen = {}        # soort -> (l, r)
         for i, soort in enumerate(ITEMS):
-            l = 6 + i * 23
-            self.palet_knoppen[soort] = (l, l + 21)
+            l = 6 + i * 22
+            self.palet_knoppen[soort] = (l, l + 20)
         self.actie_knoppen = {         # naam -> (l, r)
             "spelen": (408, 452),
             "opslaan": (455, 501),
@@ -510,6 +519,8 @@ class BouwerView(arcade.View):
         self.draden = []
         self._draad_start = None
         self.verf = {}
+        self.bord_teksten = {}
+        self._bord_bewerk = None
         self.muziek = []
         self.mode = "gewoon"
         self.scroll = 0
@@ -554,6 +565,8 @@ class BouwerView(arcade.View):
                             waarde = "onzichtbaar"
                         self.verf[(int(kr[0]), int(kr[1]))] = waarde
                     self.muziek = list(data.get("muziek", []))   # je eigen deuntje
+                    for br in data.get("borden", []):            # tekstbordjes
+                        self.bord_teksten[(int(br[0]), int(br[1]))] = br[2]
                 else:
                     tiles = data   # oud formaat (alleen een lijst met vakjes)
                 self.grid = {(int(k), int(r)): s for k, r, s in tiles}
@@ -578,7 +591,8 @@ class BouwerView(arcade.View):
                 "deco_rotaties": [[k, r, rot] for (k, r), rot in self.deco_rotaties.items()],
                 "draden": [[a[0], a[1], b[0], b[1], s] for (a, b, s) in self.draden],
                 "verf": [[k, r, s] for (k, r), s in self.verf.items()],
-                "muziek": list(self.muziek)}
+                "muziek": list(self.muziek),
+                "borden": [[k, r, t] for (k, r), t in self.bord_teksten.items()]}
         with open(self._bestand(), "w", encoding="utf-8") as f:
             json.dump(data, f)
         self._melding = "💾 Level %d opgeslagen!" % self.slot
@@ -625,6 +639,21 @@ class BouwerView(arcade.View):
             if not self._in_beeld(sx, sy):
                 continue
             teken_item(soort, sx, sy, CEL, self.rotaties.get((kol, rij), 0))
+        # De tekst van elk bordje erboven laten zien (en oplichten als je het typt)
+        for (kol, rij), s in self.grid.items():
+            if s != "bord":
+                continue
+            sx = kol * CEL - self.scroll
+            sy = rij * CEL - self.scroll_y
+            if not self._in_beeld(sx, sy):
+                continue
+            tekst = self.bord_teksten.get((kol, rij), "")
+            bezig = (self._bord_bewerk == (kol, rij))
+            toon = (tekst + "|") if bezig else tekst          # knippercursor als je typt
+            if toon:
+                arcade.draw_text(toon, sx + CEL / 2, sy + CEL + 4,
+                                 arcade.color.YELLOW if bezig else arcade.color.WHITE,
+                                 11, bold=True, anchor_x="center")
         # Geverfde vakjes tonen we hier: onzichtbaar = faded met streepje,
         # een kleur = een gekleurd waas. Zo weet JIJ wat je geverfd hebt.
         for (kol, rij), verf_soort in self.verf.items():
@@ -688,33 +717,33 @@ class BouwerView(arcade.View):
             arcade.draw_lrbt_rectangle_outline(l, r, BALK_Y + 6, SCHERM_HOOGTE - 18, rand, 3 if gekozen else 1)
             # De Portaal-, Snel- en Deco-knop tonen welk soort je nu plaatst
             if soort == "portaal":
-                teken_item("portaal_" + self.portaal_soort, l + 2, BALK_Y + 10, 21)
+                teken_item("portaal_" + self.portaal_soort, l + 2, BALK_Y + 10, 20)
                 naam = "P:" + PORTAAL_NAAM[self.portaal_soort]
             elif soort == "snel":
-                teken_item("portaal_" + self.snel_soort, l + 2, BALK_Y + 10, 21)
+                teken_item("portaal_" + self.snel_soort, l + 2, BALK_Y + 10, 20)
                 naam = self.snel_soort
             elif soort == "deco":
-                teken_item("deco_" + self.deco_soort, l + 2, BALK_Y + 10, 21, self.rotatie)
+                teken_item("deco_" + self.deco_soort, l + 2, BALK_Y + 10, 20, self.rotatie)
                 naam = DECO_NAAM[self.deco_soort]
             elif soort == "spring":
-                teken_item("spring_" + self.spring_soort, l + 2, BALK_Y + 10, 21)
+                teken_item("spring_" + self.spring_soort, l + 2, BALK_Y + 10, 20)
                 naam = SPRING_NAAM[self.spring_soort]
             elif soort == "spike":
-                teken_item("spike_" + self.spike_soort, l + 2, BALK_Y + 10, 21, self.rotatie)
+                teken_item("spike_" + self.spike_soort, l + 2, BALK_Y + 10, 20, self.rotatie)
                 naam = SPIKE_NAAM[self.spike_soort]
             elif soort == "blok":
-                teken_item("blok_" + self.blok_soort, l + 2, BALK_Y + 10, 21)
+                teken_item("blok_" + self.blok_soort, l + 2, BALK_Y + 10, 20)
                 naam = BLOK_NAAM[self.blok_soort]
             elif soort == "tele":
-                teken_item("tele_" + self.tele_soort, l + 2, BALK_Y + 10, 21)
+                teken_item("tele_" + self.tele_soort, l + 2, BALK_Y + 10, 20)
                 naam = TELE_NAAM[self.tele_soort]
             elif soort == "boss":
                 teken_item("boss" if self.boss_soort == "start" else "bossuit",
-                           l + 2, BALK_Y + 10, 21)
+                           l + 2, BALK_Y + 10, 20)
                 naam = BOSS_NAAM[self.boss_soort]
             elif soort == "verf":
                 if self.verf_soort == "onzichtbaar":
-                    teken_item("verf", l + 2, BALK_Y + 10, 21)   # het verfpotje
+                    teken_item("verf", l + 2, BALK_Y + 10, 20)   # het verfpotje
                 else:
                     # een gekleurd blokje in de gekozen kleur
                     kl = VERF_KLEUREN[self.verf_soort]
@@ -722,16 +751,16 @@ class BouwerView(arcade.View):
                                                       SCHERM_HOOGTE - 22, kl)
                 naam = VERF_NAAM[self.verf_soort]
             elif soort == "draad":
-                teken_item("draad", l + 2, BALK_Y + 10, 21)
+                teken_item("draad", l + 2, BALK_Y + 10, 20)
                 naam = DRAAD_NAAM[self.draad_soort]
             elif soort == "acht":
-                teken_item("acht_%d" % self.acht_soort, l + 2, BALK_Y + 10, 21)
+                teken_item("acht_%d" % self.acht_soort, l + 2, BALK_Y + 10, 20)
                 naam = ACHT_NAAM[self.acht_soort]
             elif soort == "hart":
-                teken_item("power_" + self.power_soort, l + 2, BALK_Y + 10, 21)
+                teken_item("power_" + self.power_soort, l + 2, BALK_Y + 10, 20)
                 naam = POWER_NAAM[self.power_soort]
             else:
-                teken_item(soort, l + 2, BALK_Y + 10, 21)
+                teken_item(soort, l + 2, BALK_Y + 10, 20)
                 naam = ITEM_NAAM[soort]
             arcade.draw_text(naam, (l + r) // 2, BALK_Y + 1,
                              arcade.color.WHITE, 8, anchor_x="center")
@@ -817,9 +846,10 @@ class BouwerView(arcade.View):
             else:
                 self.grid.pop((kol, rij), None)
                 self.rotaties.pop((kol, rij), None)
-            # Draden en verf die aan dit vakje vastzitten ook weghalen
+            # Draden, verf en bord-tekst die aan dit vakje vastzitten ook weghalen
             self.draden = [d for d in self.draden if (kol, rij) not in d]
             self.verf.pop((kol, rij), None)
+            self.bord_teksten.pop((kol, rij), None)
         elif self.gekozen == "deco":
             # Decoratie in de aparte laag -> die kan dus BOVENOP een blok liggen
             self.deco[(kol, rij)] = "deco_" + self.deco_soort
@@ -855,6 +885,12 @@ class BouwerView(arcade.View):
                 # Power-up: hartje (leven), groot of klein
                 self.grid[(kol, rij)] = "hart" if self.power_soort == "hart" \
                     else "power_" + self.power_soort
+            elif self.gekozen == "bord":
+                # Tekstbordje: neerzetten en meteen tekst typen
+                self.grid[(kol, rij)] = "bord"
+                self._bord_bewerk = (kol, rij)
+                self._melding = "Typ je tekst, dan Enter"
+                self._melding_teller = 240
             else:
                 self.grid[(kol, rij)] = self.gekozen
             # Onthoud de draai-stand voor dit vakje (0 = niet onthouden)
@@ -951,6 +987,8 @@ class BouwerView(arcade.View):
                     self.draden = []
                     self._draad_start = None
                     self.verf = {}
+                    self.bord_teksten = {}
+                    self._bord_bewerk = None
                 elif naam == "level":
                     # Naar de volgende opslag-plek (1 -> 2 -> ... -> 5 -> 1)
                     self._wissel_slot(self.slot + 1)   # naar het volgende level (oneindig)
@@ -966,7 +1004,22 @@ class BouwerView(arcade.View):
                 return
 
     # ---------- Toetsen ----------
+    def on_text(self, text):
+        """Getypte letters komen op het bordje dat je nu bewerkt."""
+        if self._bord_bewerk is not None and text.isprintable():
+            huidig = self.bord_teksten.get(self._bord_bewerk, "")
+            if len(huidig) < 22:                 # niet te lang
+                self.bord_teksten[self._bord_bewerk] = huidig + text
+
     def on_key_press(self, toets, modifiers):
+        # Ben je een bordje aan het typen? Dan gaan de toetsen daar naartoe.
+        if self._bord_bewerk is not None:
+            if toets == arcade.key.BACKSPACE:
+                cel = self._bord_bewerk
+                self.bord_teksten[cel] = self.bord_teksten.get(cel, "")[:-1]
+            elif toets in (arcade.key.ENTER, arcade.key.NUM_ENTER, arcade.key.ESCAPE):
+                self._bord_bewerk = None         # klaar met typen
+            return
         if toets == arcade.key.LEFT:
             self._scroll_richting = -1
         elif toets == arcade.key.RIGHT:
@@ -1025,7 +1078,7 @@ class BouwerView(arcade.View):
         import math
         from powerup import ExtraLevenPowerUp, GroottePowerUp
         from portaal import Portaal
-        from decoratie import Decoratie
+        from decoratie import Decoratie, TekstBord
         from springers import SpringBol, SpringMat, KRACHT_PER_STAND, NEER_KRACHT
         from teleport import Teleporter
 
@@ -1039,6 +1092,7 @@ class BouwerView(arcade.View):
         bosses = []                    # de achtervolger-bossen (om hun stop-plek te zetten)
         boss_stops = []                # x-plekken waar de boss doodgaat (van "boss-uit")
         acht_zones = []                # achtergrond-zones: (x, achtergrond-nummer)
+        borden = []                    # tekstbordjes (TekstBord-objecten)
         vlag_x, vlag_y = None, None
         max_x = 300
 
@@ -1139,6 +1193,9 @@ class BouwerView(arcade.View):
             elif soort.startswith("acht_"):
                 # Achtergrond-markering: vanaf deze x die achtergrond gebruiken
                 acht_zones.append((wx, int(soort.split("_", 1)[1])))
+            elif soort == "bord":
+                # Tekstbordje met je eigen tekst
+                borden.append(TekstBord(wx, wy, self.bord_teksten.get((kol, rij), "")))
             # Verf toepassen op elk voorwerp dat we net voor dit vakje maakten:
             # onzichtbaar (blijft wel werken/botsen) of een gekleurde-verf-lijst.
             if onz or verf_rgbs:
@@ -1272,7 +1329,7 @@ class BouwerView(arcade.View):
         acht_zones.sort()            # op x-volgorde
         return (platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte,
                 portalen, decoraties, springers, teleporters, acht_zones,
-                list(self.muziek))
+                list(self.muziek), borden)
 
     def _speel(self):
         """Sla het level op en speel het."""
