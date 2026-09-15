@@ -77,6 +77,40 @@ class Kogel:
         arcade.draw_circle_filled(self.x, self.y, self.STRAAL - 2, arcade.color.WHITE)
 
 
+class GroottePowerUp(PowerUp):
+    """📏 Word GROOT of KLEIN voor een tijdje.
+
+    soort 'groot' = je wordt groter; soort 'klein' = je wordt kleiner (past door
+    smalle gaatjes). Na een tijdje word je weer normaal."""
+
+    def __init__(self, x, y, soort="groot"):
+        super().__init__(x, y)
+        self.soort = soort
+
+    def toepassen(self, speler):
+        if self.soort == "klein":
+            speler.zet_grootte(0.6, EFFECT_DUUR)
+        else:
+            speler.zet_grootte(1.6, EFFECT_DUUR)
+
+    def teken(self):
+        y_extra = self._wiebel_y()
+        cx = self.x + self.breedte / 2
+        cy = self.y + self.hoogte / 2 + y_extra
+        if self.soort == "klein":
+            kleur = (90, 190, 255)
+            arcade.draw_lrbt_rectangle_outline(cx - 11, cx + 11, cy - 11, cy + 11, kleur, 3)
+            # pijltjes naar BINNEN (krimpen)
+            arcade.draw_triangle_filled(cx - 2, cy, cx - 8, cy - 5, cx - 8, cy + 5, kleur)
+            arcade.draw_triangle_filled(cx + 2, cy, cx + 8, cy - 5, cx + 8, cy + 5, kleur)
+        else:
+            kleur = (255, 170, 40)
+            arcade.draw_lrbt_rectangle_outline(cx - 11, cx + 11, cy - 11, cy + 11, kleur, 3)
+            # pijltjes naar BUITEN (groeien)
+            arcade.draw_triangle_filled(cx - 9, cy, cx - 3, cy - 5, cx - 3, cy + 5, kleur)
+            arcade.draw_triangle_filled(cx + 9, cy, cx + 3, cy - 5, cx + 3, cy + 5, kleur)
+
+
 class ExtraLevenPowerUp(PowerUp):
     """❤️ Extra leven — je krijgt een extra kans!"""
 

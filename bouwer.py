@@ -34,6 +34,10 @@ TELE_NAAM = {"blauw": "Blauw", "oranje": "Oranje", "groen": "Groen", "rood": "Ro
              "geel": "Geel", "roze": "Roze", "paars": "Paars", "cyaan": "Cyaan",
              "wit": "Wit", "bruin": "Bruin"}
 
+# De power-ups waar je met de Hartje-knop doorheen klikt
+POWER_SOORTEN = ["hart", "groot", "klein"]
+POWER_NAAM = {"hart": "Hartje", "groot": "Groot", "klein": "Klein"}
+
 # De achtergronden waar je met de Acht-knop doorheen klikt (1 t/m 9)
 ACHT_SOORTEN = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 ACHT_NAAM = {1: "Wereld", 2: "Bos", 3: "Bergen", 4: "Kasteel", 5: "Baas",
@@ -211,11 +215,21 @@ def teken_item(soort, x, y, grootte, rotatie=0):
         arcade.draw_circle_filled(cx - 11, cy - 8, 5, (120, 200, 255))
         arcade.draw_circle_filled(cx + 11, cy + 8, 5, (255, 180, 90))
         arcade.draw_circle_filled(cx, cy, 3, (255, 255, 0))
-    elif soort == "hart":
+    elif soort == "hart" or soort == "power_hart":
         cx, cy = x + g // 2, y + g // 2
         arcade.draw_circle_filled(cx - 5, cy + 3, 6, arcade.color.RED)
         arcade.draw_circle_filled(cx + 5, cy + 3, 6, arcade.color.RED)
         arcade.draw_triangle_filled(cx - 10, cy + 2, cx + 10, cy + 2, cx, cy - 9, arcade.color.RED)
+    elif soort == "power_groot":
+        cx, cy = x + g / 2, y + g / 2
+        arcade.draw_lrbt_rectangle_outline(cx - 9, cx + 9, cy - 9, cy + 9, (255, 170, 40), 3)
+        arcade.draw_triangle_filled(cx - 8, cy, cx - 2, cy - 4, cx - 2, cy + 4, (255, 170, 40))
+        arcade.draw_triangle_filled(cx + 8, cy, cx + 2, cy - 4, cx + 2, cy + 4, (255, 170, 40))
+    elif soort == "power_klein":
+        cx, cy = x + g / 2, y + g / 2
+        arcade.draw_lrbt_rectangle_outline(cx - 9, cx + 9, cy - 9, cy + 9, (90, 190, 255), 3)
+        arcade.draw_triangle_filled(cx - 1, cy, cx - 7, cy - 4, cx - 7, cy + 4, (90, 190, 255))
+        arcade.draw_triangle_filled(cx + 1, cy, cx + 7, cy - 4, cx + 7, cy + 4, (90, 190, 255))
     elif soort == "vlag":
         arcade.draw_line(x + 8, y + 4, x + 8, y + g - 2, arcade.color.WHITE, 3)
         arcade.draw_triangle_filled(x + 8, y + g - 2, x + g - 4, y + g - 8,
@@ -291,6 +305,7 @@ class BouwerView(arcade.View):
         self.draad_soort = "draai"     # welke draad-soort je nu maakt (klik op Draad)
         self.acht_soort = 1            # welke achtergrond je nu neerzet (klik op Acht)
         self.muziek = []               # je eigen deuntje (lijst noten, -1 = stilte)
+        self.power_soort = "hart"      # welke power-up je nu plaatst (klik op Hartje)
         self.verf = {}                 # vakje -> verf-soort ("onzichtbaar" of een kleur)
         self.verf_soort = "onzichtbaar"  # welke verf je nu gebruikt (klik op Verf)
         self.rotatie = 0               # de draai-stand waarmee je nu plaatst
@@ -688,6 +703,9 @@ class BouwerView(arcade.View):
             elif soort == "acht":
                 teken_item("acht_%d" % self.acht_soort, l + 2, BALK_Y + 10, 21)
                 naam = ACHT_NAAM[self.acht_soort]
+            elif soort == "hart":
+                teken_item("power_" + self.power_soort, l + 2, BALK_Y + 10, 21)
+                naam = POWER_NAAM[self.power_soort]
             else:
                 teken_item(soort, l + 2, BALK_Y + 10, 21)
                 naam = ITEM_NAAM[soort]
@@ -809,6 +827,10 @@ class BouwerView(arcade.View):
             elif self.gekozen == "acht":
                 # Achtergrond-markering: vanaf hier die achtergrond
                 self.grid[(kol, rij)] = "acht_%d" % self.acht_soort
+            elif self.gekozen == "hart":
+                # Power-up: hartje (leven), groot of klein
+                self.grid[(kol, rij)] = "hart" if self.power_soort == "hart" \
+                    else "power_" + self.power_soort
             else:
                 self.grid[(kol, rij)] = self.gekozen
             # Onthoud de draai-stand voor dit vakje (0 = niet onthouden)
@@ -885,6 +907,10 @@ class BouwerView(arcade.View):
                     # Nog een keer op Acht klikken: door de achtergronden wisselen
                     i = ACHT_SOORTEN.index(self.acht_soort)
                     self.acht_soort = ACHT_SOORTEN[(i + 1) % len(ACHT_SOORTEN)]
+                elif soort == "hart" and self.gekozen == "hart":
+                    # Nog een keer op Hartje klikken: door de power-ups wisselen
+                    i = POWER_SOORTEN.index(self.power_soort)
+                    self.power_soort = POWER_SOORTEN[(i + 1) % len(POWER_SOORTEN)]
                 self.gekozen = soort
                 return
         for naam, (l, r) in self.actie_knoppen.items():
@@ -973,7 +999,7 @@ class BouwerView(arcade.View):
         from vijand import (Vijand, Spikes, maak_spike, Draaimolen, DraaiPaar,
                             Achtervolger, DraaiSpike, BossLijn)
         import math
-        from powerup import ExtraLevenPowerUp
+        from powerup import ExtraLevenPowerUp, GroottePowerUp
         from portaal import Portaal
         from decoratie import Decoratie
         from springers import SpringBol, SpringMat, KRACHT_PER_STAND, NEER_KRACHT
@@ -1059,6 +1085,10 @@ class BouwerView(arcade.View):
                 vijanden.append(BossLijn(lijn_x))
             elif soort == "hart":
                 powerups.append(ExtraLevenPowerUp(wx + 6, wy + 6))
+            elif soort == "power_groot":
+                powerups.append(GroottePowerUp(wx + 6, wy + 6, "groot"))
+            elif soort == "power_klein":
+                powerups.append(GroottePowerUp(wx + 6, wy + 6, "klein"))
             elif soort.startswith("portaal_"):
                 # "portaal_vlucht" -> Portaal met soort "vlucht", enz.
                 portalen.append(Portaal(wx + 5, wy, soort.split("_", 1)[1]))
@@ -1140,6 +1170,10 @@ class BouwerView(arcade.View):
                 return Draaimolen(cx, cy)
             if soort == "hart":
                 return ExtraLevenPowerUp(wx + 6, wy + 6)
+            if soort == "power_groot":
+                return GroottePowerUp(wx + 6, wy + 6, "groot")
+            if soort == "power_klein":
+                return GroottePowerUp(wx + 6, wy + 6, "klein")
             if soort.startswith("portaal_"):
                 return Portaal(wx + 5, wy, soort.split("_", 1)[1])
             if soort.startswith("tele_"):
@@ -1173,7 +1207,7 @@ class BouwerView(arcade.View):
                 springers.append(o)
             elif soort.startswith("deco_"):
                 decoraties.append(o)
-            elif soort == "hart":
+            elif soort == "hart" or soort.startswith("power_"):
                 powerups.append(o)
             else:                       # spike / vijand / molen
                 vijanden.append(o)

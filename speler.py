@@ -38,8 +38,12 @@ class Speler:
         # Startpositie
         self.x = 50
         self.y = 100
+        self.BASIS_BREEDTE = 32          # normale grootte
+        self.BASIS_HOOGTE = 32
         self.breedte = 32
         self.hoogte = 32
+        self.grootte_factor = 1.0        # 1 = normaal, >1 = groot, <1 = klein
+        self.grootte_timer = 0           # hoelang het groot/klein-effect nog duurt
 
         # Bewegingssnelheid
         self.snelheid_x = 0
@@ -116,6 +120,10 @@ class Speler:
         self._grav_d = 0                    # draaibol: zwaartekracht weer naar beneden
         self._val_snelheid = 0              # draaibol: valsnelheid reset
         self.snelheid_factor = 1.0          # snelheid weer normaal
+        self.grootte_factor = 1.0           # weer normale grootte
+        self.grootte_timer = 0
+        self.breedte = self.BASIS_BREEDTE
+        self.hoogte = self.BASIS_HOOGTE
         self.kloon = None                   # kloon weg bij herstart
 
     def volledig_reset(self):
@@ -141,6 +149,10 @@ class Speler:
                 self.heeft_dubbel_gesprongen = False
         if self.schiet_timer > 0:
             self.schiet_timer -= 1
+        if self.grootte_timer > 0:
+            self.grootte_timer -= 1
+            if self.grootte_timer == 0:
+                self.zet_grootte(1.0, 0)     # weer normale grootte
 
         # Draaibol heeft zijn eigen natuurkunde (zwaartekracht kan 4 kanten op)
         if self.modus == "draaibol":
@@ -266,6 +278,13 @@ class Speler:
 
         Maal met de richting zodat de kloon ondersteboven juist naar beneden flapt."""
         self.snelheid_y = FLAP_KRACHT * self.zwaartekracht_richting
+
+    def zet_grootte(self, factor, frames):
+        """Maak de speler groter of kleiner (factor) voor een aantal frames."""
+        self.grootte_factor = factor
+        self.grootte_timer = frames
+        self.breedte = int(self.BASIS_BREEDTE * factor)
+        self.hoogte = int(self.BASIS_HOOGTE * factor)
 
     def flip_zwaartekracht(self):
         """Bal-modus: draai de zwaartekracht om (van vloer naar plafond en terug)."""
