@@ -31,6 +31,11 @@ ITEM_NAAM = {
 TELE_SOORTEN = ["blauw", "oranje"]
 TELE_NAAM = {"blauw": "Blauw", "oranje": "Oranje"}
 
+# De draad-soorten waar je met de Draad-knop doorheen klikt (elk beweegt anders)
+DRAAD_SOORTEN = ["draai", "slinger", "rek", "snel", "zweef"]
+DRAAD_NAAM = {"draai": "Draai", "slinger": "Slinger", "rek": "Rek",
+              "snel": "Snel", "zweef": "Zweef"}
+
 # De boss-standen waar je met de Boss-knop doorheen klikt:
 # "start" = waar de boss begint, "stop" = de lijn waar hij doodgaat
 BOSS_SOORTEN = ["start", "stop"]
@@ -261,8 +266,9 @@ class BouwerView(arcade.View):
         self.rotaties = {}             # (kol, rij) -> draai-hoek (0/90/180/270)
         self.deco = {}                 # decoratie zit in een APARTE laag (kan bovenop een blok)
         self.deco_rotaties = {}        # (kol, rij) -> draai-hoek van de decoratie
-        self.draden = []               # lijst met paren: ((kolA,rijA),(kolB,rijB)) = onzichtbaar draad
+        self.draden = []               # lijst: (celA, celB, soort) = onzichtbaar draad
         self._draad_start = None       # het eerste aangeklikte voorwerp bij het maken van een draad
+        self.draad_soort = "draai"     # welke draad-soort je nu maakt (klik op Draad)
         self.verf = {}                 # vakje -> verf-soort ("onzichtbaar" of een kleur)
         self.verf_soort = "onzichtbaar"  # welke verf je nu gebruikt (klik op Verf)
         self.rotatie = 0               # de draai-stand waarmee je nu plaatst
@@ -341,7 +347,8 @@ class BouwerView(arcade.View):
         rot = {(int(a), int(b)): int(c) for a, b, c in data.get("rotaties", [])}
         deco = {(int(a), int(b)): c for a, b, c in data.get("deco", [])}
         deco_rot = {(int(a), int(b)): int(c) for a, b, c in data.get("deco_rotaties", [])}
-        draden = [((int(d[0]), int(d[1])), (int(d[2]), int(d[3]))) for d in data.get("draden", [])]
+        draden = [((int(d[0]), int(d[1])), (int(d[2]), int(d[3])),
+                   d[4] if len(d) > 4 else "draai") for d in data.get("draden", [])]
         verf = {}
         for kr in data.get("verf", []):
             w = kr[2] if len(kr) > 2 else "onzichtbaar"
@@ -385,8 +392,8 @@ class BouwerView(arcade.View):
                     cdr[(k + offset, r)] = deco_rot[(k, r)]
                 if (k, r) in verf:
                     cverf[(k + offset, r)] = verf[(k, r)]
-            for a, b in draden:
-                cdraden.append(((a[0] + offset, a[1]), (b[0] + offset, b[1])))
+            for a, b, soort in draden:
+                cdraden.append(((a[0] + offset, a[1]), (b[0] + offset, b[1]), soort))
             offset += breedte
         if not iets:
             return None
@@ -472,7 +479,8 @@ class BouwerView(arcade.View):
                         self.deco_rotaties[(int(kr[0]), int(kr[1]))] = int(kr[2])
                     # Onzichtbare draden (paren van voorwerpen die om elkaar draaien)
                     for d in data.get("draden", []):
-                        self.draden.append(((int(d[0]), int(d[1])), (int(d[2]), int(d[3]))))
+                        soort_d = d[4] if len(d) > 4 else "draai"   # oud draad = draai
+                        self.draden.append(((int(d[0]), int(d[1])), (int(d[2]), int(d[3])), soort_d))
                     # Verf: (kol, rij, waarde). waarde = "onzichtbaar", een kleurnaam
                     # (oud), of een lijst van kleurnamen (nieuw: overvloeien).
                     for kr in data.get("verf", []):
@@ -505,7 +513,7 @@ class BouwerView(arcade.View):
                 "rotaties": [[k, r, rot] for (k, r), rot in self.rotaties.items()],
                 "deco": [[k, r, s] for (k, r), s in self.deco.items()],
                 "deco_rotaties": [[k, r, rot] for (k, r), rot in self.deco_rotaties.items()],
-                "draden": [[a[0], a[1], b[0], b[1]] for (a, b) in self.draden],
+                "draden": [[a[0], a[1], b[0], b[1], s] for (a, b, s) in self.draden],
                 "verf": [[k, r, s] for (k, r), s in self.verf.items()]}
         with open(self._bestand(), "w", encoding="utf-8") as f:
             json.dump(data, f)
@@ -583,12 +591,14 @@ class BouwerView(arcade.View):
         # De draden tonen we hier met een stippellijn (in het spel zijn ze onzichtbaar)
         def cel_midden(cel):
             return (cel[0] * CEL - self.scroll + CEL / 2, cel[1] * CEL - self.scroll_y + CEL / 2)
-        for a, b in self.draden:
+        for a, b, soort in self.draden:
             ax, ay = cel_midden(a)
             bx, by = cel_midden(b)
             arcade.draw_line(ax, ay, bx, by, (255, 255, 255, 130), 2)
             mx, my = (ax + bx) / 2, (ay + by) / 2
             arcade.draw_circle_filled(mx, my, 3, (255, 255, 0))   # het draaimidden
+            arcade.draw_text(DRAAD_NAAM.get(soort, soort)[0], mx + 4, my + 2,
+                             (255, 255, 0), 9, bold=True)          # 1e letter van de soort
         # Het al gekozen eerste voorwerp oplichten
         if self._draad_start is not None:
             sx, sy = cel_midden(self._draad_start)
@@ -647,6 +657,9 @@ class BouwerView(arcade.View):
                     arcade.draw_lrbt_rectangle_filled(l + 6, l + 24, BALK_Y + 12,
                                                       SCHERM_HOOGTE - 22, kl)
                 naam = VERF_NAAM[self.verf_soort]
+            elif soort == "draad":
+                teken_item("draad", l + 2, BALK_Y + 10, 23)
+                naam = DRAAD_NAAM[self.draad_soort]
             else:
                 teken_item(soort, l + 2, BALK_Y + 10, 23)
                 naam = ITEM_NAAM[soort]
@@ -788,9 +801,9 @@ class BouwerView(arcade.View):
         elif self._draad_start == cel:
             self._draad_start = None        # zelfde vakje -> annuleer
         else:
-            self.draden.append((self._draad_start, cel))   # draad klaar!
+            self.draden.append((self._draad_start, cel, self.draad_soort))   # draad klaar!
             self._draad_start = None
-            self._melding = "🔗 Draad gemaakt!"
+            self._melding = "🔗 %s-draad gemaakt!" % DRAAD_NAAM[self.draad_soort]
             self._melding_teller = 90
 
     def _klik_balk(self, x, y):
@@ -832,6 +845,11 @@ class BouwerView(arcade.View):
                     # Nog een keer op Verf klikken: door onzichtbaar + de kleuren wisselen
                     i = VERF_SOORTEN.index(self.verf_soort)
                     self.verf_soort = VERF_SOORTEN[(i + 1) % len(VERF_SOORTEN)]
+                elif soort == "draad" and self.gekozen == "draad":
+                    # Nog een keer op Draad klikken: door de draad-soorten wisselen
+                    i = DRAAD_SOORTEN.index(self.draad_soort)
+                    self.draad_soort = DRAAD_SOORTEN[(i + 1) % len(DRAAD_SOORTEN)]
+                    self._draad_start = None      # begin opnieuw met de nieuwe soort
                 self.gekozen = soort
                 return
         for naam, (l, r) in self.actie_knoppen.items():
@@ -939,7 +957,7 @@ class BouwerView(arcade.View):
         # Vakjes die aan een draad hangen: die zetten we NIET los neer,
         # maar laten we straks als draaiend paar ronddraaien.
         aan_draad = set()
-        for a, b in self.draden:
+        for a, b, soort in self.draden:
             if a in self.grid and b in self.grid:
                 aan_draad.add(a)
                 aan_draad.add(b)
@@ -1120,7 +1138,7 @@ class BouwerView(arcade.View):
                 vijanden.append(o)
 
         # Onzichtbare draden: elk paar voorwerpen draait om het midden van het draad
-        for a, b in self.draden:
+        for a, b, soort in self.draden:
             if a not in self.grid or b not in self.grid:
                 continue                          # een voorwerp is weggehaald -> sla over
             ax = a[0] * CEL + CEL / 2
@@ -1138,7 +1156,7 @@ class BouwerView(arcade.View):
             max_x = max(max_x, mx + straal + CEL)
             # De motor komt NA de voorwerpen in de lijst, zodat hij ze als laatste
             # op hun gedraaide plek zet (anders lopen monsters weg van het draad).
-            vijanden.append(DraaiPaar(objA, objB, mx, my, straal))
+            vijanden.append(DraaiPaar(objA, objB, mx, my, straal, soort))
 
         # Zet voor elke boss de stop-plek: de dichtstbijzijnde 'boss-uit'-lijn vóór hem
         for b in bosses:

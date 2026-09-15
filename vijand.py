@@ -1555,21 +1555,22 @@ class DraaiPaar:
 
     is_spike = True                 # zelf niet gevaarlijk en niet te stompen/schieten
 
-    def __init__(self, objA, objB, mx, my, straal):
+    def __init__(self, objA, objB, mx, my, straal, soort="draai"):
         self.objA = objA            # het ECHTE voorwerp A (bv. een Spikes of BlokPlatform)
         self.objB = objB
         self.mx = mx                # midden van het draad
         self.my = my
         self.straal = straal        # halve lengte van het draad (afstand voorwerp -> midden)
-        self.hoek = 0
-        self.draaisnelheid = 2
+        self.soort = soort          # draai / slinger / rek / snel / zweef
+        self.hoek = 0.0
+        self._t = 0.0               # tel-tikker voor slinger/rek/zweef
         self.levens = 999999
-        # breedte/hoogte voor de 'in beeld'-check (de hele draaicirkel)
-        self.breedte = straal * 2 + 60
-        self.hoogte = straal * 2 + 60
+        # breedte/hoogte voor de 'in beeld'-check (de hele beweging)
+        self.breedte = straal * 2 + 120
+        self.hoogte = straal * 2 + 120
         self.x = mx - self.breedte / 2
         self.y = my - self.breedte / 2
-        self._zet_beide()           # meteen op hun plek zetten
+        self._radiaal(0, straal)    # meteen op hun plek zetten
 
     def _zet_midden(self, o, cx, cy):
         """Zet een voorwerp zo neer dat zijn MIDDEN op (cx, cy) staat."""
@@ -1581,16 +1582,36 @@ class DraaiPaar:
             o.mx = cx
             o.my = cy
 
-    def _zet_beide(self):
-        h = math.radians(self.hoek)
-        dx = math.cos(h) * self.straal
-        dy = math.sin(h) * self.straal
-        self._zet_midden(self.objA, self.mx + dx, self.my + dy)
-        self._zet_midden(self.objB, self.mx - dx, self.my - dy)
+    def _plaats(self, ax, ay, bx, by):
+        self._zet_midden(self.objA, ax, ay)
+        self._zet_midden(self.objB, bx, by)
+
+    def _radiaal(self, hoek, r):
+        """Zet de twee voorwerpen tegenover elkaar op afstand r, onder een hoek."""
+        h = math.radians(hoek)
+        dx = math.cos(h) * r
+        dy = math.sin(h) * r
+        self._plaats(self.mx + dx, self.my + dy, self.mx - dx, self.my - dy)
 
     def bijwerken(self, speler_x=None):
-        self.hoek = (self.hoek + self.draaisnelheid) % 360    # blijf ronddraaien
-        self._zet_beide()
+        if self.soort == "snel":
+            self.hoek = (self.hoek + 8) % 360               # supersnel ronddraaien
+            self._radiaal(self.hoek, self.straal)
+        elif self.soort == "slinger":
+            self._t += 0.05
+            self.hoek = 90 + 70 * math.sin(self._t)         # heen en weer zwaaien
+            self._radiaal(self.hoek, self.straal)
+        elif self.soort == "rek":
+            self._t += 0.05
+            r = self.straal * (0.25 + 0.75 * abs(math.sin(self._t)))  # naar elkaar toe en weg
+            self._radiaal(0, r)
+        elif self.soort == "zweef":
+            self._t += 0.05
+            dy = 60 * math.sin(self._t)                     # samen op en neer zweven
+            self._plaats(self.mx - self.straal, self.my + dy, self.mx + self.straal, self.my + dy)
+        else:  # "draai"
+            self.hoek = (self.hoek + 2) % 360               # rustig ronddraaien
+            self._radiaal(self.hoek, self.straal)
 
     def raakt_speler(self, px, py, pw, ph):
         return False                # de voorwerpen zelf raken de speler, niet de motor
