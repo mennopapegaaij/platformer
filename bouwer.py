@@ -287,6 +287,7 @@ class BouwerView(arcade.View):
         self._draad_start = None       # het eerste aangeklikte voorwerp bij het maken van een draad
         self.draad_soort = "draai"     # welke draad-soort je nu maakt (klik op Draad)
         self.acht_soort = 1            # welke achtergrond je nu neerzet (klik op Acht)
+        self.muziek = []               # je eigen deuntje (lijst noten, -1 = stilte)
         self.verf = {}                 # vakje -> verf-soort ("onzichtbaar" of een kleur)
         self.verf_soort = "onzichtbaar"  # welke verf je nu gebruikt (klik op Verf)
         self.rotatie = 0               # de draai-stand waarmee je nu plaatst
@@ -467,6 +468,7 @@ class BouwerView(arcade.View):
         self.draden = []
         self._draad_start = None
         self.verf = {}
+        self.muziek = []
         self.mode = "gewoon"
         self.scroll = 0
         self.scroll_y = 0
@@ -509,6 +511,7 @@ class BouwerView(arcade.View):
                         else:
                             waarde = "onzichtbaar"
                         self.verf[(int(kr[0]), int(kr[1]))] = waarde
+                    self.muziek = list(data.get("muziek", []))   # je eigen deuntje
                 else:
                     tiles = data   # oud formaat (alleen een lijst met vakjes)
                 self.grid = {(int(k), int(r)): s for k, r, s in tiles}
@@ -532,7 +535,8 @@ class BouwerView(arcade.View):
                 "deco": [[k, r, s] for (k, r), s in self.deco.items()],
                 "deco_rotaties": [[k, r, rot] for (k, r), rot in self.deco_rotaties.items()],
                 "draden": [[a[0], a[1], b[0], b[1], s] for (a, b, s) in self.draden],
-                "verf": [[k, r, s] for (k, r), s in self.verf.items()]}
+                "verf": [[k, r, s] for (k, r), s in self.verf.items()],
+                "muziek": list(self.muziek)}
         with open(self._bestand(), "w", encoding="utf-8") as f:
             json.dump(data, f)
         self._melding = "💾 Level %d opgeslagen!" % self.slot
@@ -719,7 +723,7 @@ class BouwerView(arcade.View):
             arcade.draw_text("Klik om te plaatsen  •  ←→↑↓ = schuiven (ook omhoog!)  •  D = draaien  •  "
                              "📁-knop = volgend level (oneindig), toets 1-9 = naar dat level  •  "
                              "L = kleur bij alles (vaker = meer kleuren)  •  "
-                             "P = alle levels aan elkaar plakken en spelen  •  "
+                             "P = alle levels aan elkaar plakken  •  M = je eigen muziek maken  •  "
                              "Klik nog eens op Portaal/Snel/Deco voor een ander soort",
                              SCHERM_BREEDTE // 2, 8, arcade.color.WHITE, 9, anchor_x="center")
 
@@ -931,6 +935,8 @@ class BouwerView(arcade.View):
             self._verf_alles()          # alles ineens de gekozen verf-kleur geven
         elif toets == arcade.key.P:
             self._speel_geplakt()       # alle levels aan elkaar geplakt spelen
+        elif toets == arcade.key.M:
+            self._maak_muziek()         # open de muziek-maker
         else:
             # Cijfertoetsen 1 t/m 9: spring direct naar die opslag-plek
             cijfers = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3,
@@ -1204,7 +1210,8 @@ class BouwerView(arcade.View):
         level_breedte = max_x + 200
         acht_zones.sort()            # op x-volgorde
         return (platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte,
-                portalen, decoraties, springers, teleporters, acht_zones)
+                portalen, decoraties, springers, teleporters, acht_zones,
+                list(self.muziek))
 
     def _speel(self):
         """Sla het level op en speel het."""
@@ -1217,6 +1224,11 @@ class BouwerView(arcade.View):
                               kaart_punten=self.punten, kaart_levens=self.levens,
                               bouw_slot=self.slot)   # onthoud op welke plek je bouwde
         self.window.show_view(spel)
+
+    def _maak_muziek(self):
+        """Open de muziek-maker om je eigen deuntje te maken."""
+        from muziekmaker import MuziekMaker
+        self.window.show_view(MuziekMaker(self, self.muziek))
 
     def _naar_kaart(self):
         from levelkaart import LevelKaartView

@@ -156,6 +156,11 @@ class PlatformerSpel(arcade.View):
         self.teleporters = list(data[9]) if len(data) > 9 else []
         # Achtergrond-zones (een 11e onderdeel): [(x, achtergrond-nummer), ...]
         self.acht_zones = list(data[10]) if len(data) > 10 else []
+        # Zelfgemaakt deuntje (een 12e onderdeel): lijst noten (-1 = stilte)
+        self.muziek = list(data[11]) if len(data) > 11 else []
+        self._heeft_muziek = any(n != -1 for n in self.muziek)
+        self._muziek_stap = 0
+        self._muziek_teller = 0.0
         self._verf_tijd = 0           # tikt door zodat meerdere kleuren overvloeien
         self.platforms = platforms
         # Zet de begin-modus: vliegtuig in de vluchtmodus, anders het gewone blokje.
@@ -220,8 +225,12 @@ class PlatformerSpel(arcade.View):
             self._waarschuwing = ""
             self._waarschuwing_teller = 0
 
-        # Start de juiste muziek voor dit level
-        geluid_manager.speel_muziek(nummer)
+        # Start de juiste muziek voor dit level — of stop die als jij een eigen
+        # deuntje hebt gemaakt (dat speelt dan in plaats van de level-muziek).
+        if self._heeft_muziek:
+            geluid_manager.stop_muziek()
+        else:
+            geluid_manager.speel_muziek(nummer)
 
     def on_draw(self):
         """Teken alles op het scherm."""
@@ -523,6 +532,17 @@ class PlatformerSpel(arcade.View):
 
         self._verf_tijd += 1        # tikt door voor de overvloeiende verf-kleuren
         self._werk_verf_bij()       # zet de huidige kleur op elk gekleurd voorwerp
+
+        # Je eigen deuntje afspelen (loopt steeds rond)
+        if self._heeft_muziek:
+            self._muziek_teller += delta_time
+            if self._muziek_teller >= 0.22:
+                self._muziek_teller -= 0.22
+                noot = self.muziek[self._muziek_stap]
+                if noot != -1:
+                    import muziek as muziek_module
+                    muziek_module.speel_noot(noot)
+                self._muziek_stap = (self._muziek_stap + 1) % len(self.muziek)
 
         # Level gehaald? Bewaar je tijd (en kijk of het een record is) — één keer.
         if (self.level_gehaald or self.gewonnen) and self._tijd_id and not self._tijd_opgeslagen:
