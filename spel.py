@@ -271,17 +271,6 @@ class PlatformerSpel(arcade.View):
                 if in_beeld(platform, platform.breedte) and not getattr(platform, "onzichtbaar", False):
                     platform.teken()
 
-            # Teken de decoratie ná de platforms, zodat het ervóór staat (geen botsing).
-            # Met onzichtbare verf overgeschilderde voorwerpen tekenen we NIET.
-            for deco in self.decoraties:
-                if in_beeld(deco, deco.breedte) and not getattr(deco, "onzichtbaar", False):
-                    deco.teken()
-
-            # Teken de tekstbordjes die in beeld zijn
-            for bord in self.borden:
-                if in_beeld(bord, bord.breedte):
-                    bord.teken()
-
             # Teken alleen de vijanden die in beeld zijn
             for vijand in self.vijanden:
                 if in_beeld(vijand, vijand.breedte) and not getattr(vijand, "onzichtbaar", False):
@@ -311,6 +300,17 @@ class PlatformerSpel(arcade.View):
             for tele in self.teleporters:
                 if in_beeld(tele, tele.breedte) and not getattr(tele, "onzichtbaar", False):
                     tele.teken()
+
+            # Decoratie helemaal VOORAAN tekenen (vóór blokken, spikes, alles) — geen botsing.
+            # Met onzichtbare verf overgeschilderde decoratie tekenen we NIET.
+            for deco in self.decoraties:
+                if in_beeld(deco, deco.breedte) and not getattr(deco, "onzichtbaar", False):
+                    deco.teken()
+
+            # Teken de tekstbordjes die in beeld zijn (bovenop de decoratie, goed leesbaar)
+            for bord in self.borden:
+                if in_beeld(bord, bord.breedte):
+                    bord.teken()
 
             # Teken de kogels
             for kogel in self.kogels:
@@ -1336,13 +1336,6 @@ class PlatformerSpel(arcade.View):
                 for p in self.platforms:
                     if zicht(p, p.breedte) and not getattr(p, "onzichtbaar", False):
                         p.teken()
-                # Decoratie ná de platforms, zodat het ervóór staat
-                for deco in self.decoraties:
-                    if zicht(deco, deco.breedte) and not getattr(deco, "onzichtbaar", False):
-                        deco.teken()
-                for bord in self.borden:
-                    if zicht(bord, bord.breedte):
-                        bord.teken()
                 for v in self.vijanden:
                     if zicht(v, v.breedte) and not getattr(v, "onzichtbaar", False):
                         v.teken()
@@ -1355,6 +1348,13 @@ class PlatformerSpel(arcade.View):
                 for tele in self.teleporters:
                     if zicht(tele, tele.breedte) and not getattr(tele, "onzichtbaar", False):
                         tele.teken()
+                # Decoratie helemaal vooraan (vóór blokken, spikes, alles)
+                for deco in self.decoraties:
+                    if zicht(deco, deco.breedte) and not getattr(deco, "onzichtbaar", False):
+                        deco.teken()
+                for bord in self.borden:
+                    if zicht(bord, bord.breedte):
+                        bord.teken()
                 if not self.arena:                 # in de vechtmodus is er geen vlag
                     self._teken_vlag(self.vlag_x, self.vlag_y)
                 # Teken ALLE spelers (en hun spiegel-klonen), zodat je elkaar ziet
