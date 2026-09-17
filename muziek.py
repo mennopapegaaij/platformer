@@ -22,6 +22,18 @@ NOOT_FREQ = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25]
 # dan worden de toon-bestanden opnieuw (mooi) aangemaakt.
 TOON_VERSIE = 2
 
+# Kant-en-klare liedjes die je kunt KIEZEN in de muziekmaker.
+# Elk getal is een noot (0..7 = de rijen do..mi₂), en -1 is even stil.
+# Allemaal zelf verzonnen met de magische noten, dus ze klinken sowieso mooi!
+KLAAR_LIEDJES = [
+    ("Vrolijk", [0, 2, 4, 4, 3, 4, 5, -1, 4, 3, 2, 3, 4, 2, 0, -1]),
+    ("Rustig",  [0, -1, 2, -1, 4, -1, 3, -1, 2, -1, 4, -1, 5, -1, 4, -1]),
+    ("Stoer",   [5, 4, 3, 4, 5, -1, 7, -1, 6, 5, 4, 3, 4, -1, 0, -1]),
+    ("Trapje",  [0, 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1, 0, -1]),
+    ("Springerig", [0, 4, 2, 5, 3, 7, 4, -1, 5, 2, 4, 0, 3, 5, 0, -1]),
+    ("Dromerig", [4, 5, 7, 5, 4, -1, 2, 4, 3, 2, 0, -1, 2, 3, 4, -1]),
+]
+
 _tonen = None              # geladen geluidjes (of [] als geluid niet lukt)
 
 
