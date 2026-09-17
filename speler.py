@@ -952,8 +952,9 @@ class Speler:
         """Teken een bliksemschicht-poppetje (geel, met een gloed die 'oplaadt')."""
         x, y, w, h = self.x, self.y, self.breedte, self.hoogte
         cx = x + w / 2
-        # Gloed die feller wordt vlak voordat hij weer flitst
-        gloed = 40 + int(60 * (self._flits_teller / max(1, FLITS_INTERVAL)))
+        # Gloed die feller wordt vlak voordat hij weer flitst.
+        # min(...) zodat de kleur nooit boven 255 komt (ook als je lang stilstaat).
+        gloed = min(160, 40 + int(60 * (self._flits_teller / max(1, FLITS_INTERVAL))))
         arcade.draw_circle_filled(cx, y + h / 2, w * 0.6, (gloed, gloed, 0))
         # De bliksemschicht (een zigzag) in de spelerkleur (of fel geel)
         kleur = self.kleur if self.kleur != SPELER_KLEUR else (255, 230, 40)
