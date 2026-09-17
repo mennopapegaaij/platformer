@@ -25,6 +25,10 @@ ROBOT_BOOST_FRAMES = 16  # Hoeveel frames je kunt blijven duwen (langer = hoger)
 # --- Helikopter-modus: druk = omhoog, druk nog eens = omlaag ---
 HELI_SNELHEID = 4      # Hoe snel de helikopter omhoog of omlaag gaat
 
+# --- Ballon-modus: zweeft vanzelf omhoog, knop vasthouden = zakken ---
+BALLON_ZWEEF = 0.35    # hoe hard je vanzelf omhoog drijft
+BALLON_ZAK = 0.75      # hoe hard je zakt als je de knop vasthoudt
+
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
 #   0 = naar beneden, 1 = naar rechts, 2 = naar boven, 3 = naar links
@@ -212,6 +216,13 @@ class Speler:
             # Helikopter: druk = omhoog, druk nog eens = omlaag (steeds wisselen).
             # Maal met de richting zodat de kloon de andere kant op vliegt.
             self.snelheid_y = (HELI_SNELHEID if self._heli_omhoog else -HELI_SNELHEID) * richting
+        elif self.modus == "ballon":
+            # Ballon: zweeft vanzelf omhoog; knop vasthouden = zakken.
+            if self.vlieg_omhoog:
+                self.snelheid_y -= BALLON_ZAK * richting
+            else:
+                self.snelheid_y += BALLON_ZWEEF * richting
+            self.snelheid_y = max(-VLIEG_MAX, min(VLIEG_MAX, self.snelheid_y))
         elif self.modus in ("bal", "spin"):
             # Bal/spin: zwaartekracht in de huidige richting (kan omgedraaid zijn)
             self.snelheid_y -= ZWAARTEKRACHT * 1.3 * self.zwaartekracht_richting
@@ -277,7 +288,7 @@ class Speler:
         # In de speciale modi (of bij omgedraaide zwaartekracht): niet door het plafond.
         # Is self.plafond None, dan is er GEEN plafond en kun je oneindig omhoog.
         if (self.plafond is not None
-                and (self.modus in ("vliegtuig", "ufo", "bal", "golf", "spin", "heli") or omgedraaid)
+                and (self.modus in ("vliegtuig", "ufo", "bal", "golf", "spin", "heli", "ballon") or omgedraaid)
                 and self.y + self.hoogte > self.plafond):
             self.y = self.plafond - self.hoogte
             if self.snelheid_y > 0:
@@ -443,6 +454,9 @@ class Speler:
             return
         if self.modus == "draaibol":
             self._teken_draaibol()
+            return
+        if self.modus == "ballon":
+            self._teken_ballon()
             return
 
         # Gewoon blokje: in de racemodus tolt het door de lucht → teken het gedraaid
@@ -624,6 +638,20 @@ class Speler:
         px, py = cx + gx * 10, cy + gy * 10
         arcade.draw_line(cx, cy, px, py, (255, 255, 255), 3)
         arcade.draw_circle_filled(px, py, 3, (255, 255, 255))
+
+    def _teken_ballon(self):
+        """Teken een ballon met een mandje eronder (in de spelerkleur)."""
+        cx = self.x + self.breedte / 2
+        cy = self.y + self.hoogte / 2
+        # De ballon zelf (grote ovaal in de spelerkleur)
+        arcade.draw_ellipse_filled(cx, cy + 8, self.breedte * 0.9, self.hoogte * 1.1, self.kleur)
+        arcade.draw_ellipse_outline(cx, cy + 8, self.breedte * 0.9, self.hoogte * 1.1, (60, 60, 70), 2)
+        # Glimlichtje
+        arcade.draw_circle_filled(cx - 5, cy + 12, 3, (255, 255, 255))
+        # Touwtje naar het mandje
+        arcade.draw_line(cx, cy - 8, cx, cy - 16, (120, 90, 50), 2)
+        # Mandje
+        arcade.draw_lrbt_rectangle_filled(cx - 6, cx + 6, cy - 22, cy - 16, (150, 100, 50))
 
     def _teken_spin(self):
         """Teken een spinnetje: een rond lijf met acht pootjes (donkerrood)."""
