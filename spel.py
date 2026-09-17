@@ -174,6 +174,8 @@ class PlatformerSpel(arcade.View):
         # Geen plafond voor de spelers: je kunt oneindig omhoog (de camera gaat mee).
         for sp in self.spelers:
             sp.plafond = None
+        # Deuren die met een sleutel opengaan
+        self._deuren = [p for p in platforms if getattr(p, "is_deur", False)]
         # Onthoud de vorige x van de speler (voor de snelheid-portaal 'sweep'-check)
         self._vorige_speler_x = self.speler.x
         # --- Meerdere spelers: zet alle spelers klaar en verdeel het scherm ---
@@ -344,6 +346,11 @@ class PlatformerSpel(arcade.View):
                 tekst += "   🏆 %.1fs" % self._beste_tijd
             arcade.draw_text(tekst, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 30,
                              arcade.color.WHITE, 15, bold=True, anchor_x="center")
+
+        # Sleutel-teller (alleen tonen als je sleutels hebt)
+        if self.speler.sleutels > 0:
+            arcade.draw_text("🔑 x %d" % self.speler.sleutels, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 54,
+                             (240, 200, 40), 14, bold=True, anchor_x="center")
 
         # Pijltjes bovenin het midden om van monster-level te wisselen (alleen arena)
         if self.arena:
@@ -607,6 +614,9 @@ class PlatformerSpel(arcade.View):
 
         # Teleporters: spring van blauw naar oranje (en andersom)
         self._check_teleport(self.speler)
+
+        # Deuren: open ze met een sleutel
+        self._check_deuren(self.speler)
 
         # Draaien hangt af van de modus
         self._pas_rotatie_toe(self.speler)
@@ -977,6 +987,21 @@ class PlatformerSpel(arcade.View):
         sp._teleport_klaar = False
         geluid_manager.speel_powerup()
 
+    def _check_deuren(self, sp):
+        """Heb je een sleutel en raak je een dichte deur aan? Dan gaat hij open
+        (en kost het één sleutel)."""
+        if sp.sleutels <= 0:
+            return
+        for d in self._deuren:
+            if d.open:
+                continue
+            if (sp.x < d.x + d.breedte + 5 and sp.x + sp.breedte > d.x - 5 and
+                    sp.y < d.y + d.hoogte and sp.y + sp.hoogte > d.y):
+                d.open = True
+                sp.sleutels -= 1
+                geluid_manager.speel_powerup()
+                break                      # één sleutel opent één deur
+
     def _check_springers(self, sp):
         """Spring-matten (vanzelf springen) en spring-bollen (onthoud dat je erop staat)."""
         sp._bol_kracht = None
@@ -1201,6 +1226,7 @@ class PlatformerSpel(arcade.View):
         self._vorige[i] = sp.x
         self._check_springers(sp)
         self._check_teleport(sp)
+        self._check_deuren(sp)
         self._pas_rotatie_toe(sp)
         kloon_raakt = self._update_kloon(sp, self._vlieg[i])
         if self._raakt_blok_zijkant(sp) or sp.is_gevallen() or kloon_raakt:

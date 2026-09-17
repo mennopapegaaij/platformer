@@ -36,8 +36,8 @@ TELE_NAAM = {"blauw": "Blauw", "oranje": "Oranje", "groen": "Groen", "rood": "Ro
              "wit": "Wit", "bruin": "Bruin"}
 
 # De power-ups waar je met de Hartje-knop doorheen klikt
-POWER_SOORTEN = ["hart", "groot", "klein"]
-POWER_NAAM = {"hart": "Hartje", "groot": "Groot", "klein": "Klein"}
+POWER_SOORTEN = ["hart", "groot", "klein", "sleutel"]
+POWER_NAAM = {"hart": "Hartje", "groot": "Groot", "klein": "Klein", "sleutel": "Sleutel"}
 
 # De achtergronden waar je met de Acht-knop doorheen klikt (1 t/m 9)
 ACHT_SOORTEN = [1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -135,6 +135,10 @@ def teken_item(soort, x, y, grootte, rotatie=0):
             arcade.draw_lrbt_rectangle_outline(x, x + g, y, y + g, (120, 80, 40), 2)
             arcade.draw_line(x + g * 0.35, y + g, x + g * 0.45, y, (120, 80, 40), 1)
             arcade.draw_line(x + g * 0.65, y + g, x + g * 0.55, y, (120, 80, 40), 1)
+        elif s == "deur":
+            arcade.draw_lrbt_rectangle_filled(x + 4, x + g - 4, y, y + g, (140, 90, 50))
+            arcade.draw_lrbt_rectangle_outline(x + 4, x + g - 4, y, y + g, (90, 55, 25), 2)
+            arcade.draw_circle_filled(x + g / 2, y + g * 0.55, 4, (240, 200, 40))
         elif s in ("beweeghor", "beweegvert"):
             arcade.draw_lrbt_rectangle_filled(x, x + g, y, y + g, (150, 110, 80))
             arcade.draw_lrbt_rectangle_outline(x, x + g, y, y + g, (90, 60, 40), 2)
@@ -237,6 +241,13 @@ def teken_item(soort, x, y, grootte, rotatie=0):
         arcade.draw_lrbt_rectangle_outline(cx - 9, cx + 9, cy - 9, cy + 9, (90, 190, 255), 3)
         arcade.draw_triangle_filled(cx - 1, cy, cx - 7, cy - 4, cx - 7, cy + 4, (90, 190, 255))
         arcade.draw_triangle_filled(cx + 1, cy, cx + 7, cy - 4, cx + 7, cy + 4, (90, 190, 255))
+    elif soort == "power_sleutel":
+        cx, cy = x + g / 2, y + g / 2
+        goud = (240, 200, 40)
+        arcade.draw_circle_filled(cx - 4, cy + 4, 6, goud)
+        arcade.draw_circle_filled(cx - 4, cy + 4, 2.5, (120, 90, 10))
+        arcade.draw_lrbt_rectangle_filled(cx - 2, cx + 2, cy - 9, cy + 4, goud)
+        arcade.draw_lrbt_rectangle_filled(cx + 2, cx + 7, cy - 9, cy - 6, goud)
     elif soort == "vlag":
         arcade.draw_line(x + 8, y + 4, x + 8, y + g - 2, arcade.color.WHITE, 3)
         arcade.draw_triangle_filled(x + 8, y + g - 2, x + g - 4, y + g - 8,
@@ -1072,11 +1083,11 @@ class BouwerView(arcade.View):
     def _bouw_level(self):
         """Zet het raster om in echte level-gegevens voor het spel."""
         from platforms import (Platform, BlokPlatform, SchuinBlok, StuiterBlok,
-                               VerdwijnBlok, BewegendBlok)
+                               VerdwijnBlok, BewegendBlok, Deur)
         from vijand import (Vijand, Spikes, maak_spike, Draaimolen, DraaiPaar,
                             Achtervolger, DraaiSpike, BossLijn)
         import math
-        from powerup import ExtraLevenPowerUp, GroottePowerUp
+        from powerup import ExtraLevenPowerUp, GroottePowerUp, SleutelPowerUp
         from portaal import Portaal
         from decoratie import Decoratie, TekstBord
         from springers import SpringBol, SpringMat, KRACHT_PER_STAND, NEER_KRACHT
@@ -1136,6 +1147,8 @@ class BouwerView(arcade.View):
                     plat = BewegendBlok(wx, wy, CEL, CEL, "hor")
                 elif s == "beweegvert":
                     plat = BewegendBlok(wx, wy, CEL, CEL, "vert")
+                elif s == "deur":
+                    plat = Deur(wx, wy, CEL, CEL)
                 else:
                     plat = BlokPlatform(wx, wy, CEL, CEL)
                 platforms.append(plat)
@@ -1167,6 +1180,8 @@ class BouwerView(arcade.View):
                 powerups.append(GroottePowerUp(wx + 6, wy + 6, "groot"))
             elif soort == "power_klein":
                 powerups.append(GroottePowerUp(wx + 6, wy + 6, "klein"))
+            elif soort == "power_sleutel":
+                powerups.append(SleutelPowerUp(wx + 6, wy + 6))
             elif soort.startswith("portaal_"):
                 # "portaal_vlucht" -> Portaal met soort "vlucht", enz.
                 portalen.append(Portaal(wx + 5, wy, soort.split("_", 1)[1]))
@@ -1239,6 +1254,7 @@ class BouwerView(arcade.View):
                 if s == "verdwijn": return VerdwijnBlok(wx, wy, CEL, CEL)
                 if s == "beweeghor":  return BewegendBlok(wx, wy, CEL, CEL, "hor")
                 if s == "beweegvert": return BewegendBlok(wx, wy, CEL, CEL, "vert")
+                if s == "deur":       return Deur(wx, wy, CEL, CEL)
                 return BlokPlatform(wx, wy, CEL, CEL)
             if soort == "spike" or soort.startswith("spike_"):
                 s = soort.split("_", 1)[1] if "_" in soort else "gewoon"
@@ -1255,6 +1271,8 @@ class BouwerView(arcade.View):
                 return GroottePowerUp(wx + 6, wy + 6, "groot")
             if soort == "power_klein":
                 return GroottePowerUp(wx + 6, wy + 6, "klein")
+            if soort == "power_sleutel":
+                return SleutelPowerUp(wx + 6, wy + 6)
             if soort.startswith("portaal_"):
                 return Portaal(wx + 5, wy, soort.split("_", 1)[1])
             if soort.startswith("tele_"):

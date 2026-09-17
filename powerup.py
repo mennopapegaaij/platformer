@@ -111,6 +111,26 @@ class GroottePowerUp(PowerUp):
             arcade.draw_triangle_filled(cx + 9, cy, cx + 3, cy - 5, cx + 3, cy + 5, kleur)
 
 
+class SleutelPowerUp(PowerUp):
+    """🔑 Een sleutel — hiermee kun je een deur openmaken."""
+
+    def toepassen(self, speler):
+        speler.sleutels += 1
+
+    def teken(self):
+        y_extra = self._wiebel_y()
+        cx = self.x + self.breedte / 2
+        cy = self.y + self.hoogte / 2 + y_extra
+        goud = (240, 200, 40)
+        # Ronde kop met een gaatje
+        arcade.draw_circle_filled(cx - 4, cy + 4, 7, goud)
+        arcade.draw_circle_filled(cx - 4, cy + 4, 3, (120, 90, 10))
+        # Steel omlaag met twee tandjes
+        arcade.draw_lrbt_rectangle_filled(cx - 2, cx + 2, cy - 10, cy + 4, goud)
+        arcade.draw_lrbt_rectangle_filled(cx + 2, cx + 7, cy - 10, cy - 7, goud)
+        arcade.draw_lrbt_rectangle_filled(cx + 2, cx + 6, cy - 4, cy - 1, goud)
+
+
 class ExtraLevenPowerUp(PowerUp):
     """❤️ Extra leven — je krijgt een extra kans!"""
 

@@ -201,6 +201,38 @@ class VerdwijnBlok(BlokPlatform):
         arcade.draw_line(x + w * 0.7, y + h, x + w * 0.58, y, (120, 80, 40), 1)
 
 
+class Deur(BlokPlatform):
+    """Een deur: dicht = vast (je komt er niet door). Heb je een sleutel en raak je
+    hem aan, dan gaat hij open en kun je erdoor."""
+
+    is_deur = True
+
+    def __init__(self, x, y, breedte, hoogte):
+        super().__init__(x, y, breedte, hoogte)
+        self.open = False
+
+    def raakt(self, *a):
+        return (not self.open) and super().raakt(*a)
+
+    def raakt_van_onder(self, *a):
+        return (not self.open) and super().raakt_van_onder(*a)
+
+    def teken(self):
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        if self.open:
+            # Open deur: alleen een dunne lijst, je kunt erdoor
+            arcade.draw_lrbt_rectangle_outline(x + 2, x + w - 2, y, y + h, (150, 120, 70), 2)
+            return
+        # Dichte deur: bruin met een slot
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, verf_of(self, (140, 90, 50)))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (90, 55, 25), 3)
+        cx = x + w / 2
+        # Slot (geel) met sleutelgat
+        arcade.draw_circle_filled(cx, y + h * 0.55, 6, (240, 200, 40))
+        arcade.draw_circle_filled(cx, y + h * 0.55, 2, (90, 60, 10))
+        arcade.draw_lrbt_rectangle_filled(cx - 1.5, cx + 1.5, y + h * 0.4, y + h * 0.55, (90, 60, 10))
+
+
 class BewegendBlok(BlokPlatform):
     """Een blok dat vanzelf heen-en-weer (hor) of op-en-neer (vert) beweegt.
 
@@ -255,7 +287,7 @@ class BewegendBlok(BlokPlatform):
 
 # De soorten blokken die je in de bouwmodus kunt kiezen
 BLOK_SOORTEN = ["gewoon", "schuinop", "schuinaf", "half", "stuiter", "verdwijn",
-                "beweeghor", "beweegvert"]
+                "beweeghor", "beweegvert", "deur"]
 BLOK_NAAM = {"gewoon": "Blok", "schuinop": "Schuin /", "schuinaf": "Schuin \\",
              "half": "Half", "stuiter": "Stuiter", "verdwijn": "Verdwijn",
-             "beweeghor": "Beweeg ↔", "beweegvert": "Beweeg ↕"}
+             "beweeghor": "Beweeg ↔", "beweegvert": "Beweeg ↕", "deur": "Deur"}

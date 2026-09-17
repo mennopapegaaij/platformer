@@ -44,6 +44,7 @@ class Speler:
         self.hoogte = 32
         self.grootte_factor = 1.0        # 1 = normaal, >1 = groot, <1 = klein
         self.grootte_timer = 0           # hoelang het groot/klein-effect nog duurt
+        self.sleutels = 0                # hoeveel sleutels je hebt (voor deuren)
 
         # Bewegingssnelheid
         self.snelheid_x = 0
@@ -124,6 +125,7 @@ class Speler:
         self.grootte_timer = 0
         self.breedte = self.BASIS_BREEDTE
         self.hoogte = self.BASIS_HOOGTE
+        self.sleutels = 0                   # sleutels kwijt bij herstart
         self.kloon = None                   # kloon weg bij herstart
 
     def volledig_reset(self):
