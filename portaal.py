@@ -21,6 +21,7 @@ PORTAAL_KLEUREN = {
     "heli":   ((40, 130, 180), (150, 210, 240)),   # lichtblauw = helikopter
     "draaibol": ((30, 150, 140), (120, 230, 210)), # groenblauw = draaibol
     "ballon": ((220, 90, 130), (255, 170, 200)),   # rozerood = ballon
+    "raket":  ((200, 50, 50), (255, 140, 90)),     # vuurrood = raket
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
     # Snelheid-portalen (veranderen niet je vorm, maar hoe snel je gaat)
@@ -114,6 +115,11 @@ def teken_portaal_icoon(soort, cx, cy):
         # Ballonnetje met een touwtje
         arcade.draw_circle_filled(cx, cy + 3, 7, arcade.color.WHITE)
         arcade.draw_line(cx, cy - 4, cx, cy - 9, arcade.color.WHITE, 2)
+    elif soort == "raket":
+        # Raketje met een vlammetje eronder
+        arcade.draw_lrbt_rectangle_filled(cx - 4, cx + 4, cy - 4, cy + 6, arcade.color.WHITE)
+        arcade.draw_triangle_filled(cx - 4, cy + 6, cx + 4, cy + 6, cx, cy + 12, arcade.color.WHITE)
+        arcade.draw_triangle_filled(cx - 4, cy - 4, cx + 4, cy - 4, cx, cy - 11, (255, 200, 90))
     elif soort in SNELHEID_FACTOR:
         # Snelheid-portaal: laat de keer-factor zien (bv. "x2")
         arcade.draw_text(soort, cx, cy - 6, arcade.color.WHITE, 11, bold=True, anchor_x="center")

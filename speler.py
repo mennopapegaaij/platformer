@@ -29,6 +29,11 @@ HELI_SNELHEID = 4      # Hoe snel de helikopter omhoog of omlaag gaat
 BALLON_ZWEEF = 0.35    # hoe hard je vanzelf omhoog drijft
 BALLON_ZAK = 0.75      # hoe hard je zakt als je de knop vasthoudt
 
+# --- Raket-modus: knop vasthouden = snel omhoog schieten, loslaten = snel vallen ---
+RAKET_STUW = 1.3       # sterke duw omhoog (harder dan het vliegtuig)
+RAKET_ZWAARTE = 0.7    # je valt snel als je loslaat
+RAKET_MAX = 8          # topsnelheid omhoog/omlaag (pittig!)
+
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
 #   0 = naar beneden, 1 = naar rechts, 2 = naar boven, 3 = naar links
@@ -223,6 +228,13 @@ class Speler:
             else:
                 self.snelheid_y += BALLON_ZWEEF * richting
             self.snelheid_y = max(-VLIEG_MAX, min(VLIEG_MAX, self.snelheid_y))
+        elif self.modus == "raket":
+            # Raket: knop vasthouden = snel omhoog schieten, loslaten = snel vallen.
+            # Maal met de richting zodat de kloon ondersteboven ook werkt.
+            if self.vlieg_omhoog:
+                self.snelheid_y += RAKET_STUW * richting
+            self.snelheid_y -= RAKET_ZWAARTE * richting
+            self.snelheid_y = max(-RAKET_MAX, min(RAKET_MAX, self.snelheid_y))
         elif self.modus in ("bal", "spin"):
             # Bal/spin: zwaartekracht in de huidige richting (kan omgedraaid zijn)
             self.snelheid_y -= ZWAARTEKRACHT * 1.3 * self.zwaartekracht_richting
@@ -288,7 +300,7 @@ class Speler:
         # In de speciale modi (of bij omgedraaide zwaartekracht): niet door het plafond.
         # Is self.plafond None, dan is er GEEN plafond en kun je oneindig omhoog.
         if (self.plafond is not None
-                and (self.modus in ("vliegtuig", "ufo", "bal", "golf", "spin", "heli", "ballon") or omgedraaid)
+                and (self.modus in ("vliegtuig", "ufo", "bal", "golf", "spin", "heli", "ballon", "raket") or omgedraaid)
                 and self.y + self.hoogte > self.plafond):
             self.y = self.plafond - self.hoogte
             if self.snelheid_y > 0:
@@ -457,6 +469,9 @@ class Speler:
             return
         if self.modus == "ballon":
             self._teken_ballon()
+            return
+        if self.modus == "raket":
+            self._teken_raket()
             return
 
         # Gewoon blokje: in de racemodus tolt het door de lucht → teken het gedraaid
@@ -652,6 +667,37 @@ class Speler:
         arcade.draw_line(cx, cy - 8, cx, cy - 16, (120, 90, 50), 2)
         # Mandje
         arcade.draw_lrbt_rectangle_filled(cx - 6, cx + 6, cy - 22, cy - 16, (150, 100, 50))
+
+    def _teken_raket(self):
+        """Teken een rechtopstaande raket met een vuurstraal eronder (in de spelerkleur)."""
+        cx = self.x + self.breedte / 2
+        cy = self.y + self.hoogte / 2
+        w = self.breedte
+        h = self.hoogte
+        donker = (150, 40, 40)
+        # De romp (een langwerpige buis)
+        arcade.draw_lrbt_rectangle_filled(cx - w * 0.22, cx + w * 0.22, cy - h * 0.35, cy + h * 0.25, self.kleur)
+        arcade.draw_lrbt_rectangle_outline(cx - w * 0.22, cx + w * 0.22, cy - h * 0.35, cy + h * 0.25, donker, 2)
+        # De neus (een puntige driehoek bovenop)
+        arcade.draw_triangle_filled(cx - w * 0.22, cy + h * 0.25,
+                                    cx + w * 0.22, cy + h * 0.25,
+                                    cx, cy + h * 0.5, donker)
+        # Twee vinnen onderaan
+        arcade.draw_triangle_filled(cx - w * 0.22, cy - h * 0.35, cx - w * 0.22, cy - h * 0.1,
+                                    cx - w * 0.42, cy - h * 0.35, donker)
+        arcade.draw_triangle_filled(cx + w * 0.22, cy - h * 0.35, cx + w * 0.22, cy - h * 0.1,
+                                    cx + w * 0.42, cy - h * 0.35, donker)
+        # Raampje
+        arcade.draw_circle_filled(cx, cy + h * 0.05, w * 0.12, (150, 220, 255))
+        arcade.draw_circle_outline(cx, cy + h * 0.05, w * 0.12, donker, 2)
+        # Vuurstraal eronder: groot als je gas geeft, klein als je loslaat
+        vlam = h * 0.5 if self.vlieg_omhoog else h * 0.22
+        arcade.draw_triangle_filled(cx - w * 0.15, cy - h * 0.35,
+                                    cx + w * 0.15, cy - h * 0.35,
+                                    cx, cy - h * 0.35 - vlam, (255, 160, 40))
+        arcade.draw_triangle_filled(cx - w * 0.08, cy - h * 0.35,
+                                    cx + w * 0.08, cy - h * 0.35,
+                                    cx, cy - h * 0.35 - vlam * 0.6, (255, 240, 120))
 
     def _teken_spin(self):
         """Teken een spinnetje: een rond lijf met acht pootjes (donkerrood)."""
