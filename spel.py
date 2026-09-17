@@ -607,7 +607,7 @@ class PlatformerSpel(arcade.View):
             self.speler.links_ingedrukt = False
 
         # In de vasthoud-modi (vliegtuig, golf, robot): geef door of de knop vastgehouden wordt
-        if self.speler.modus in ("vliegtuig", "golf", "robot", "ballon", "raket"):
+        if self.speler.modus in ("vliegtuig", "golf", "robot", "ballon", "raket", "draak"):
             self.speler.vlieg_omhoog = self._vlieg_omhoog
 
         # Laat de speler bewegen en botsingen controleren
@@ -801,7 +801,8 @@ class PlatformerSpel(arcade.View):
     PORTAAL_MODUS = {"vlucht": "vliegtuig", "blok": "blok",
                      "ufo": "ufo", "bal": "bal", "golf": "golf",
                      "robot": "robot", "spin": "spin", "heli": "heli",
-                     "draaibol": "draaibol", "ballon": "ballon", "raket": "raket"}
+                     "draaibol": "draaibol", "ballon": "ballon", "raket": "raket",
+                     "kolibrie": "kolibrie", "draak": "draak", "ijs": "ijs", "ninja": "ninja"}
 
     def _pas_rotatie_toe(self, sp):
         """Zet de draai-stand van een speler op basis van zijn modus."""
@@ -814,7 +815,8 @@ class PlatformerSpel(arcade.View):
             sp.rotatie = (sp.rotatie - 7) % 360                    # rollen
         elif modus == "draaibol":
             pass                                                  # tolt al in zijn eigen natuurkunde
-        elif modus in ("ufo", "robot", "spin", "heli", "ballon", "raket"):
+        elif modus in ("ufo", "robot", "spin", "heli", "ballon", "raket",
+                       "kolibrie", "draak", "ijs", "ninja"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -1079,7 +1081,9 @@ class PlatformerSpel(arcade.View):
             k.heli_wissel()
         elif m == "draaibol":
             k.draaibol_draai()
-        elif m not in ("vliegtuig", "golf", "ballon", "raket"):   # gewoon blok: springen
+        elif m == "kolibrie":
+            k.kolibrie_flap()
+        elif m not in ("vliegtuig", "golf", "ballon", "raket", "draak"):   # gewoon blok: springen
             k.spring()
 
     def _update_kloon(self, sp, knop_vast=False):
@@ -1094,7 +1098,7 @@ class PlatformerSpel(arcade.View):
         k.links_ingedrukt = sp.links_ingedrukt
         # De kloon heeft misschien een ándere vorm dan de speler, dus we gebruiken
         # de 'rauwe' knop-vasthouden (niet die van de speler).
-        if k.modus in ("vliegtuig", "golf", "robot", "ballon", "raket"):
+        if k.modus in ("vliegtuig", "golf", "robot", "ballon", "raket", "draak"):
             k.vlieg_omhoog = knop_vast
         k.bijwerken(self.level_breedte, self.platforms)
         k.x = sp.x                       # blijf horizontaal gelijk met de speler
@@ -1142,8 +1146,8 @@ class PlatformerSpel(arcade.View):
 
     def _raakt_blok_zijkant(self, sp):
         """Botst deze speler tegen de ZIJKANT van een blok? (Geometry Dash-dood.)"""
-        if sp.modus == "draaibol":
-            return False        # de draaibol rolt juist tegen muren op -> niet dood
+        if sp.modus in ("draaibol", "ninja"):
+            return False        # draaibol rolt tegen muren op, ninja zet zich ertegen af -> niet dood
         for p in self._blokken:
             if not getattr(p, "vast", True):
                 continue                       # verdwenen blok: geen botsing
@@ -1228,7 +1232,7 @@ class PlatformerSpel(arcade.View):
         if self.race or self.vlucht:
             sp.rechts_ingedrukt = True          # auto-run modi: vanzelf naar rechts
             sp.links_ingedrukt = False
-        if sp.modus in ("vliegtuig", "golf", "robot", "ballon", "raket"):
+        if sp.modus in ("vliegtuig", "golf", "robot", "ballon", "raket", "draak"):
             sp.vlieg_omhoog = self._vlieg[i]
         sp.bijwerken(self.level_breedte, self.platforms)
         self._pas_portalen_toe(sp, self._vorige[i])
@@ -1325,7 +1329,7 @@ class PlatformerSpel(arcade.View):
         if self._springboost(sp):
             return
         m = sp.modus
-        if m in ("vliegtuig", "golf", "ballon", "raket"):
+        if m in ("vliegtuig", "golf", "ballon", "raket", "draak"):
             self._vlieg[i] = True
         elif m == "robot":
             self._vlieg[i] = True
@@ -1333,6 +1337,9 @@ class PlatformerSpel(arcade.View):
             geluid_manager.speel_sprong()
         elif m == "ufo":
             sp.flap()
+            geluid_manager.speel_sprong()
+        elif m == "kolibrie":
+            sp.kolibrie_flap()
             geluid_manager.speel_sprong()
         elif m == "bal":
             sp.flip_zwaartekracht()
@@ -1506,7 +1513,7 @@ class PlatformerSpel(arcade.View):
             if self._springboost(self.speler):
                 return
             modus = self.speler.modus
-            if modus in ("vliegtuig", "golf", "ballon", "raket"):
+            if modus in ("vliegtuig", "golf", "ballon", "raket", "draak"):
                 # Vasthoud-modi: knop ingedrukt = omhoog (stuwen of schuin omhoog)
                 self._vlieg_omhoog = True
             elif modus == "robot":
@@ -1517,6 +1524,10 @@ class PlatformerSpel(arcade.View):
             elif modus == "ufo":
                 # UFO: elke tik een sprongetje omhoog
                 self.speler.flap()
+                geluid_manager.speel_sprong()
+            elif modus == "kolibrie":
+                # Kolibrie: klein wiekje per tik -> blijf snel tikken om te zweven
+                self.speler.kolibrie_flap()
                 geluid_manager.speel_sprong()
             elif modus == "bal":
                 # Bal: elke tik draait de zwaartekracht om

@@ -79,10 +79,13 @@ for _n in range(1, 6):
 
 # De vorm-portalen waar je met de Portaal-knop doorheen klikt
 PORTAAL_SOORTEN = ["vlucht", "blok", "ufo", "bal", "golf", "robot", "spin", "heli",
-                   "draaibol", "ballon", "raket", "dubbel", "enkel"]
+                   "draaibol", "ballon", "raket", "kolibrie", "draak", "ijs", "ninja",
+                   "dubbel", "enkel"]
 PORTAAL_NAAM = {"vlucht": "Vlieg", "blok": "Blok", "ufo": "UFO", "bal": "Bal",
                 "golf": "Golf", "robot": "Robot", "spin": "Spin", "heli": "Heli",
-                "draaibol": "Draaibol", "ballon": "Ballon", "raket": "Raket", "dubbel": "Dubbel", "enkel": "Enkel"}
+                "draaibol": "Draaibol", "ballon": "Ballon", "raket": "Raket",
+                "kolibrie": "Kolibrie", "draak": "Draak", "ijs": "IJs", "ninja": "Ninja",
+                "dubbel": "Dubbel", "enkel": "Enkel"}
 
 # De snelheid-portalen waar je met de Snel-knop doorheen klikt
 SNELHEID_SOORTEN = ["x0.5", "x1", "x2", "x5", "x10"]

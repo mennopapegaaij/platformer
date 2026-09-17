@@ -34,6 +34,21 @@ RAKET_STUW = 1.3       # sterke duw omhoog (harder dan het vliegtuig)
 RAKET_ZWAARTE = 0.7    # je valt snel als je loslaat
 RAKET_MAX = 8          # topsnelheid omhoog/omlaag (pittig!)
 
+# --- Kolibrie-modus: klein wiekje per tik; blijf snel tikken om te zweven ---
+KOLIBRIE_FLAP = 4.2    # klein sprongetje per tik (kleiner dan de UFO, dus lastiger)
+
+# --- Draak-modus: vrij vliegen, maar heel zweverig en wiebelig ---
+DRAAK_STUW = 0.55      # zachte duw omhoog als je vasthoudt
+DRAAK_ZWAARTE = 0.32   # zachte val als je loslaat -> hij blijft nazweven (wiebelig!)
+DRAAK_MAX = 7          # topsnelheid omhoog/omlaag
+
+# --- IJsblokje-modus: spiegelglad, je glijdt door en stopt bijna niet ---
+IJS_GRIP = 0.06        # hoe snel je naar je doelsnelheid glijdt (klein = heel glad)
+
+# --- Ninja-modus: snel, en kan zich tegen een muur afzetten (muursprong) ---
+NINJA_SNELHEID = 1.4   # keer zo snel als een gewoon blokje
+NINJA_MUURSPRONG = 6   # hoe hard je van de muur wegspringt
+
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
 #   0 = naar beneden, 1 = naar rechts, 2 = naar boven, 3 = naar links
@@ -105,6 +120,7 @@ class Speler:
         self.plafond = VLIEG_PLAFOND     # hoogste hoogte; None = geen plafond (oneindig omhoog)
         self.kloon = None                # dubbel-portaal: een tweede kopie van jou (of None)
         self.snelheid_factor = 1.0       # snelheid-portaal (x0.5 / x1 / x2 / x5 / x10)
+        self._muur_kant = 0              # ninja: raak je nu een muur? (-1 links, 1 rechts, 0 nee)
 
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
@@ -136,6 +152,7 @@ class Speler:
         self.hoogte = self.BASIS_HOOGTE
         self.sleutels = 0                   # sleutels kwijt bij herstart
         self.kloon = None                   # kloon weg bij herstart
+        self._muur_kant = 0                 # ninja: geen muur meer geraakt
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -175,9 +192,23 @@ class Speler:
         if self.snelheid_boost_timer > 0:
             snelheid *= 2   # Dubbel bij snelheidsboost power-up
         snelheid *= self.snelheid_factor   # snelheid-portaal (x0.5 / x2 / x10 ...)
+        if self.modus == "ninja":
+            snelheid *= NINJA_SNELHEID     # de ninja is lekker snel
 
         # Horizontale beweging
-        if self.links_ingedrukt:
+        if self.modus == "ijs":
+            # IJs: spiegelglad! Je snelheid verandert maar heel langzaam naar wat je wilt,
+            # dus je glijdt door en stopt bijna niet.
+            if self.links_ingedrukt:
+                doel = -snelheid
+                self.kijkt_rechts = False
+            elif self.rechts_ingedrukt:
+                doel = snelheid
+                self.kijkt_rechts = True
+            else:
+                doel = 0
+            self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
+        elif self.links_ingedrukt:
             self.snelheid_x = -snelheid
             self.kijkt_rechts = False   # Speler kijkt naar links
         elif self.rechts_ingedrukt:
@@ -187,6 +218,21 @@ class Speler:
             self.snelheid_x = 0
 
         self.x += self.snelheid_x
+
+        # Ninja: stop tegen een muur (i.p.v. doodgaan) en onthoud aan welke kant.
+        # Zo kun je je later van de muur afzetten (muursprong).
+        if self.modus == "ninja":
+            self._muur_kant = 0
+            for p in platforms:
+                if not getattr(p, "vast", True) or getattr(p, "is_schuin", False):
+                    continue
+                if self._overlapt(p):
+                    if self.snelheid_x > 0:
+                        self.x = p.x - self.breedte
+                        self._muur_kant = 1     # muur zit rechts van je
+                    elif self.snelheid_x < 0:
+                        self.x = p.x + p.breedte
+                        self._muur_kant = -1    # muur zit links van je
 
         # Niet buiten het level lopen
         if self.x < 0:
@@ -235,6 +281,13 @@ class Speler:
                 self.snelheid_y += RAKET_STUW * richting
             self.snelheid_y -= RAKET_ZWAARTE * richting
             self.snelheid_y = max(-RAKET_MAX, min(RAKET_MAX, self.snelheid_y))
+        elif self.modus == "draak":
+            # Draak: zachte duw omhoog, zachte val -> hij blijft nazweven.
+            # Doordat alles zo zacht is, wiebelt hij door en is hij lastig recht te houden.
+            if self.vlieg_omhoog:
+                self.snelheid_y += DRAAK_STUW * richting
+            self.snelheid_y -= DRAAK_ZWAARTE * richting
+            self.snelheid_y = max(-DRAAK_MAX, min(DRAAK_MAX, self.snelheid_y))
         elif self.modus in ("bal", "spin"):
             # Bal/spin: zwaartekracht in de huidige richting (kan omgedraaid zijn)
             self.snelheid_y -= ZWAARTEKRACHT * 1.3 * self.zwaartekracht_richting
@@ -300,7 +353,7 @@ class Speler:
         # In de speciale modi (of bij omgedraaide zwaartekracht): niet door het plafond.
         # Is self.plafond None, dan is er GEEN plafond en kun je oneindig omhoog.
         if (self.plafond is not None
-                and (self.modus in ("vliegtuig", "ufo", "bal", "golf", "spin", "heli", "ballon", "raket") or omgedraaid)
+                and (self.modus in ("vliegtuig", "ufo", "bal", "golf", "spin", "heli", "ballon", "raket", "kolibrie", "draak") or omgedraaid)
                 and self.y + self.hoogte > self.plafond):
             self.y = self.plafond - self.hoogte
             if self.snelheid_y > 0:
@@ -313,6 +366,10 @@ class Speler:
 
         Maal met de richting zodat de kloon ondersteboven juist naar beneden flapt."""
         self.snelheid_y = FLAP_KRACHT * self.zwaartekracht_richting
+
+    def kolibrie_flap(self):
+        """Kolibrie: een KLEIN wiekje per tik. Je moet snel blijven tikken om te zweven."""
+        self.snelheid_y = KOLIBRIE_FLAP * self.zwaartekracht_richting
 
     def zet_grootte(self, factor, frames):
         """Maak de speler groter of kleiner (factor) voor een aantal frames."""
@@ -424,6 +481,11 @@ class Speler:
         sprongkracht = (SPRING_KRACHT + self.sprong_bonus) * self.zwaartekracht_richting
         if self.staat_op_grond:
             self.snelheid_y = sprongkracht
+        elif self.modus == "ninja" and self._muur_kant != 0:
+            # Ninja-muursprong: spring omhoog EN duw jezelf van de muur af.
+            self.snelheid_y = sprongkracht
+            self.snelheid_x = -self._muur_kant * NINJA_MUURSPRONG
+            self._muur_kant = 0
         elif (self.dubbel_sprong_timer > 0 and not self.heeft_dubbel_gesprongen):
             self.snelheid_y = sprongkracht
             self.heeft_dubbel_gesprongen = True
@@ -472,6 +534,18 @@ class Speler:
             return
         if self.modus == "raket":
             self._teken_raket()
+            return
+        if self.modus == "kolibrie":
+            self._teken_kolibrie()
+            return
+        if self.modus == "draak":
+            self._teken_draak()
+            return
+        if self.modus == "ijs":
+            self._teken_ijs()
+            return
+        if self.modus == "ninja":
+            self._teken_ninja()
             return
 
         # Gewoon blokje: in de racemodus tolt het door de lucht → teken het gedraaid
@@ -698,6 +772,78 @@ class Speler:
         arcade.draw_triangle_filled(cx - w * 0.08, cy - h * 0.35,
                                     cx + w * 0.08, cy - h * 0.35,
                                     cx, cy - h * 0.35 - vlam * 0.6, (255, 240, 120))
+
+    def _teken_kolibrie(self):
+        """Teken een kolibrie: klein vogeltje met een lange snavel en trillende vleugels."""
+        cx = self.x + self.breedte / 2
+        cy = self.y + self.hoogte / 2
+        donker = (30, 90, 80)
+        # Lijfje (klein ovaal in de spelerkleur)
+        arcade.draw_ellipse_filled(cx, cy, self.breedte * 0.5, self.hoogte * 0.6, self.kleur)
+        arcade.draw_ellipse_outline(cx, cy, self.breedte * 0.5, self.hoogte * 0.6, donker, 2)
+        # Lange dunne snavel naar voren
+        snavel = 12 if self.kijkt_rechts else -12
+        arcade.draw_line(cx, cy + 2, cx + snavel, cy + 2, donker, 2)
+        # Vleugels die op en neer "trillen" (staan hoger als je omhoog gaat)
+        wiek = 8 if self.snelheid_y > 0 else -3
+        arcade.draw_line(cx, cy + 2, cx - 6, cy + wiek, donker, 3)
+        arcade.draw_line(cx, cy + 2, cx + 6, cy + wiek, donker, 3)
+        # Oogje
+        arcade.draw_circle_filled(cx + (4 if self.kijkt_rechts else -4), cy + 4, 2, OOG_KLEUR)
+
+    def _teken_draak(self):
+        """Teken een draakje: lijf, kop met een vlammetje, een vleugel en een staart."""
+        cx = self.x + self.breedte / 2
+        cy = self.y + self.hoogte / 2
+        r = 1 if self.kijkt_rechts else -1     # spiegelen als hij naar links kijkt
+        donker = (40, 110, 60)
+        # Lijf
+        arcade.draw_ellipse_filled(cx, cy, self.breedte * 0.8, self.hoogte * 0.6, self.kleur)
+        arcade.draw_ellipse_outline(cx, cy, self.breedte * 0.8, self.hoogte * 0.6, donker, 2)
+        # Staart naar achteren
+        arcade.draw_triangle_filled(cx - 12 * r, cy, cx - 20 * r, cy + 5, cx - 20 * r, cy - 5, donker)
+        # Vleugel bovenop
+        arcade.draw_triangle_filled(cx - 2 * r, cy + 4, cx - 10 * r, cy + 16, cx + 6 * r, cy + 8, (120, 200, 130))
+        # Kop
+        arcade.draw_circle_filled(cx + 12 * r, cy + 3, 7, self.kleur)
+        arcade.draw_circle_outline(cx + 12 * r, cy + 3, 7, donker, 2)
+        arcade.draw_circle_filled(cx + 14 * r, cy + 5, 2, OOG_KLEUR)
+        # Klein vlammetje uit de bek
+        arcade.draw_triangle_filled(cx + 18 * r, cy + 1, cx + 18 * r, cy + 5,
+                                    cx + 26 * r, cy + 3, (255, 150, 40))
+
+    def _teken_ijs(self):
+        """Teken een ijsblokje: een lichtblauw doorschijnend blok met glinstering."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        # Lijf (ijsblauw)
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (170, 225, 255))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (90, 160, 210), 3)
+        # Glinstering: een paar witte streepjes en een sterretje
+        arcade.draw_line(x + 5, y + h - 6, x + 12, y + h - 13, (255, 255, 255), 2)
+        arcade.draw_line(x + w - 12, y + 8, x + w - 5, y + 15, (255, 255, 255), 2)
+        arcade.draw_circle_filled(x + w - 9, y + h - 9, 2, (255, 255, 255))
+        # Oogjes zodat het nog een poppetje blijft
+        arcade.draw_circle_filled(x + 10, y + h // 2, 3, (60, 110, 160))
+        arcade.draw_circle_filled(x + w - 10, y + h // 2, 3, (60, 110, 160))
+
+    def _teken_ninja(self):
+        """Teken een ninja: donker poppetje met een hoofdband en een ogenspleet."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w / 2
+        donker = (40, 45, 60)
+        band = (200, 40, 40)
+        # Lijf (donker pak, of de spelerkleur als die gekozen is)
+        arcade.draw_lrbt_rectangle_filled(x + 3, x + w - 3, y, y + h, self.kleur if self.kleur != SPELER_KLEUR else donker)
+        arcade.draw_lrbt_rectangle_outline(x + 3, x + w - 3, y, y + h, (20, 20, 30), 2)
+        # Hoofdband (rood) met twee wapperende slierten
+        by = y + h - 10
+        arcade.draw_lrbt_rectangle_filled(x + 3, x + w - 3, by, by + 6, band)
+        kant = -1 if self.kijkt_rechts else 1
+        arcade.draw_line(x + (3 if kant < 0 else w - 3), by + 3,
+                         x + (3 if kant < 0 else w - 3) + kant * 8, by, band, 2)
+        # Ogenspleet (twee witte oogjes)
+        arcade.draw_circle_filled(cx - 5, by - 5, 2.5, (240, 240, 240))
+        arcade.draw_circle_filled(cx + 5, by - 5, 2.5, (240, 240, 240))
 
     def _teken_spin(self):
         """Teken een spinnetje: een rond lijf met acht pootjes (donkerrood)."""

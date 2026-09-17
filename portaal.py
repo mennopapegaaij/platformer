@@ -22,6 +22,10 @@ PORTAAL_KLEUREN = {
     "draaibol": ((30, 150, 140), (120, 230, 210)), # groenblauw = draaibol
     "ballon": ((220, 90, 130), (255, 170, 200)),   # rozerood = ballon
     "raket":  ((200, 50, 50), (255, 140, 90)),     # vuurrood = raket
+    "kolibrie": ((30, 160, 140), (140, 235, 210)), # turkoois = kolibrie
+    "draak":  ((50, 150, 70), (150, 220, 150)),    # drakengroen = draak
+    "ijs":    ((90, 170, 220), (190, 235, 255)),   # ijsblauw = ijsblokje
+    "ninja":  ((60, 60, 80), (150, 150, 180)),     # donkergrijs = ninja
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
     # Snelheid-portalen (veranderen niet je vorm, maar hoe snel je gaat)
@@ -120,6 +124,26 @@ def teken_portaal_icoon(soort, cx, cy):
         arcade.draw_lrbt_rectangle_filled(cx - 4, cx + 4, cy - 4, cy + 6, arcade.color.WHITE)
         arcade.draw_triangle_filled(cx - 4, cy + 6, cx + 4, cy + 6, cx, cy + 12, arcade.color.WHITE)
         arcade.draw_triangle_filled(cx - 4, cy - 4, cx + 4, cy - 4, cx, cy - 11, (255, 200, 90))
+    elif soort == "kolibrie":
+        # Vogeltje met een lange snavel
+        arcade.draw_ellipse_filled(cx - 2, cy, 10, 7, arcade.color.WHITE)
+        arcade.draw_line(cx + 3, cy, cx + 12, cy, arcade.color.WHITE, 2)
+        arcade.draw_line(cx - 2, cy, cx - 8, cy + 6, arcade.color.WHITE, 2)
+    elif soort == "draak":
+        # Drakenkopje met een vlammetje
+        arcade.draw_circle_filled(cx, cy, 7, arcade.color.WHITE)
+        arcade.draw_triangle_filled(cx - 7, cy + 4, cx - 12, cy + 10, cx - 3, cy + 8, arcade.color.WHITE)
+        arcade.draw_triangle_filled(cx + 6, cy - 2, cx + 6, cy + 2, cx + 13, cy, (255, 150, 40))
+    elif soort == "ijs":
+        # IJsblokje met glinstering
+        arcade.draw_lrbt_rectangle_filled(cx - 8, cx + 8, cy - 8, cy + 8, arcade.color.WHITE)
+        arcade.draw_line(cx - 5, cy + 5, cx + 2, cy - 2, (150, 210, 240), 2)
+    elif soort == "ninja":
+        # Ninjakopje met een hoofdband
+        arcade.draw_circle_filled(cx, cy, 8, arcade.color.WHITE)
+        arcade.draw_lrbt_rectangle_filled(cx - 8, cx + 8, cy, cy + 4, (200, 40, 40))
+        arcade.draw_circle_filled(cx - 3, cy - 2, 1.5, (60, 60, 80))
+        arcade.draw_circle_filled(cx + 3, cy - 2, 1.5, (60, 60, 80))
     elif soort in SNELHEID_FACTOR:
         # Snelheid-portaal: laat de keer-factor zien (bv. "x2")
         arcade.draw_text(soort, cx, cy - 6, arcade.color.WHITE, 11, bold=True, anchor_x="center")
