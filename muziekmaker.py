@@ -30,9 +30,9 @@ class MuziekMaker(arcade.View):
         self._speelt = False
         self._stap = 0
         self._teller = 0.0
-        # Kant-en-klare liedjes kiezen
-        self._kies_index = -1        # welk kant-en-klaar liedje is gekozen (-1 = geen)
-        self._kies_naam = ""         # naam van het gekozen liedje (voor op het scherm)
+        # Kant-en-klare liedjes kiezen (je mag er meerdere achter elkaar plakken!)
+        self._kies_index = -1        # welk kant-en-klaar liedje komt als volgende
+        self._kies_namen = []        # namen van alle liedjes die je gekozen hebt
         # Rooster-afmetingen
         self.rand_l = 70                        # ruimte links voor de noot-namen
         self.rand_o = 70                        # ruimte onderaan voor de knoppen
@@ -70,9 +70,12 @@ class MuziekMaker(arcade.View):
         self.clear()
         arcade.draw_text("🎹 Maak je eigen deuntje!", 20, SCHERM_HOOGTE - 34,
                          arcade.color.WHITE, 18, bold=True)
-        if self._kies_naam:
-            arcade.draw_text("♪ %s" % self._kies_naam, 340, SCHERM_HOOGTE - 30,
-                             (200, 180, 255), 13, bold=True)
+        if self._kies_namen:
+            tekst = " + ".join(self._kies_namen)
+            if len(tekst) > 42:                 # te lang? laat alleen het laatste stuk zien
+                tekst = "…" + tekst[-42:]
+            arcade.draw_text("♪ " + tekst, 300, SCHERM_HOOGTE - 30,
+                             (200, 180, 255), 12, bold=True)
 
         # Noot-namen links
         for rij in range(RIJEN):
@@ -116,7 +119,7 @@ class MuziekMaker(arcade.View):
         # Knoppen onderaan
         namen = {"speel": ("⏸ Stop" if self._speelt else "▶ Speel", (40, 160, 60)),
                  "wis": ("🗑 Wissen", (170, 60, 60)),
-                 "kies": ("🎵 Kies liedje", (150, 90, 190)),
+                 "kies": ("🎵 Liedje erbij", (150, 90, 190)),
                  "klaar": ("✓ Klaar", (40, 110, 180))}
         for naam, (l, r) in self.knoppen.items():
             tekst, kleur = namen[naam]
@@ -147,7 +150,7 @@ class MuziekMaker(arcade.View):
                     elif naam == "wis":
                         self.noten = [-1] * ZICHT
                         self.scroll_stap = 0
-                        self._kies_naam = ""
+                        self._kies_namen = []
                     elif naam == "kies":
                         self._kies_liedje()
                     elif naam == "klaar":
@@ -168,16 +171,25 @@ class MuziekMaker(arcade.View):
                 muziek.speel_noot(rij)          # even voorspelen
 
     def _kies_liedje(self):
-        """Laad het volgende kant-en-klare liedje in het raster (klik nog eens = volgende)."""
+        """Plak het volgende kant-en-klare liedje ACHTER je huidige deuntje.
+
+        Zo kun je meerdere liedjes achter elkaar kiezen -> samen één lang liedje!"""
         liedjes = muziek.KLAAR_LIEDJES
         if not liedjes:
             return
         self._kies_index = (self._kies_index + 1) % len(liedjes)
         naam, noten = liedjes[self._kies_index]
-        self.noten = list(noten)                # het gekozen liedje in het raster zetten
+        # onnodige stilte aan het eind eerst weghalen
+        while self.noten and self.noten[-1] == -1:
+            self.noten.pop()
+        # is er al muziek? zet dan een kleine pauze tussen de liedjes
+        if self.noten:
+            self.noten += [-1, -1]
+        self.noten += list(noten)               # het nieuwe liedje erachter plakken
+        self._kies_namen.append(naam)
         self._zorg_lengte(ZICHT)
-        self.scroll_stap = 0
-        self._kies_naam = naam
+        # schuif naar het net toegevoegde stuk zodat je het meteen ziet
+        self.scroll_stap = max(0, len(self.noten) - ZICHT)
         self._speelt = False                    # begin netjes opnieuw
 
     def _scroll(self, richting):
