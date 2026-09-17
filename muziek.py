@@ -12,9 +12,15 @@ import arcade
 SAMPLE_RATE = 22050        # geluidskwaliteit (genoeg voor toontjes)
 MAP = "muziek_tonen"       # hier worden de toon-bestanden bewaard
 
-# 8 noten: do re mi fa so la ti do (de C-majtoonladder), laag -> hoog
-NOOT_NAMEN = ["do", "re", "mi", "fa", "so", "la", "ti", "do₂"]
-NOOT_FREQ = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25]
+# De MAGISCHE noten (een pentatonische toonladder): do re mi so la, en dan hoger.
+# Bij deze noten botst er nooit iets, dus ALLES wat je aanklikt klinkt mooi samen!
+# (De 'lastige' noten fa en ti zijn eruit gelaten, want die kunnen vals klinken.)
+NOOT_NAMEN = ["do", "re", "mi", "so", "la", "do₂", "re₂", "mi₂"]
+NOOT_FREQ = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25]
+
+# Versie van de klank/noten. Verander je de tonen? Zet dit dan 1 hoger,
+# dan worden de toon-bestanden opnieuw (mooi) aangemaakt.
+TOON_VERSIE = 2
 
 _tonen = None              # geladen geluidjes (of [] als geluid niet lukt)
 
@@ -63,7 +69,7 @@ def _zorg_voor_tonen():
     """Maak de toon-bestanden aan als ze er nog niet zijn (maar één keer nodig)."""
     os.makedirs(MAP, exist_ok=True)
     for i, freq in enumerate(NOOT_FREQ):
-        pad = "%s/piano%d.wav" % (MAP, i)
+        pad = "%s/piano_v%d_%d.wav" % (MAP, TOON_VERSIE, i)
         if not os.path.exists(pad):
             _maak_toon_bestand(pad, freq)
 
@@ -75,7 +81,7 @@ def laad_tonen():
         return _tonen
     try:
         _zorg_voor_tonen()
-        _tonen = [arcade.load_sound("%s/piano%d.wav" % (MAP, i))
+        _tonen = [arcade.load_sound("%s/piano_v%d_%d.wav" % (MAP, TOON_VERSIE, i))
                   for i in range(len(NOOT_FREQ))]
     except Exception:
         _tonen = []            # geluid lukt niet (bv. zonder scherm) -> gewoon stil
