@@ -49,6 +49,13 @@ IJS_GRIP = 0.06        # hoe snel je naar je doelsnelheid glijdt (klein = heel g
 NINJA_SNELHEID = 1.4   # keer zo snel als een gewoon blokje
 NINJA_MUURSPRONG = 6   # hoe hard je van de muur wegspringt
 
+# --- Magneet-modus: je wordt naar de dichtstbijzijnde muur getrokken ---
+MAGNEET_KRACHT = 1.6   # hoe hard de magneet je naar een muur trekt (per stapje)
+
+# --- Flits-modus: loopt niet, maar teleporteert met sprongetjes vooruit ---
+FLITS_INTERVAL = 9     # om de hoeveel stapjes je een flits maakt (kleiner = vaker)
+FLITS_AFSTAND = 46     # hoe ver je per flits vooruit springt
+
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
 #   0 = naar beneden, 1 = naar rechts, 2 = naar boven, 3 = naar links
@@ -121,6 +128,7 @@ class Speler:
         self.kloon = None                # dubbel-portaal: een tweede kopie van jou (of None)
         self.snelheid_factor = 1.0       # snelheid-portaal (x0.5 / x1 / x2 / x5 / x10)
         self._muur_kant = 0              # ninja: raak je nu een muur? (-1 links, 1 rechts, 0 nee)
+        self._flits_teller = 0           # flits: hoelang geleden je laatste teleport-sprongetje was
 
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
@@ -153,6 +161,7 @@ class Speler:
         self.sleutels = 0                   # sleutels kwijt bij herstart
         self.kloon = None                   # kloon weg bij herstart
         self._muur_kant = 0                 # ninja: geen muur meer geraakt
+        self._flits_teller = 0              # flits: teller reset
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -195,33 +204,85 @@ class Speler:
         if self.modus == "ninja":
             snelheid *= NINJA_SNELHEID     # de ninja is lekker snel
 
-        # Horizontale beweging
-        if self.modus == "ijs":
-            # IJs: spiegelglad! Je snelheid verandert maar heel langzaam naar wat je wilt,
-            # dus je glijdt door en stopt bijna niet.
-            if self.links_ingedrukt:
-                doel = -snelheid
-                self.kijkt_rechts = False
-            elif self.rechts_ingedrukt:
-                doel = snelheid
-                self.kijkt_rechts = True
-            else:
-                doel = 0
-            self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
-        elif self.links_ingedrukt:
-            self.snelheid_x = -snelheid
-            self.kijkt_rechts = False   # Speler kijkt naar links
-        elif self.rechts_ingedrukt:
-            self.snelheid_x = snelheid
-            self.kijkt_rechts = True    # Speler kijkt naar rechts
-        else:
+        # Horizontale beweging — elke modus doet het net iets anders
+        if self.modus == "flits":
+            # Flits: loopt niet, maar teleporteert met sprongetjes vooruit.
+            self._flits_teller += 1
             self.snelheid_x = 0
+            f_richting = 0
+            if self.rechts_ingedrukt:
+                f_richting = 1
+                self.kijkt_rechts = True
+            elif self.links_ingedrukt:
+                f_richting = -1
+                self.kijkt_rechts = False
+            if f_richting != 0 and self._flits_teller >= FLITS_INTERVAL:
+                self._flits_teller = 0
+                oude_x = self.x
+                self.x = max(0, min(level_breedte - self.breedte,
+                                    self.x + f_richting * FLITS_AFSTAND))
+                # niet dwars ín een muur teleporteren -> blijf dan staan
+                for p in platforms:
+                    if (getattr(p, "vast", True) and not getattr(p, "is_schuin", False)
+                            and self._overlapt(p)):
+                        self.x = oude_x
+                        break
+        else:
+            if self.modus == "ijs":
+                # IJs: spiegelglad! Je snelheid verandert maar langzaam naar wat je wilt,
+                # dus je glijdt door en stopt bijna niet.
+                if self.links_ingedrukt:
+                    doel = -snelheid
+                    self.kijkt_rechts = False
+                elif self.rechts_ingedrukt:
+                    doel = snelheid
+                    self.kijkt_rechts = True
+                else:
+                    doel = 0
+                self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
+            elif self.modus == "spiegel":
+                # Spiegel: links en rechts zijn OMGEDRAAID!
+                if self.links_ingedrukt:
+                    self.snelheid_x = snelheid    # links ingedrukt -> ga naar rechts
+                    self.kijkt_rechts = True
+                elif self.rechts_ingedrukt:
+                    self.snelheid_x = -snelheid   # rechts ingedrukt -> ga naar links
+                    self.kijkt_rechts = False
+                else:
+                    self.snelheid_x = 0
+            elif self.links_ingedrukt:
+                self.snelheid_x = -snelheid
+                self.kijkt_rechts = False   # Speler kijkt naar links
+            elif self.rechts_ingedrukt:
+                self.snelheid_x = snelheid
+                self.kijkt_rechts = True    # Speler kijkt naar rechts
+            else:
+                self.snelheid_x = 0
 
-        self.x += self.snelheid_x
+            # Magneet: je wordt naar de dichtstbijzijnde muur naast je toe getrokken
+            if self.modus == "magneet":
+                mx = self.x + self.breedte / 2
+                dichtst = None
+                beste = 1e9
+                for p in platforms:
+                    if not getattr(p, "vast", True) or getattr(p, "is_schuin", False):
+                        continue
+                    # alleen blokken die naast je zitten (op jouw hoogte) tellen als 'muur'
+                    if not (self.y + self.hoogte > p.y + 4 and self.y < p.y + p.hoogte - 4):
+                        continue
+                    for rand in (p.x, p.x + p.breedte):
+                        d = abs(rand - mx)
+                        if d < beste:
+                            beste = d
+                            dichtst = rand
+                if dichtst is not None:
+                    self.snelheid_x += (MAGNEET_KRACHT if dichtst > mx else -MAGNEET_KRACHT)
 
-        # Ninja: stop tegen een muur (i.p.v. doodgaan) en onthoud aan welke kant.
-        # Zo kun je je later van de muur afzetten (muursprong).
-        if self.modus == "ninja":
+            self.x += self.snelheid_x
+
+        # Ninja én magneet: stop tegen een muur (i.p.v. erdoor of dood) en onthoud de kant.
+        # Zo kan de ninja zich later van de muur afzetten (muursprong).
+        if self.modus in ("ninja", "magneet"):
             self._muur_kant = 0
             for p in platforms:
                 if not getattr(p, "vast", True) or getattr(p, "is_schuin", False):
@@ -547,6 +608,15 @@ class Speler:
         if self.modus == "ninja":
             self._teken_ninja()
             return
+        if self.modus == "spiegel":
+            self._teken_spiegel()
+            return
+        if self.modus == "magneet":
+            self._teken_magneet()
+            return
+        if self.modus == "flits":
+            self._teken_flits()
+            return
 
         # Gewoon blokje: in de racemodus tolt het door de lucht → teken het gedraaid
         if self.rotatie != 0:
@@ -844,6 +914,54 @@ class Speler:
         # Ogenspleet (twee witte oogjes)
         arcade.draw_circle_filled(cx - 5, by - 5, 2.5, (240, 240, 240))
         arcade.draw_circle_filled(cx + 5, by - 5, 2.5, (240, 240, 240))
+
+    def _teken_spiegel(self):
+        """Teken een spiegel-poppetje: een blok met een glimmend spiegel-vlak en pijltjes
+        die de verkeerde kant op wijzen (want links/rechts zijn omgedraaid)."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        # Lijf (zilverachtig spiegelblauw)
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (190, 210, 230))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (120, 140, 170), 3)
+        # Spiegel-glans (een schuine witte streep)
+        arcade.draw_line(x + 6, y + 6, x + w - 8, y + h - 6, (255, 255, 255), 3)
+        arcade.draw_line(x + 14, y + 6, x + w - 2, y + h - 12, (235, 245, 255), 2)
+        # Twee pijltjes die naar buiten wijzen (de 'omgedraaide' besturing)
+        cy = y + h / 2
+        arcade.draw_triangle_filled(x + 5, cy, x + 11, cy - 4, x + 11, cy + 4, (90, 60, 140))
+        arcade.draw_triangle_filled(x + w - 5, cy, x + w - 11, cy - 4, x + w - 11, cy + 4, (90, 60, 140))
+
+    def _teken_magneet(self):
+        """Teken een hoefijzer-magneet met twee rode/grijze polen."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w / 2
+        # De U-vorm van de magneet (rode buitenkant)
+        arcade.draw_lrbt_rectangle_filled(x + 3, x + w - 3, y + 4, y + h, (210, 50, 50))
+        # Binnenkant weghappen zodat het een U wordt (achtergrondkleur-gat)
+        arcade.draw_lrbt_rectangle_filled(x + 9, x + w - 9, y + 12, y + h + 2, (30, 30, 50))
+        # De twee polen onderaan (grijze uiteinden)
+        arcade.draw_lrbt_rectangle_filled(x + 3, x + 9, y, y + 12, (200, 200, 210))
+        arcade.draw_lrbt_rectangle_filled(x + w - 9, x + w - 3, y, y + 12, (200, 200, 210))
+        # Kleine + en - tekentjes op de polen
+        arcade.draw_text("+", x + 2, y + 1, (40, 40, 60), 9, bold=True)
+        arcade.draw_text("-", x + w - 9, y + 1, (40, 40, 60), 9, bold=True)
+        # Oogjes bovenop
+        arcade.draw_circle_filled(cx - 5, y + h - 6, 2, OOG_KLEUR)
+        arcade.draw_circle_filled(cx + 5, y + h - 6, 2, OOG_KLEUR)
+
+    def _teken_flits(self):
+        """Teken een bliksemschicht-poppetje (geel, met een gloed die 'oplaadt')."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w / 2
+        # Gloed die feller wordt vlak voordat hij weer flitst
+        gloed = 40 + int(60 * (self._flits_teller / max(1, FLITS_INTERVAL)))
+        arcade.draw_circle_filled(cx, y + h / 2, w * 0.6, (gloed, gloed, 0))
+        # De bliksemschicht (een zigzag) in de spelerkleur (of fel geel)
+        kleur = self.kleur if self.kleur != SPELER_KLEUR else (255, 230, 40)
+        punten = [(cx + 4, y + h - 2), (cx - 6, y + h * 0.55),
+                  (cx + 1, y + h * 0.55), (cx - 6, y + 2),
+                  (cx + 8, y + h * 0.5), (cx + 1, y + h * 0.5)]
+        arcade.draw_polygon_filled(punten, kleur)
+        arcade.draw_polygon_outline(punten, (200, 150, 0), 2)
 
     def _teken_spin(self):
         """Teken een spinnetje: een rond lijf met acht pootjes (donkerrood)."""

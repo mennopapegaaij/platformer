@@ -802,7 +802,8 @@ class PlatformerSpel(arcade.View):
                      "ufo": "ufo", "bal": "bal", "golf": "golf",
                      "robot": "robot", "spin": "spin", "heli": "heli",
                      "draaibol": "draaibol", "ballon": "ballon", "raket": "raket",
-                     "kolibrie": "kolibrie", "draak": "draak", "ijs": "ijs", "ninja": "ninja"}
+                     "kolibrie": "kolibrie", "draak": "draak", "ijs": "ijs", "ninja": "ninja",
+                     "spiegel": "spiegel", "magneet": "magneet", "flits": "flits"}
 
     def _pas_rotatie_toe(self, sp):
         """Zet de draai-stand van een speler op basis van zijn modus."""
@@ -816,7 +817,8 @@ class PlatformerSpel(arcade.View):
         elif modus == "draaibol":
             pass                                                  # tolt al in zijn eigen natuurkunde
         elif modus in ("ufo", "robot", "spin", "heli", "ballon", "raket",
-                       "kolibrie", "draak", "ijs", "ninja"):
+                       "kolibrie", "draak", "ijs", "ninja",
+                       "spiegel", "magneet", "flits"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -1146,8 +1148,8 @@ class PlatformerSpel(arcade.View):
 
     def _raakt_blok_zijkant(self, sp):
         """Botst deze speler tegen de ZIJKANT van een blok? (Geometry Dash-dood.)"""
-        if sp.modus in ("draaibol", "ninja"):
-            return False        # draaibol rolt tegen muren op, ninja zet zich ertegen af -> niet dood
+        if sp.modus in ("draaibol", "ninja", "magneet"):
+            return False        # deze modi botsen juist tegen muren (rollen/afzetten/aangetrokken) -> niet dood
         for p in self._blokken:
             if not getattr(p, "vast", True):
                 continue                       # verdwenen blok: geen botsing

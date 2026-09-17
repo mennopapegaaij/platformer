@@ -26,6 +26,9 @@ PORTAAL_KLEUREN = {
     "draak":  ((50, 150, 70), (150, 220, 150)),    # drakengroen = draak
     "ijs":    ((90, 170, 220), (190, 235, 255)),   # ijsblauw = ijsblokje
     "ninja":  ((60, 60, 80), (150, 150, 180)),     # donkergrijs = ninja
+    "spiegel": ((120, 150, 190), (210, 230, 250)), # spiegelzilver = spiegel
+    "magneet": ((200, 60, 60), (255, 160, 160)),   # magneetrood = magneet
+    "flits":  ((220, 200, 40), (255, 245, 150)),   # bliksemgeel = flits
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
     # Snelheid-portalen (veranderen niet je vorm, maar hoe snel je gaat)
@@ -144,6 +147,21 @@ def teken_portaal_icoon(soort, cx, cy):
         arcade.draw_lrbt_rectangle_filled(cx - 8, cx + 8, cy, cy + 4, (200, 40, 40))
         arcade.draw_circle_filled(cx - 3, cy - 2, 1.5, (60, 60, 80))
         arcade.draw_circle_filled(cx + 3, cy - 2, 1.5, (60, 60, 80))
+    elif soort == "spiegel":
+        # Twee pijltjes die naar buiten wijzen (omgedraaide besturing)
+        arcade.draw_triangle_filled(cx - 10, cy, cx - 3, cy - 5, cx - 3, cy + 5, arcade.color.WHITE)
+        arcade.draw_triangle_filled(cx + 10, cy, cx + 3, cy - 5, cx + 3, cy + 5, arcade.color.WHITE)
+    elif soort == "magneet":
+        # Hoefijzer-magneetje (U-vorm)
+        arcade.draw_lrbt_rectangle_filled(cx - 8, cx + 8, cy - 4, cy + 9, arcade.color.WHITE)
+        arcade.draw_lrbt_rectangle_filled(cx - 4, cx + 4, cy, cy + 11, (200, 60, 60))
+        arcade.draw_lrbt_rectangle_filled(cx - 8, cx - 4, cy - 10, cy - 4, arcade.color.WHITE)
+        arcade.draw_lrbt_rectangle_filled(cx + 4, cx + 8, cy - 10, cy - 4, arcade.color.WHITE)
+    elif soort == "flits":
+        # Bliksemschichtje (zigzag)
+        arcade.draw_polygon_filled([(cx + 3, cy + 10), (cx - 5, cy), (cx, cy),
+                                    (cx - 4, cy - 10), (cx + 6, cy + 1), (cx + 1, cy + 1)],
+                                   arcade.color.WHITE)
     elif soort in SNELHEID_FACTOR:
         # Snelheid-portaal: laat de keer-factor zien (bv. "x2")
         arcade.draw_text(soort, cx, cy - 6, arcade.color.WHITE, 11, bold=True, anchor_x="center")
