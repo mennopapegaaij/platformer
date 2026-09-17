@@ -19,19 +19,39 @@ NOOT_FREQ = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25]
 _tonen = None              # geladen geluidjes (of [] als geluid niet lukt)
 
 
-def _maak_toon_bestand(pad, freq, duur=0.26, volume=0.5):
-    """Maak één toon-bestand (een sinus-golf met een zachte begin/eind-rand)."""
+# Elke piano-toon is opgebouwd uit boventonen (harmonischen).
+# Per boventoon: (welke keer de frequentie, hoe sterk, hoe snel hij uitdooft).
+# Hogere boventonen doven sneller uit -> dat klinkt warm en zacht, net als een piano.
+PIANO_HARMONISCHEN = [
+    (1, 1.00, 2.8),
+    (2, 0.55, 4.0),
+    (3, 0.35, 5.5),
+    (4, 0.20, 7.5),
+    (5, 0.12, 9.5),
+    (6, 0.07, 12.0),
+]
+
+
+def _maak_toon_bestand(pad, freq, duur=0.85):
+    """Maak één piano-achtige toon: een snelle aanslag en een lange uitdoofstaart."""
     n = int(SAMPLE_RATE * duur)
-    data = []
+    ruw = []
     for i in range(n):
         t = i / SAMPLE_RATE
-        s = (math.sin(2 * math.pi * freq * t) * 0.6 +
-             math.sin(2 * math.pi * freq * 2 * t) * 0.25 +
-             math.sin(2 * math.pi * freq * 3 * t) * 0.1)
-        aanval = min(1.0, i / (SAMPLE_RATE * 0.01))            # zacht beginnen
-        verval = max(0.0, 1.0 - (i - n * 0.3) / (n * 0.7))     # zacht uitdoven
-        s *= aanval * verval * volume
-        data.append(max(-32767, min(32767, int(s * 32767))))
+        s = 0.0
+        # tel alle boventonen bij elkaar op; elke dooft exponentieel uit
+        for keer, sterkte, verval_snelheid in PIANO_HARMONISCHEN:
+            s += (math.sin(2 * math.pi * freq * keer * t)
+                  * sterkte * math.exp(-verval_snelheid * t))
+        # supersnelle aanslag (zoals een pianohamer) van ~4 milliseconden
+        aanval = min(1.0, t / 0.004)
+        ruw.append(s * aanval)
+
+    # Normaliseer: maak de toon lekker luid, maar zorg dat hij niet vervormt (kraakt)
+    piek = max(1e-6, max(abs(x) for x in ruw))
+    schaal = 0.9 / piek
+    data = [max(-32767, min(32767, int(x * schaal * 32767))) for x in ruw]
+
     with wave.open(pad, "w") as f:
         f.setnchannels(1)
         f.setsampwidth(2)
@@ -43,7 +63,7 @@ def _zorg_voor_tonen():
     """Maak de toon-bestanden aan als ze er nog niet zijn (maar één keer nodig)."""
     os.makedirs(MAP, exist_ok=True)
     for i, freq in enumerate(NOOT_FREQ):
-        pad = "%s/noot%d.wav" % (MAP, i)
+        pad = "%s/piano%d.wav" % (MAP, i)
         if not os.path.exists(pad):
             _maak_toon_bestand(pad, freq)
 
@@ -55,7 +75,7 @@ def laad_tonen():
         return _tonen
     try:
         _zorg_voor_tonen()
-        _tonen = [arcade.load_sound("%s/noot%d.wav" % (MAP, i))
+        _tonen = [arcade.load_sound("%s/piano%d.wav" % (MAP, i))
                   for i in range(len(NOOT_FREQ))]
     except Exception:
         _tonen = []            # geluid lukt niet (bv. zonder scherm) -> gewoon stil
