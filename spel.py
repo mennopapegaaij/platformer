@@ -1000,11 +1000,12 @@ class PlatformerSpel(arcade.View):
         (en kost het één sleutel)."""
         if sp.sleutels <= 0:
             return
+        marge = 5   # een beetje speling: zo open je de deur ook van boven of onder
         for d in self._deuren:
             if d.open:
                 continue
-            if (sp.x < d.x + d.breedte + 5 and sp.x + sp.breedte > d.x - 5 and
-                    sp.y < d.y + d.hoogte and sp.y + sp.hoogte > d.y):
+            if (sp.x < d.x + d.breedte + marge and sp.x + sp.breedte > d.x - marge and
+                    sp.y < d.y + d.hoogte + marge and sp.y + sp.hoogte > d.y - marge):
                 d.open = True
                 sp.sleutels -= 1
                 geluid_manager.speel_powerup()
