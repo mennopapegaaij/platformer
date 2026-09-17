@@ -18,14 +18,14 @@ BESTAND = "eigen_level.json"   # oude opslag (1 level) — wordt naar plek 1 ver
 # Met de 📁-knop ga je naar het volgende level; met toets 1-9 spring je meteen.
 
 # De dingen die je kunt plaatsen (op volgorde in het palet)
-ITEMS = ["grond", "blok", "spike", "vijand", "molen", "boss", "hart", "vlag", "portaal",
-         "snel", "deco", "spring", "tele", "draad", "verf", "acht", "bord", "gum"]
+ITEMS = ["grond", "blok", "spike", "vijand", "molen", "boss", "hart", "vlag", "checkpoint",
+         "portaal", "snel", "deco", "spring", "tele", "draad", "verf", "acht", "bord", "gum"]
 ITEM_NAAM = {
     "grond": "Grond", "blok": "Blok", "spike": "Spike", "vijand": "Vijand",
     "molen": "Molen", "boss": "Boss", "hart": "Hartje", "vlag": "Finish",
-    "portaal": "Portaal", "snel": "Snel", "deco": "Deco", "spring": "Spring",
-    "tele": "Tele", "draad": "Draad", "verf": "Verf", "acht": "Acht",
-    "bord": "Bord", "gum": "Gum",
+    "checkpoint": "Check", "portaal": "Portaal", "snel": "Snel", "deco": "Deco",
+    "spring": "Spring", "tele": "Tele", "draad": "Draad", "verf": "Verf",
+    "acht": "Acht", "bord": "Bord", "gum": "Gum",
 }
 
 # De teleporter-kleuren waar je met de Tele-knop doorheen klikt
@@ -256,6 +256,13 @@ def teken_item(soort, x, y, grootte, rotatie=0):
         arcade.draw_line(x + 8, y + 4, x + 8, y + g - 2, arcade.color.WHITE, 3)
         arcade.draw_triangle_filled(x + 8, y + g - 2, x + g - 4, y + g - 8,
                                     x + 8, y + g - 16, arcade.color.GREEN)
+    elif soort == "checkpoint":
+        # Checkpoint: een vlaggenmast met een groen vlaggetje (tussenpunt)
+        px = x + 7
+        arcade.draw_line(px, y + 4, px, y + g - 3, (210, 210, 220), 3)
+        arcade.draw_triangle_filled(px, y + g - 4, px + 14, y + g - 9,
+                                    px, y + g - 14, (60, 220, 120))
+        arcade.draw_circle_filled(px, y + g - 3, 3, (255, 230, 90))
     elif soort.startswith("portaal"):
         # "portaal_vlucht", "portaal_bal", enz. -> teken een gekleurde ring + icoon
         from portaal import PORTAAL_KLEUREN, teken_portaal_icoon
@@ -354,8 +361,8 @@ class BouwerView(arcade.View):
         # Palet-knoppen (links) en actie-knoppen (rechts) uitrekenen
         self.palet_knoppen = {}        # soort -> (l, r)
         for i, soort in enumerate(ITEMS):
-            l = 6 + i * 22
-            self.palet_knoppen[soort] = (l, l + 20)
+            l = 6 + i * 21            # iets smallere knoppen zodat ze allemaal passen
+            self.palet_knoppen[soort] = (l, l + 19)
         self.actie_knoppen = {         # naam -> (l, r)
             "spelen": (408, 452),
             "opslaan": (455, 501),
@@ -1096,6 +1103,7 @@ class BouwerView(arcade.View):
         from decoratie import Decoratie, TekstBord
         from springers import SpringBol, SpringMat, KRACHT_PER_STAND, NEER_KRACHT
         from teleport import Teleporter
+        from checkpoint import Checkpoint
 
         platforms = [Platform(0, 0, 100, 40)]   # altijd een klein startstukje grond
         vijanden = []
@@ -1108,6 +1116,7 @@ class BouwerView(arcade.View):
         boss_stops = []                # x-plekken waar de boss doodgaat (van "boss-uit")
         acht_zones = []                # achtergrond-zones: (x, achtergrond-nummer)
         borden = []                    # tekstbordjes (TekstBord-objecten)
+        checkpoints = []               # tussenpunten om bij terug te komen
         vlag_x, vlag_y = None, None
         max_x = 300
 
@@ -1215,6 +1224,9 @@ class BouwerView(arcade.View):
             elif soort == "bord":
                 # Tekstbordje met je eigen tekst
                 borden.append(TekstBord(wx, wy, self.bord_teksten.get((kol, rij), "")))
+            elif soort == "checkpoint":
+                # Checkpoint: tussenpunt om bij terug te komen na doodgaan
+                checkpoints.append(Checkpoint(wx, wy, CEL))
             # Verf toepassen op elk voorwerp dat we net voor dit vakje maakten:
             # onzichtbaar (blijft wel werken/botsen) of een gekleurde-verf-lijst.
             if onz or verf_rgbs:
@@ -1351,7 +1363,7 @@ class BouwerView(arcade.View):
         acht_zones.sort()            # op x-volgorde
         return (platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte,
                 portalen, decoraties, springers, teleporters, acht_zones,
-                list(self.muziek), borden)
+                list(self.muziek), borden, checkpoints)
 
     def _speel(self):
         """Sla het level op en speel het."""

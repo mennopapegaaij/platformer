@@ -161,6 +161,21 @@ class PlatformerSpel(arcade.View):
         self.muziek = list(data[11]) if len(data) > 11 else []
         # Tekstbordjes (een 13e onderdeel)
         self.borden = list(data[12]) if len(data) > 12 else []
+        # Checkpoints (een 14e onderdeel): tussenpunten om bij terug te komen
+        self.checkpoints = list(data[13]) if len(data) > 13 else []
+        # Respawn-punt onthouden tussen herstarts van HETZELFDE level.
+        if not hasattr(self, "_respawn"):
+            self._respawn = None
+            self._respawn_nummer = None
+        if self._respawn is not None and self._respawn_nummer == nummer and not self.twee:
+            # Begin bij het laatst aangeraakte checkpoint i.p.v. helemaal opnieuw
+            self.speler.x, self.speler.y = self._respawn
+            for cp in self.checkpoints:
+                if cp.x <= self._respawn[0] + 1:
+                    cp.actief = True          # alle checkpoints t/m je startpunt kleuren groen
+        else:
+            self._respawn = None              # ander level -> respawn vergeten
+            self._respawn_nummer = None
         self._vuurwerk = []           # deeltjes-vuurwerk bij winst
         self._heeft_muziek = any(n != -1 for n in self.muziek)
         self._muziek_stap = 0
@@ -300,6 +315,11 @@ class PlatformerSpel(arcade.View):
             # Teken de vlag (in de arena is er geen vlag)
             if not self.arena:
                 self._teken_vlag(self.vlag_x, self.vlag_y)
+
+            # Teken de checkpoints (tussenpunten)
+            for cp in self.checkpoints:
+                if in_beeld(cp, cp.breedte):
+                    cp.teken()
 
             # Teken de portalen die in beeld zijn (vorm-wissel poortjes)
             for portaal in self.portalen:
@@ -625,6 +645,9 @@ class PlatformerSpel(arcade.View):
 
         # Deuren: open ze met een sleutel
         self._check_deuren(self.speler)
+
+        # Checkpoints: raak je er een aan, dan is dat je nieuwe startpunt
+        self._check_checkpoints(self.speler)
 
         # Draaien hangt af van de modus
         self._pas_rotatie_toe(self.speler)
@@ -1014,6 +1037,17 @@ class PlatformerSpel(arcade.View):
                 sp.sleutels -= 1
                 geluid_manager.speel_powerup()
                 break                      # één sleutel opent één deur
+
+    def _check_checkpoints(self, sp):
+        """Raakt de speler een checkpoint? Dan wordt dat zijn nieuwe startplek."""
+        if self.twee:
+            return                        # checkpoints alleen in 1-speler-modus
+        for cp in self.checkpoints:
+            if not cp.actief and cp.raakt_speler(sp.x, sp.y, sp.breedte, sp.hoogte):
+                cp.actief = True
+                self._respawn = (cp.x, cp.y)   # hier kom je terug na doodgaan
+                self._respawn_nummer = self.huidig_level
+                geluid_manager.speel_powerup()  # 🎵 fijn geluidje
 
     def _check_springers(self, sp):
         """Spring-matten (vanzelf springen) en spring-bollen (onthoud dat je erop staat)."""
