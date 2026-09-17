@@ -171,6 +171,11 @@ class PlatformerSpel(arcade.View):
         # Portalen kunnen dit tijdens het spelen nog omzetten (ufo/bal/golf)!
         self.speler.modus = "vliegtuig" if self.vlucht else "blok"
         self.speler.zwaartekracht_richting = 1
+        # Jouw gekozen kleur voor de speler (in 1-speler-modus)
+        if not self.twee:
+            gekozen = voortgang_module.laad_voortgang().get("speler_kleur")
+            if gekozen:
+                self.speler.kleur = tuple(gekozen)
         # Geen plafond voor de spelers: je kunt oneindig omhoog (de camera gaat mee).
         for sp in self.spelers:
             sp.plafond = None

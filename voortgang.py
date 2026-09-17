@@ -32,11 +32,13 @@ def laad_voortgang():
                     "race_record": int(data.get("race_record", 0)),
                     "vlucht_record": int(data.get("vlucht_record", 0)),
                     "tijden": data.get("tijden", {}),   # beste tijden per level
+                    "speler_kleur": data.get("speler_kleur"),  # gekozen spelerkleur (of None)
                 }
         except Exception:
             pass  # Als het bestand kapot is, begin dan opnieuw
     return {"voltooid": set(), "punten": 0, "levens": None,
-            "arena_record": 0, "race_record": 0, "vlucht_record": 0, "tijden": {}}
+            "arena_record": 0, "race_record": 0, "vlucht_record": 0, "tijden": {},
+            "speler_kleur": None}
 
 
 def sla_voortgang_op(voltooid, punten=0, levens=None, arena_record=None,
@@ -58,7 +60,22 @@ def sla_voortgang_op(voltooid, punten=0, levens=None, arena_record=None,
         "race_record": int(race_record),
         "vlucht_record": int(vlucht_record),
         "tijden": huidig.get("tijden", {}),   # beste tijden blijven bewaard
+        "speler_kleur": huidig.get("speler_kleur"),  # gekozen kleur blijft bewaard
     }
+    with open(BESTAND, "w", encoding="utf-8") as f:
+        json.dump(data, f)
+
+
+def sla_speler_kleur_op(kleur):
+    """Bewaar de gekozen spelerkleur (een lijst [r, g, b]). De rest blijft bewaard."""
+    data = {}
+    if os.path.exists(BESTAND):
+        try:
+            with open(BESTAND, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            data = {}
+    data["speler_kleur"] = list(kleur)
     with open(BESTAND, "w", encoding="utf-8") as f:
         json.dump(data, f)
 

@@ -5,7 +5,12 @@
 # De kaart is ONEINDIG: er komen steeds nieuwe bolletjes bij (10, 11, 12...).
 
 import arcade
+import voortgang as voortgang_module
 from instellingen import SCHERM_BREEDTE, SCHERM_HOOGTE, AANTAL_LEVELS, LEVEL_NAMEN
+
+# De kleuren die je voor je poppetje kunt kiezen (linksboven op de kaart)
+SPELER_KLEUR_KEUZES = [(255, 220, 0), (230, 60, 60), (60, 120, 230), (60, 190, 90),
+                       (240, 150, 40), (255, 120, 190), (160, 90, 220), (50, 200, 210)]
 
 # De drie kolommen (x-posities) waar de bolletjes op staan (meegeschaald met de breedte)
 KOL_X = [int(SCHERM_BREEDTE * 0.19), int(SCHERM_BREEDTE * 0.46), int(SCHERM_BREEDTE * 0.73)]
@@ -63,9 +68,19 @@ class LevelKaartView(arcade.View):
         self.race_record = race_record   # Hoogste race-baan die je haalde
         self.vlucht_record = vlucht_record  # Hoogste vliegtuig-baan die je haalde
         self.aantal_spelers = 1          # hoeveel spelers (1 t/m 4)
+        # De gekozen spelerkleur (uit de opslag), standaard geel
+        gekozen = voortgang_module.laad_voortgang().get("speler_kleur")
+        self.speler_kleur = tuple(gekozen) if gekozen else SPELER_KLEUR_KEUZES[0]
 
         # Begin bij het eerste level dat nog niet gehaald is
         self.geselecteerd = self._bereken_start()
+
+    def _kleur_vakje(self, i):
+        """De plek (l, r, b, t) van kleurvakje i, linksboven in de titelbalk."""
+        maat = 20
+        l = 12 + i * (maat + 4)
+        b = SCHERM_HOOGTE - 30
+        return l, l + maat, b, b + maat
 
     def _bereken_start(self):
         """Zoek het eerste level dat nog niet gehaald is (kan ook level 10+ zijn!)."""
@@ -155,6 +170,16 @@ class LevelKaartView(arcade.View):
         arcade.draw_text("🗺️  Levelkaart",
                          SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 38,
                          arcade.color.WHITE, 26, bold=True, anchor_x="center")
+
+        # Kleur-kiezer voor je poppetje (linksboven)
+        arcade.draw_text("Jouw kleur:", 12, SCHERM_HOOGTE - 46, arcade.color.WHITE, 9, bold=True)
+        for i, kleur in enumerate(SPELER_KLEUR_KEUZES):
+            l, r, b, t = self._kleur_vakje(i)
+            arcade.draw_lrbt_rectangle_filled(l, r, b, t, kleur)
+            gekozen = (tuple(kleur) == tuple(self.speler_kleur))
+            arcade.draw_lrbt_rectangle_outline(l, r, b, t,
+                                               arcade.color.WHITE if gekozen else (60, 60, 60),
+                                               3 if gekozen else 1)
 
         # --- Uitleg onderaan ---
         naam = LEVEL_NAMEN.get(self.geselecteerd) or f"Oneindig Level {self.geselecteerd}"
@@ -252,11 +277,12 @@ class LevelKaartView(arcade.View):
             arcade.draw_text("🔒", x - 8, y + straal - 4, arcade.color.LIGHT_GRAY, 12)
 
     def _teken_poppetje(self, x, y):
-        """Teken een klein geel poppetje (de speler op de kaart)."""
+        """Teken een klein poppetje in jouw gekozen kleur (de speler op de kaart)."""
+        kl = self.speler_kleur
         # Lichaam
-        arcade.draw_lrbt_rectangle_filled(x - 9, x + 9, y - 9, y + 9, arcade.color.YELLOW)
+        arcade.draw_lrbt_rectangle_filled(x - 9, x + 9, y - 9, y + 9, kl)
         # Hoofd
-        arcade.draw_circle_filled(x, y + 14, 10, arcade.color.YELLOW)
+        arcade.draw_circle_filled(x, y + 14, 10, kl)
         # Ogen
         arcade.draw_circle_filled(x - 3, y + 16, 2, arcade.color.BLACK)
         arcade.draw_circle_filled(x + 3, y + 16, 2, arcade.color.BLACK)
@@ -312,6 +338,13 @@ class LevelKaartView(arcade.View):
 
     def on_mouse_press(self, x, y, knop, modifiers):
         """Start de vecht-, vlucht-, race- of bouwmodus bij een klik op een zij-knop."""
+        # Klik op een kleurvakje? Kies die spelerkleur en bewaar hem.
+        for i, kleur in enumerate(SPELER_KLEUR_KEUZES):
+            l, r, b, t = self._kleur_vakje(i)
+            if l <= x <= r and b <= y <= t:
+                self.speler_kleur = kleur
+                voortgang_module.sla_speler_kleur_op(kleur)
+                return
         al, ar, ab, at = self.ARENA_KNOP
         vl, vr, vb, vt = self.VLUCHT_KNOP
         rl, rr, rb, rt = self.RACE_KNOP
