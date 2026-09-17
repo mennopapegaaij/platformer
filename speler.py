@@ -54,7 +54,7 @@ MAGNEET_KRACHT = 1.6   # hoe hard de magneet je naar een muur trekt (per stapje)
 
 # --- Flits-modus: loopt niet, maar teleporteert met sprongetjes vooruit ---
 FLITS_INTERVAL = 9     # om de hoeveel stapjes je een flits maakt (kleiner = vaker)
-FLITS_AFSTAND = 46     # hoe ver je per flits vooruit springt
+FLITS_BLOK = 40        # grootte van één blok: elke flits verspringt precies één blok
 
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
@@ -219,8 +219,12 @@ class Speler:
             if f_richting != 0 and self._flits_teller >= FLITS_INTERVAL:
                 self._flits_teller = 0
                 oude_x = self.x
-                self.x = max(0, min(level_breedte - self.breedte,
-                                    self.x + f_richting * FLITS_AFSTAND))
+                # Spring precies naar de VOLGENDE blok-rand (netjes uitgelijnd op de blokjes)
+                if f_richting > 0:
+                    doel = (math.floor(self.x / FLITS_BLOK) + 1) * FLITS_BLOK
+                else:
+                    doel = (math.ceil(self.x / FLITS_BLOK) - 1) * FLITS_BLOK
+                self.x = max(0, min(level_breedte - self.breedte, doel))
                 # niet dwars ín een muur teleporteren -> blijf dan staan
                 for p in platforms:
                     if (getattr(p, "vast", True) and not getattr(p, "is_schuin", False)
