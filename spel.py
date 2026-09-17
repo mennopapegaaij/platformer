@@ -187,7 +187,10 @@ class PlatformerSpel(arcade.View):
         # anders zou springen op zwevende platforms ineens dodelijk zijn.
         if self.race or self.vlucht or self.eigen:
             # alle blokken tellen mee, behalve hellingen (daar loop je overheen)
-            self._blokken = [p for p in platforms if not getattr(p, "is_schuin", False)]
+            # en behalve deuren (daar ga je niet dood van, die houden je alleen tegen)
+            self._blokken = [p for p in platforms
+                             if not getattr(p, "is_schuin", False)
+                             and not getattr(p, "is_deur", False)]
         else:
             self._blokken = []                       # gewone levels: geen zijkant-dood
         self.vijanden = vijanden

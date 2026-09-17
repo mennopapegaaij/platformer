@@ -185,6 +185,16 @@ class Speler:
         if self.x + self.breedte > level_breedte:
             self.x = level_breedte - self.breedte
 
+        # Dichte deuren houden je tegen (je gaat er NIET dood van, je stopt ervoor)
+        for p in platforms:
+            if getattr(p, "is_deur", False) and not p.open:
+                if (self.x < p.x + p.breedte and self.x + self.breedte > p.x and
+                        self.y < p.y + p.hoogte and self.y + self.hoogte > p.y):
+                    if self.snelheid_x > 0:
+                        self.x = p.x - self.breedte
+                    elif self.snelheid_x < 0:
+                        self.x = p.x + p.breedte
+
         # Verticale beweging hangt af van de modus
         richting = self.zwaartekracht_richting   # 1 = gewoon, -1 = alles omgedraaid (kloon!)
         if self.modus == "vliegtuig":

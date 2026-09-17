@@ -211,6 +211,10 @@ class Deur(BlokPlatform):
         super().__init__(x, y, breedte, hoogte)
         self.open = False
 
+    @property
+    def vast(self):
+        return not self.open        # open deur is niet vast (je loopt erdoor)
+
     def raakt(self, *a):
         return (not self.open) and super().raakt(*a)
 
