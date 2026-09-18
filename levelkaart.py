@@ -57,6 +57,8 @@ class LevelKaartView(arcade.View):
     RACE_KNOP = (_KL, _KR, _ONDER + 2 * (_BH + _GAP), _ONDER + 2 * (_BH + _GAP) + _BH)
     VLUCHT_KNOP = (_KL, _KR, _ONDER + 3 * (_BH + _GAP), _ONDER + 3 * (_BH + _GAP) + _BH)
     ARENA_KNOP = (_KL, _KR, _ONDER + 4 * (_BH + _GAP), _ONDER + 4 * (_BH + _GAP) + _BH)
+    # Knop naar de poppetjes-zoeker (rechtsboven in de titelbalk)
+    ZOEKER_KNOP = (SCHERM_BREEDTE - 162, SCHERM_BREEDTE - 8, SCHERM_HOOGTE - 34, SCHERM_HOOGTE - 10)
 
     def __init__(self, voltooid_levels, punten=0, levens=None, arena_record=0,
                  race_record=0, vlucht_record=0):
@@ -170,6 +172,13 @@ class LevelKaartView(arcade.View):
         arcade.draw_text("🗺️  Levelkaart",
                          SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 38,
                          arcade.color.WHITE, 26, bold=True, anchor_x="center")
+
+        # Knop naar de poppetjes-zoeker (rechtsboven in de titelbalk)
+        zl, zr, zb, zt = self.ZOEKER_KNOP
+        arcade.draw_lrbt_rectangle_filled(zl, zr, zb, zt, (90, 70, 150))
+        arcade.draw_lrbt_rectangle_outline(zl, zr, zb, zt, (255, 220, 120), 2)
+        arcade.draw_text("🔎 Poppetjes (P)", (zl + zr) // 2, (zb + zt) // 2 - 6,
+                         arcade.color.WHITE, 10, bold=True, anchor_x="center")
 
         # Kleur-kiezer voor je poppetje (linksboven)
         arcade.draw_text("Jouw kleur:", 12, SCHERM_HOOGTE - 46, arcade.color.WHITE, 9, bold=True)
@@ -335,6 +344,9 @@ class LevelKaartView(arcade.View):
         elif toets == arcade.key.B:
             # B = start de bouwmodus
             self._start_bouwer()
+        elif toets == arcade.key.P:
+            # P = open de poppetjes-zoeker
+            self._open_zoeker()
 
     def on_mouse_press(self, x, y, knop, modifiers):
         """Start de vecht-, vlucht-, race- of bouwmodus bij een klik op een zij-knop."""
@@ -345,6 +357,11 @@ class LevelKaartView(arcade.View):
                 self.speler_kleur = kleur
                 voortgang_module.sla_speler_kleur_op(kleur)
                 return
+        # Klik op de poppetjes-zoeker-knop?
+        zl, zr, zb, zt = self.ZOEKER_KNOP
+        if zl <= x <= zr and zb <= y <= zt:
+            self._open_zoeker()
+            return
         al, ar, ab, at = self.ARENA_KNOP
         vl, vr, vb, vt = self.VLUCHT_KNOP
         rl, rr, rb, rt = self.RACE_KNOP
@@ -390,6 +407,11 @@ class LevelKaartView(arcade.View):
                               kaart_punten=self.punten, kaart_levens=self.levens,
                               aantal_spelers=self.aantal_spelers)
         self.window.show_view(spel)
+
+    def _open_zoeker(self):
+        """Open de poppetjes-zoeker (alle poppetjes bekijken)."""
+        from poppetjeszoeker import PoppetjeZoeker
+        self.window.show_view(PoppetjeZoeker(self))
 
     def _start_bouwer(self):
         """Open de bouwmodus om je eigen level te maken."""
