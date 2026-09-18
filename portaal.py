@@ -39,6 +39,10 @@ PORTAAL_KLEUREN = {
     "stuiteraar": ((255, 140, 40), (255, 210, 150)),    # stuiter-oranje = stuiteraar
     "klimmer": ((130, 90, 200), (200, 170, 245)),       # klimpaars = klimmer
     "draaisturing": ((60, 100, 190), (150, 180, 240)),  # stuurblauw = draaibesturing
+    "boemerang": ((200, 130, 40), (245, 195, 120)),     # hout-oranje = boemerang
+    "stamper": ((100, 100, 120), (170, 170, 190)),      # zwaar grijs = stamper
+    "zweefspringer": ((120, 190, 240), (200, 230, 255)),# luchtblauw = zweefspringer
+    "groeier": ((80, 180, 80), (170, 230, 170)),        # groeigroen = groeier
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
     # Snelheid-portalen (veranderen niet je vorm, maar hoe snel je gaat)
@@ -217,6 +221,23 @@ def teken_portaal_icoon(soort, cx, cy):
         arcade.draw_circle_outline(cx, cy, 9, arcade.color.WHITE, 2)
         arcade.draw_line(cx, cy, cx + 7, cy + 5, arcade.color.WHITE, 2)
         arcade.draw_circle_filled(cx + 7, cy + 5, 2, arcade.color.WHITE)
+    elif soort == "boemerang":
+        # V-vorm van een boemerang
+        arcade.draw_line(cx, cy - 5, cx - 9, cy + 8, arcade.color.WHITE, 3)
+        arcade.draw_line(cx, cy - 5, cx + 9, cy + 8, arcade.color.WHITE, 3)
+    elif soort == "stamper":
+        # Dikke pijl naar beneden
+        arcade.draw_lrbt_rectangle_filled(cx - 3, cx + 3, cy - 2, cy + 9, arcade.color.WHITE)
+        arcade.draw_triangle_filled(cx - 8, cy - 2, cx + 8, cy - 2, cx, cy - 11, arcade.color.WHITE)
+    elif soort == "zweefspringer":
+        # Blokje met vleugeltjes
+        arcade.draw_lrbt_rectangle_filled(cx - 5, cx + 5, cy - 5, cy + 5, arcade.color.WHITE)
+        arcade.draw_triangle_filled(cx - 5, cy, cx - 12, cy + 6, cx - 5, cy + 6, arcade.color.WHITE)
+        arcade.draw_triangle_filled(cx + 5, cy, cx + 12, cy + 6, cx + 5, cy + 6, arcade.color.WHITE)
+    elif soort == "groeier":
+        # Klein blokje met een groter blokje ernaast (groeien)
+        arcade.draw_lrbt_rectangle_outline(cx - 10, cx - 3, cy - 4, cy + 3, arcade.color.WHITE, 2)
+        arcade.draw_lrbt_rectangle_outline(cx + 1, cx + 11, cy - 8, cy + 8, arcade.color.WHITE, 2)
     elif soort in SNELHEID_FACTOR:
         # Snelheid-portaal: laat de keer-factor zien (bv. "x2")
         arcade.draw_text(soort, cx, cy - 6, arcade.color.WHITE, 11, bold=True, anchor_x="center")

@@ -85,6 +85,19 @@ STUITER_KRACHT = 13       # hoe hoog je elke keer automatisch stuitert
 #     draait langzaam rond (geen toeval). Rechts/links duwen in die draaiende richting. ---
 DRAAI_SNELHEID = 0.0075   # hoe snel de stuur-richting ronddraait (nog eens 2x langzamer)
 
+# --- Boemerang-modus: een elastiek trekt je steeds terug naar je startpunt ---
+BOEM_VEER = 0.06          # hoe hard het elastiek terugtrekt (hoe verder weg, hoe sterker)
+
+# --- Stamper-modus: knop in de lucht = keihard naar beneden stampen ---
+STAMP_KRACHT = 20         # hoe snel je naar beneden stampt
+
+# --- Zweefspringer-modus: lage zwaartekracht -> lange, zwevende sprongen ---
+ZWEEF_ZWAARTE = 0.35      # welk deel van de gewone zwaartekracht je voelt (lichter = zweveriger)
+
+# --- Groeier-modus: hoe langer je loopt, hoe groter je wordt ---
+GROEI_STAP = 0.01         # hoeveel je per stapje groeit/krimpt
+GROEI_MAX = 2.5           # hoe groot je maximaal wordt
+
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
 #   0 = naar beneden, 1 = naar rechts, 2 = naar boven, 3 = naar links
@@ -163,6 +176,7 @@ class Speler:
         self._dronken_fase = 0.0         # dronken: waar we in de op-en-neer-wiebel zitten
         self._ritme_teller = 0           # ritme-flip: tel tot de volgende zwaartekracht-flip
         self._stuur_hoek = 0.0           # draaibesturing: welke kant 'rechts' nu op wijst
+        self._anker_x = None             # boemerang: het punt waar het elastiek je heen trekt
 
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
@@ -201,6 +215,7 @@ class Speler:
         self._dronken_fase = 0.0            # dronken: wiebel terug naar begin
         self._ritme_teller = 0              # ritme-flip: teller reset
         self._stuur_hoek = 0.0              # draaibesturing: stuur-richting terug naar begin
+        self._anker_x = None                # boemerang: ankerpunt reset
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -351,6 +366,12 @@ class Speler:
                 if dichtst is not None:
                     self.snelheid_x += (MAGNEET_KRACHT if dichtst > mx else -MAGNEET_KRACHT)
 
+            # Boemerang: een elastiek trekt je steeds terug naar je startpunt
+            if self.modus == "boemerang":
+                if self._anker_x is None:
+                    self._anker_x = self.x       # onthoud waar je begon
+                self.snelheid_x += (self._anker_x - self.x) * BOEM_VEER
+
             self.x += self.snelheid_x
 
         # Ninja, magneet én klimmer: stop tegen een muur (i.p.v. erdoor of dood) en onthoud de kant.
@@ -383,6 +404,15 @@ class Speler:
                         self.x = p.x - self.breedte
                     elif self.snelheid_x < 0:
                         self.x = p.x + p.breedte
+
+        # Groeier: hoe langer je loopt, hoe groter je wordt (stilstaan = weer krimpen)
+        if self.modus == "groeier":
+            if self.links_ingedrukt or self.rechts_ingedrukt:
+                doel = min(self.grootte_factor + GROEI_STAP, GROEI_MAX)
+            else:
+                doel = max(self.grootte_factor - GROEI_STAP, 1.0)
+            if abs(doel - self.grootte_factor) > 0.0001:
+                self.zet_grootte(doel, 0)     # frames=0 -> geen automatische terugkeer
 
         # Vertraagd: een gevraagde sprong komt pas ná de vertraging echt
         if self.modus == "vertraagd" and self._vert_spring_wacht > 0:
@@ -445,6 +475,9 @@ class Speler:
                 self.snelheid_y += ROBOT_EXTRA * richting
                 self._robot_boost -= 1
             self.snelheid_y -= ZWAARTEKRACHT * richting
+        elif self.modus == "zweefspringer":
+            # Zweefspringer: lage zwaartekracht -> je blijft lang in de lucht hangen.
+            self.snelheid_y -= ZWAARTEKRACHT * ZWEEF_ZWAARTE * self.zwaartekracht_richting
         else:
             # Blok en UFO: gewone zwaartekracht. De richting kan omgedraaid zijn door
             # een draai-bol (dan val je juist naar BOVEN).
@@ -699,6 +732,13 @@ class Speler:
             if self.staat_op_grond:
                 self._val_snelheid = -(SPRING_KRACHT + self.sprong_bonus)
             return
+        if self.modus == "stamper":
+            # Stamper: op de grond spring je; in de lucht STAMP je keihard naar beneden
+            if self.staat_op_grond:
+                self.snelheid_y = (SPRING_KRACHT + self.sprong_bonus) * self.zwaartekracht_richting
+            else:
+                self.snelheid_y = -STAMP_KRACHT * self.zwaartekracht_richting
+            return
         self._doe_sprong()
 
     def _doe_sprong(self):
@@ -821,6 +861,18 @@ class Speler:
             return
         if self.modus == "draaisturing":
             self._teken_draaisturing()
+            return
+        if self.modus == "boemerang":
+            self._teken_boemerang()
+            return
+        if self.modus == "stamper":
+            self._teken_stamper()
+            return
+        if self.modus == "zweefspringer":
+            self._teken_zweefspringer()
+            return
+        if self.modus == "groeier":
+            self._teken_groeier()
             return
 
         # Gewoon blokje: in de racemodus tolt het door de lucht → teken het gedraaid
@@ -1307,6 +1359,67 @@ class Speler:
         for ox in (-7, 7):
             ex, ey = draai(ox, 6)
             arcade.draw_circle_filled(ex, ey, 3, OOG_KLEUR)
+
+    def _teken_boemerang(self):
+        """Teken een boemerang (een V-vorm) met een elastiek-lijntje naar het ankerpunt."""
+        cx = self.x + self.breedte / 2
+        cy = self.y + self.hoogte / 2
+        # Elastiek naar het ankerpunt (als dat er is)
+        if self._anker_x is not None:
+            arcade.draw_line(self._anker_x + self.breedte / 2, cy, cx, cy, (200, 200, 210), 1)
+        # De boemerang: twee dikke armen in een V
+        kl = self.kleur
+        arcade.draw_polygon_filled([(cx - 12, cy + 10), (cx - 4, cy + 8), (cx, cy - 2),
+                                    (cx - 6, cy - 4), (cx - 12, cy + 2)], kl)
+        arcade.draw_polygon_filled([(cx + 12, cy + 10), (cx + 4, cy + 8), (cx, cy - 2),
+                                    (cx + 6, cy - 4), (cx + 12, cy + 2)], kl)
+        arcade.draw_circle_filled(cx, cy - 1, 3, (120, 70, 30))
+        arcade.draw_circle_filled(cx - 2, cy + 6, 1.5, OOG_KLEUR)
+        arcade.draw_circle_filled(cx + 2, cy + 6, 1.5, OOG_KLEUR)
+
+    def _teken_stamper(self):
+        """Teken een zwaar blok (donkere onderkant) met een dikke pijl naar beneden."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w / 2
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (110, 110, 130))
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + 8, (60, 60, 80))   # zware onderkant
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (40, 40, 55), 3)
+        # Dikke pijl naar beneden (stampen!)
+        arcade.draw_lrbt_rectangle_filled(cx - 3, cx + 3, y + h * 0.45, y + h - 6, (255, 230, 90))
+        arcade.draw_triangle_filled(cx - 8, y + h * 0.45, cx + 8, y + h * 0.45,
+                                    cx, y + h * 0.2, (255, 230, 90))
+        # Oogjes bovenin
+        arcade.draw_circle_filled(x + 9, y + h - 9, 3, OOG_KLEUR)
+        arcade.draw_circle_filled(x + w - 9, y + h - 9, 3, OOG_KLEUR)
+
+    def _teken_zweefspringer(self):
+        """Teken een licht blokje met twee vleugeltjes (zweeft lang in de lucht)."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        # Vleugeltjes aan de zijkanten
+        arcade.draw_triangle_filled(x, y + h * 0.6, x, y + h - 2, x - 10, y + h * 0.8, (240, 240, 255))
+        arcade.draw_triangle_filled(x + w, y + h * 0.6, x + w, y + h - 2, x + w + 10, y + h * 0.8, (240, 240, 255))
+        # Lijf (lichtblauw = licht/luchtig)
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (150, 210, 255))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (80, 150, 210), 3)
+        # Oogjes en een klein omhoog-pijltje
+        arcade.draw_circle_filled(x + 9, y + h - 10, 3, OOG_KLEUR)
+        arcade.draw_circle_filled(x + w - 9, y + h - 10, 3, OOG_KLEUR)
+        cx = x + w / 2
+        arcade.draw_triangle_filled(cx, y + h * 0.55, cx - 5, y + h * 0.35, cx + 5, y + h * 0.35, (255, 255, 255))
+
+    def _teken_groeier(self):
+        """Teken een vriendelijk blokje met groei-pijltjes (het wordt vanzelf groter)."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (120, 200, 120))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (50, 130, 50), 3)
+        # Groei-pijltjes (naar buiten) in de hoeken
+        wit = (245, 255, 245)
+        arcade.draw_text("↗", x + w - 12, y + h - 14, wit, 10, bold=True)
+        arcade.draw_text("↙", x + 2, y + 2, wit, 10, bold=True)
+        # Blije oogjes en een lach
+        arcade.draw_circle_filled(x + w * 0.35, y + h * 0.6, 3, OOG_KLEUR)
+        arcade.draw_circle_filled(x + w * 0.65, y + h * 0.6, 3, OOG_KLEUR)
+        arcade.draw_arc_outline(x + w / 2, y + h * 0.4, w * 0.4, h * 0.3, OOG_KLEUR, 200, 340, 2)
 
     def _teken_spin(self):
         """Teken een spinnetje: een rond lijf met acht pootjes (donkerrood)."""

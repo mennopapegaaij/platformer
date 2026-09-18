@@ -37,6 +37,10 @@ POPPETJES = [
     ("stuiteraar", "Stuiteraar", "Stuitert altijd vanzelf; je kunt alleen sturen."),
     ("klimmer", "Klimmer", "Kan niet springen, alleen van muur naar muur."),
     ("draaisturing", "Draaibesturing", "De zwaartekracht draait langzaam rond."),
+    ("boemerang", "Boemerang", "Een elastiek trekt je steeds terug naar je startpunt."),
+    ("stamper", "Stamper", "Op de grond spring je; in de lucht stamp je keihard omlaag."),
+    ("zweefspringer", "Zweefspringer", "Superlange, zwevende sprongen (lage zwaartekracht)."),
+    ("groeier", "Groeier", "Hoe langer je loopt, hoe groter je wordt."),
 ]
 
 KOLOMMEN = 5                 # hoeveel poppetjes naast elkaar

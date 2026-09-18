@@ -831,7 +831,8 @@ class PlatformerSpel(arcade.View):
                      "chaos": "chaos", "dronken": "dronken",
                      "turbo": "turbo", "ritme": "ritme",
                      "stuiteraar": "stuiteraar", "klimmer": "klimmer",
-                     "draaisturing": "draaisturing"}
+                     "draaisturing": "draaisturing", "boemerang": "boemerang",
+                     "stamper": "stamper", "zweefspringer": "zweefspringer", "groeier": "groeier"}
 
     def _pas_rotatie_toe(self, sp):
         """Zet de draai-stand van een speler op basis van zijn modus."""
@@ -848,7 +849,8 @@ class PlatformerSpel(arcade.View):
                        "kolibrie", "draak", "ijs", "ninja",
                        "spiegel", "magneet", "flits",
                        "dobbelsteen", "vertraagd", "chaos", "dronken",
-                       "turbo", "ritme", "stuiteraar", "klimmer", "draaisturing"):
+                       "turbo", "ritme", "stuiteraar", "klimmer", "draaisturing",
+                       "boemerang", "stamper", "zweefspringer", "groeier"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
