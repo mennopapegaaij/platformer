@@ -830,7 +830,8 @@ class PlatformerSpel(arcade.View):
                      "dobbelsteen": "dobbelsteen", "vertraagd": "vertraagd",
                      "chaos": "chaos", "dronken": "dronken",
                      "turbo": "turbo", "ritme": "ritme",
-                     "stuiteraar": "stuiteraar", "klimmer": "klimmer"}
+                     "stuiteraar": "stuiteraar", "klimmer": "klimmer",
+                     "draaisturing": "draaisturing"}
 
     def _pas_rotatie_toe(self, sp):
         """Zet de draai-stand van een speler op basis van zijn modus."""
@@ -847,7 +848,7 @@ class PlatformerSpel(arcade.View):
                        "kolibrie", "draak", "ijs", "ninja",
                        "spiegel", "magneet", "flits",
                        "dobbelsteen", "vertraagd", "chaos", "dronken",
-                       "turbo", "ritme", "stuiteraar", "klimmer"):
+                       "turbo", "ritme", "stuiteraar", "klimmer", "draaisturing"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -1188,7 +1189,7 @@ class PlatformerSpel(arcade.View):
 
     def _raakt_blok_zijkant(self, sp):
         """Botst deze speler tegen de ZIJKANT van een blok? (Geometry Dash-dood.)"""
-        if sp.modus in ("draaibol", "ninja", "magneet", "klimmer"):
+        if sp.modus in ("draaibol", "ninja", "magneet", "klimmer", "draaisturing"):
             return False        # deze modi botsen juist tegen muren (rollen/afzetten/aangetrokken) -> niet dood
         for p in self._blokken:
             if not getattr(p, "vast", True):

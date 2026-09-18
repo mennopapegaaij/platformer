@@ -38,6 +38,7 @@ PORTAAL_KLEUREN = {
     "ritme":  ((90, 130, 230), (170, 200, 255)),        # ritmeblauw = ritme-flip
     "stuiteraar": ((255, 140, 40), (255, 210, 150)),    # stuiter-oranje = stuiteraar
     "klimmer": ((130, 90, 200), (200, 170, 245)),       # klimpaars = klimmer
+    "draaisturing": ((60, 100, 190), (150, 180, 240)),  # stuurblauw = draaibesturing
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
     # Snelheid-portalen (veranderen niet je vorm, maar hoe snel je gaat)
@@ -211,6 +212,11 @@ def teken_portaal_icoon(soort, cx, cy):
         arcade.draw_lrbt_rectangle_filled(cx - 11, cx - 8, cy - 10, cy + 10, arcade.color.WHITE)
         arcade.draw_lrbt_rectangle_filled(cx + 8, cx + 11, cy - 10, cy + 10, arcade.color.WHITE)
         arcade.draw_circle_filled(cx, cy, 5, arcade.color.WHITE)
+    elif soort == "draaisturing":
+        # Kompas met een ronddraaiende pijl
+        arcade.draw_circle_outline(cx, cy, 9, arcade.color.WHITE, 2)
+        arcade.draw_line(cx, cy, cx + 7, cy + 5, arcade.color.WHITE, 2)
+        arcade.draw_circle_filled(cx + 7, cy + 5, 2, arcade.color.WHITE)
     elif soort in SNELHEID_FACTOR:
         # Snelheid-portaal: laat de keer-factor zien (bv. "x2")
         arcade.draw_text(soort, cx, cy - 6, arcade.color.WHITE, 11, bold=True, anchor_x="center")
