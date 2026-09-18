@@ -24,10 +24,16 @@ class PlatformerSpel(arcade.View):
     def __init__(self, level_nummer, voltooid_levels, punten=0, levens=None,
                  arena=False, kaart_punten=0, kaart_levens=None, race=False,
                  eigen_level=None, vlucht=False, twee=False, aantal_spelers=None,
-                 bouw_slot=1):
+                 bouw_slot=1, testruimte=False):
         super().__init__()
         # Op welke bouw-plek dit eigen level hoort (om er weer op terug te komen)
         self.bouw_slot = bouw_slot
+        # Testruimte: een speelkamer om alle poppetjes te proberen (wissel met N)
+        self.testruimte = testruimte
+        self._test_index = 0
+        if testruimte:
+            from poppetjeszoeker import POPPETJES
+            self._test_modi = [m for m, _, _ in POPPETJES]   # alle poppetjes op volgorde
         # Eigen (zelfgebouwd) level uit de bouwmodus (of None)
         self.eigen = eigen_level is not None
         self.eigen_level_data = eigen_level
@@ -139,6 +145,9 @@ class PlatformerSpel(arcade.View):
             self.speler.sprong_bonus = 0
         elif self.arena:
             data = levels_module.maak_arena(nummer)
+        elif self.testruimte:
+            from testruimte import maak_testruimte
+            data = maak_testruimte()
         else:
             data = levels_module.maak_level(nummer)
         platforms = data[0]
@@ -353,7 +362,9 @@ class PlatformerSpel(arcade.View):
         # --- Teken de berichten buiten de camera (altijd midden op het scherm) ---
 
         # Levelnaam altijd bovenin (arena krijgt een korte naam + pijltjes in het midden)
-        if self.eigen:
+        if self.testruimte:
+            naam_tekst = "🧪 Testruimte — N = ander poppetje (nu: %s)" % self.speler.modus
+        elif self.eigen:
             naam_tekst = "🔨 Jouw eigen level"
         elif self.vlucht:
             naam_tekst = f"✈️ Vlucht — Baan {self.huidig_level}"
@@ -920,6 +931,25 @@ class PlatformerSpel(arcade.View):
                 if sp.modus != nieuwe_modus:
                     self._zet_vorm(sp, nieuwe_modus, 1)
                     geluid_manager.speel_powerup()   # 🎵 vorm-wissel geluidje
+
+    def _test_volgende(self, stap):
+        """Testruimte: wissel naar het volgende (of vorige) poppetje en maak alles schoon."""
+        self._test_index = (self._test_index + stap) % len(self._test_modi)
+        modus = self._test_modi[self._test_index]
+        sp = self.speler
+        self._zet_vorm(sp, modus, 1)
+        # Extra dingen netjes terugzetten zodat elk poppetje fris begint
+        sp.zet_grootte(1.0, 0)
+        sp._anker_x = None
+        sp._versnel = 0.0
+        sp._versnel_richting = 0
+        sp._wind_teller = 0
+        sp._wind_richting = 1
+        sp._stuur_hoek = 0.0
+        sp._flits_teller = 0
+        sp._ritme_teller = 0
+        self._vlieg_omhoog = False
+        geluid_manager.speel_powerup()
 
     def _zet_vorm(self, sp, nieuwe_modus, richting):
         """Zet een speler (of kloon) netjes in een nieuwe vorm."""
@@ -1502,7 +1532,7 @@ class PlatformerSpel(arcade.View):
         """Verwerk dat de speler geraakt wordt: leven aftrekken of game over."""
         # In de vecht-, race-, vlucht- en bouwmodus ga je wel 'af' (opnieuw proberen),
         # maar je verliest GEEN leven en het is nooit game-over.
-        if self.arena or self.race or self.vlucht or self.eigen:
+        if self.arena or self.race or self.vlucht or self.eigen or self.testruimte:
             geluid_manager.speel_geraakt()  # 🎵 Bonk!
             self.dood = True
             return
@@ -1608,6 +1638,9 @@ class PlatformerSpel(arcade.View):
                            else self.speler.x - 4)
                 kogel_y = self.speler.y + self.speler.hoogte // 2
                 self.kogels.append(Kogel(kogel_x, kogel_y, richting))
+        elif toets == arcade.key.N and self.testruimte:
+            # In de testruimte: wissel naar het volgende poppetje
+            self._test_volgende(1)
         elif toets == arcade.key.KEY_2 and self.arena:
             # Geheime sprong-toets: spring meteen naar level 250 (om te proberen!)
             self.huidig_level = 250
@@ -1617,7 +1650,7 @@ class PlatformerSpel(arcade.View):
             # K = terug (naar de bouwmodus, of naar de kaart)
             if self.eigen:
                 self._naar_bouwer()
-            elif self.arena or self.race or self.vlucht:
+            elif self.arena or self.race or self.vlucht or self.testruimte:
                 self._verlaat_arena()   # zet de kaart-punten/levens terug
             else:
                 self._naar_kaart()
@@ -1626,6 +1659,8 @@ class PlatformerSpel(arcade.View):
             if self.level_gehaald:
                 if self.eigen:
                     self._naar_bouwer()            # Terug naar de bouwmodus
+                elif self.testruimte:
+                    self._verlaat_arena()          # Testruimte: terug naar de kaart
                 elif self.vlucht:
                     self._volgende_vlucht_baan()   # Door naar de volgende vliegbaan!
                 elif self.race:
@@ -1637,6 +1672,8 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.R:
             if self.arena and self.game_over:
                 self._verlaat_arena()              # Na game-over in de arena: terug naar de kaart
+            elif self.gewonnen and self.testruimte:
+                self._verlaat_arena()              # Testruimte: kaart-punten netjes terug
             elif self.gewonnen:
                 self._naar_kaart()                 # Terug naar de kaart na winst
             elif self.game_over:
@@ -1652,6 +1689,8 @@ class PlatformerSpel(arcade.View):
                 self.maak_level(1)
             elif self.dood:
                 self.maak_level(self.huidig_level) # Zelfde level opnieuw (levens blijven!)
+            elif self.testruimte:
+                self.maak_level(self.huidig_level) # Testruimte opnieuw opzetten
 
     def on_mouse_press(self, x, y, knop, modifiers):
         """In de vechtmodus: klik op de pijltjes of de reset-knop bovenin."""
