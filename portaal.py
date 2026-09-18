@@ -47,6 +47,7 @@ PORTAAL_KLEUREN = {
     "versneller": ((50, 130, 210), (150, 200, 250)),    # snelblauw = versneller
     "wind": ((150, 200, 220), (210, 240, 250)),         # windlichtblauw = wind
     "plakker": ((90, 190, 110), (170, 235, 180)),       # gekkogroen = plakker
+    "eigen": ((255, 150, 40), (255, 210, 130)),         # oranje = zelfgemaakt poppetje
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
     # Snelheid-portalen (veranderen niet je vorm, maar hoe snel je gaat)
@@ -262,6 +263,11 @@ def teken_portaal_icoon(soort, cx, cy):
         arcade.draw_circle_filled(cx + 5, cy + 2, 4, arcade.color.WHITE)
         arcade.draw_circle_filled(cx - 5, cy + 2, 2, (40, 90, 50))
         arcade.draw_circle_filled(cx + 5, cy + 2, 2, (40, 90, 50))
+    elif soort == "eigen":
+        # Zelfgemaakt poppetje: een sterretje/blokje met een plusje
+        arcade.draw_lrbt_rectangle_filled(cx - 7, cx + 7, cy - 7, cy + 7, arcade.color.WHITE)
+        arcade.draw_line(cx - 3, cy, cx + 3, cy, (255, 150, 40), 2)
+        arcade.draw_line(cx, cy - 3, cx, cy + 3, (255, 150, 40), 2)
     elif soort in SNELHEID_FACTOR:
         # Snelheid-portaal: laat de keer-factor zien (bv. "x2")
         arcade.draw_text(soort, cx, cy - 6, arcade.color.WHITE, 11, bold=True, anchor_x="center")

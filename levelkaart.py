@@ -57,10 +57,10 @@ class LevelKaartView(arcade.View):
     RACE_KNOP = (_KL, _KR, _ONDER + 2 * (_BH + _GAP), _ONDER + 2 * (_BH + _GAP) + _BH)
     VLUCHT_KNOP = (_KL, _KR, _ONDER + 3 * (_BH + _GAP), _ONDER + 3 * (_BH + _GAP) + _BH)
     ARENA_KNOP = (_KL, _KR, _ONDER + 4 * (_BH + _GAP), _ONDER + 4 * (_BH + _GAP) + _BH)
-    # Knop naar de poppetjes-zoeker (rechtsboven in de titelbalk)
-    ZOEKER_KNOP = (SCHERM_BREEDTE - 162, SCHERM_BREEDTE - 8, SCHERM_HOOGTE - 34, SCHERM_HOOGTE - 10)
-    # Knop naar de testruimte (links van de zoeker-knop)
-    TEST_KNOP = (SCHERM_BREEDTE - 270, SCHERM_BREEDTE - 168, SCHERM_HOOGTE - 34, SCHERM_HOOGTE - 10)
+    # Drie dunne knoppen op een rijtje rechtsboven: poppetjes-zoeker, testruimte, maker
+    ZOEKER_KNOP = (SCHERM_BREEDTE - 172, SCHERM_BREEDTE - 8, SCHERM_HOOGTE - 24, SCHERM_HOOGTE - 10)
+    TEST_KNOP = (SCHERM_BREEDTE - 172, SCHERM_BREEDTE - 8, SCHERM_HOOGTE - 41, SCHERM_HOOGTE - 27)
+    MAKER_KNOP = (SCHERM_BREEDTE - 172, SCHERM_BREEDTE - 8, SCHERM_HOOGTE - 58, SCHERM_HOOGTE - 44)
 
     def __init__(self, voltooid_levels, punten=0, levens=None, arena_record=0,
                  race_record=0, vlucht_record=0):
@@ -175,19 +175,16 @@ class LevelKaartView(arcade.View):
                          SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 38,
                          arcade.color.WHITE, 26, bold=True, anchor_x="center")
 
-        # Knop naar de poppetjes-zoeker (rechtsboven in de titelbalk)
-        zl, zr, zb, zt = self.ZOEKER_KNOP
-        arcade.draw_lrbt_rectangle_filled(zl, zr, zb, zt, (90, 70, 150))
-        arcade.draw_lrbt_rectangle_outline(zl, zr, zb, zt, (255, 220, 120), 2)
-        arcade.draw_text("🔎 Poppetjes (P)", (zl + zr) // 2, (zb + zt) // 2 - 6,
-                         arcade.color.WHITE, 10, bold=True, anchor_x="center")
-
-        # Knop naar de testruimte
-        tl, tr, tb, tt = self.TEST_KNOP
-        arcade.draw_lrbt_rectangle_filled(tl, tr, tb, tt, (40, 130, 110))
-        arcade.draw_lrbt_rectangle_outline(tl, tr, tb, tt, (255, 220, 120), 2)
-        arcade.draw_text("🧪 Testruimte (T)", (tl + tr) // 2, (tb + tt) // 2 - 6,
-                         arcade.color.WHITE, 10, bold=True, anchor_x="center")
+        # Drie dunne knoppen rechtsboven: poppetjes-zoeker, testruimte en maker
+        for rect, kleur, tekst in (
+                (self.ZOEKER_KNOP, (90, 70, 150), "🔎 Poppetjes (P)"),
+                (self.TEST_KNOP, (40, 130, 110), "🧪 Testruimte (T)"),
+                (self.MAKER_KNOP, (170, 100, 40), "🛠️ Maker (M)")):
+            l, r, b, t = rect
+            arcade.draw_lrbt_rectangle_filled(l, r, b, t, kleur)
+            arcade.draw_lrbt_rectangle_outline(l, r, b, t, (255, 220, 120), 2)
+            arcade.draw_text(tekst, (l + r) // 2, (b + t) // 2 - 5,
+                             arcade.color.WHITE, 9, bold=True, anchor_x="center")
 
         # Kleur-kiezer voor je poppetje (linksboven)
         arcade.draw_text("Jouw kleur:", 12, SCHERM_HOOGTE - 46, arcade.color.WHITE, 9, bold=True)
@@ -359,6 +356,9 @@ class LevelKaartView(arcade.View):
         elif toets == arcade.key.T:
             # T = ga naar de testruimte
             self._start_testruimte()
+        elif toets == arcade.key.M:
+            # M = open de poppetjes-maker
+            self._open_maker()
 
     def on_mouse_press(self, x, y, knop, modifiers):
         """Start de vecht-, vlucht-, race- of bouwmodus bij een klik op een zij-knop."""
@@ -378,6 +378,11 @@ class LevelKaartView(arcade.View):
         tl, tr, tb, tt = self.TEST_KNOP
         if tl <= x <= tr and tb <= y <= tt:
             self._start_testruimte()
+            return
+        # Klik op de maker-knop?
+        ml, mr, mb, mt = self.MAKER_KNOP
+        if ml <= x <= mr and mb <= y <= mt:
+            self._open_maker()
             return
         al, ar, ab, at = self.ARENA_KNOP
         vl, vr, vb, vt = self.VLUCHT_KNOP
@@ -429,6 +434,11 @@ class LevelKaartView(arcade.View):
         """Open de poppetjes-zoeker (alle poppetjes bekijken)."""
         from poppetjeszoeker import PoppetjeZoeker
         self.window.show_view(PoppetjeZoeker(self))
+
+    def _open_maker(self):
+        """Open de poppetjes-maker om je eigen poppetje samen te stellen."""
+        from poppetjemaker import PoppetjeMaker
+        self.window.show_view(PoppetjeMaker(self))
 
     def _start_testruimte(self):
         """Open de testruimte om alle poppetjes te proberen."""

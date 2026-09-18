@@ -192,6 +192,7 @@ class Speler:
         self._versnel_richting = 0       # versneller: welke kant je op versnelt (-1/0/1)
         self._wind_teller = 0            # wind: tel tot de wind van kant wisselt
         self._wind_richting = 1          # wind: welke kant de wind nu op blaast (1/-1)
+        self.eigen_instel = None         # zelfgemaakt poppetje: dict met vorm/kleur/kunstjes
 
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
@@ -292,6 +293,8 @@ class Speler:
         snelheid *= self.snelheid_factor   # snelheid-portaal (x0.5 / x2 / x10 ...)
         if self.modus == "ninja":
             snelheid *= NINJA_SNELHEID     # de ninja is lekker snel
+        if self.modus == "eigen" and self._eigen("snel"):
+            snelheid *= 1.6                # zelfgemaakt poppetje met het 'Snel'-kunstje
 
         # Horizontale beweging — elke modus doet het net iets anders
         if self.modus == "flits":
@@ -423,7 +426,8 @@ class Speler:
 
         # Ninja, magneet én klimmer: stop tegen een muur (i.p.v. erdoor of dood) en onthoud de kant.
         # Zo kunnen ninja en klimmer zich later van de muur afzetten (muursprong).
-        if self.modus in ("ninja", "magneet", "klimmer", "plakker"):
+        if (self.modus in ("ninja", "magneet", "klimmer", "plakker")
+                or (self.modus == "eigen" and self._eigen("muur"))):
             self._muur_kant = 0
             for p in platforms:
                 if not getattr(p, "vast", True) or getattr(p, "is_schuin", False):
@@ -534,6 +538,10 @@ class Speler:
                 self.snelheid_y = 0
             else:
                 self.snelheid_y -= ZWAARTEKRACHT * self.zwaartekracht_richting
+        elif self.modus == "eigen":
+            # Zelfgemaakt poppetje: minder zwaartekracht als het 'Zweven'-kunstje aanstaat
+            deel = ZWEEF_ZWAARTE if self._eigen("zweef") else 1.0
+            self.snelheid_y -= ZWAARTEKRACHT * deel * self.zwaartekracht_richting
         else:
             # Blok en UFO: gewone zwaartekracht. De richting kan omgedraaid zijn door
             # een draai-bol (dan val je juist naar BOVEN).
@@ -598,6 +606,12 @@ class Speler:
                 self.snelheid_y = 0
                 if omgedraaid or self.modus in ("bal", "spin"):
                     self.staat_op_grond = True   # je 'ligt' tegen het plafond
+
+    def _eigen(self, sleutel):
+        """Hulpje voor het zelfgemaakte poppetje: geef een instelling terug (of None)."""
+        if not self.eigen_instel:
+            return None
+        return self.eigen_instel.get(sleutel)
 
     def flap(self):
         """UFO-modus: geef een klein sprongetje (bij elke tik).
@@ -802,6 +816,20 @@ class Speler:
             elif self._muur_kant != 0:
                 self.snelheid_y = (SPRING_KRACHT * 0.7) * self.zwaartekracht_richting
             return
+        if self.modus == "eigen":
+            # Zelfgemaakt poppetje: springhoogte + extra kunstjes (dubbel, muur)
+            hoog = 1.4 if self._eigen("hoog") else 1.0
+            kracht = (SPRING_KRACHT + self.sprong_bonus) * hoog * self.zwaartekracht_richting
+            if self.staat_op_grond:
+                self.snelheid_y = kracht
+            elif self._eigen("muur") and self._muur_kant != 0:
+                self.snelheid_y = kracht
+                self.snelheid_x = -self._muur_kant * NINJA_MUURSPRONG
+                self._muur_kant = 0
+            elif self._eigen("dubbel") and not self.heeft_dubbel_gesprongen:
+                self.snelheid_y = kracht
+                self.heeft_dubbel_gesprongen = True
+            return
         self._doe_sprong()
 
     def _doe_sprong(self):
@@ -948,6 +976,9 @@ class Speler:
             return
         if self.modus == "plakker":
             self._teken_plakker()
+            return
+        if self.modus == "eigen":
+            self._teken_eigen()
             return
 
         # Gewoon blokje: in de racemodus tolt het door de lucht → teken het gedraaid
@@ -1555,6 +1586,30 @@ class Speler:
         arcade.draw_circle_filled(cx + 6, y + h - 8, 4, (255, 255, 255))
         arcade.draw_circle_filled(cx - 6, y + h - 8, 2, OOG_KLEUR)
         arcade.draw_circle_filled(cx + 6, y + h - 8, 2, OOG_KLEUR)
+
+    def _teken_eigen(self):
+        """Teken het ZELFGEMAAKTE poppetje: vorm, kleur en ogen zoals in de maker gekozen."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx, cy = x + w / 2, y + h / 2
+        kleur = tuple(self._eigen("kleur") or (255, 120, 60))
+        vorm = self._eigen("vorm") or "blok"
+        rand = tuple(max(0, c - 70) for c in kleur)
+        if vorm == "rond":
+            arcade.draw_circle_filled(cx, cy, w / 2, kleur)
+            arcade.draw_circle_outline(cx, cy, w / 2, rand, 3)
+            oog_y = cy + 4
+        elif vorm == "driehoek":
+            arcade.draw_triangle_filled(x, y, x + w, y, cx, y + h, kleur)
+            arcade.draw_triangle_outline(x, y, x + w, y, cx, y + h, rand, 3)
+            oog_y = y + h * 0.45
+        else:  # blok
+            arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, kleur)
+            arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, rand, 3)
+            oog_y = y + h - 10
+        # Oogjes (als dat aanstaat)
+        if self._eigen("ogen") is not False:
+            arcade.draw_circle_filled(cx - 6, oog_y, 3, OOG_KLEUR)
+            arcade.draw_circle_filled(cx + 6, oog_y, 3, OOG_KLEUR)
 
     def _teken_spin(self):
         """Teken een spinnetje: een rond lijf met acht pootjes (donkerrood)."""

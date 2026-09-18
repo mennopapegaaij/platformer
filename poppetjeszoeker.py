@@ -45,6 +45,7 @@ POPPETJES = [
     ("versneller", "Versneller", "Hoe langer je één kant op loopt, hoe sneller je gaat."),
     ("wind", "Wind", "Een windvlaag duwt je opzij; hij draait op de maat om."),
     ("plakker", "Plakker", "Plakt aan muren en klimt in hopjes omhoog."),
+    ("eigen", "Mijn poppetje", "Je zelfgemaakte poppetje uit de poppetjes-maker."),
 ]
 
 KOLOMMEN = 5                 # hoeveel poppetjes naast elkaar
@@ -71,6 +72,7 @@ class PoppetjeZoeker(arcade.View):
         self.scroll_rij = 0         # welke rij staat bovenaan
         self._demo = Speler()       # één poppetje dat we in elke vorm tekenen
         self._t = 0.0               # tijd, om de poppetjes te laten bewegen
+        self._eigen_instel = voortgang_module.laad_voortgang().get("eigen_poppetje")
 
     def on_show_view(self):
         if self.window.width != SCHERM_BREEDTE or self.window.height != SCHERM_HOOGTE:
@@ -188,6 +190,8 @@ class PoppetjeZoeker(arcade.View):
         """Teken één poppetje in een bepaalde vorm op plek (cx, cy)."""
         d = self._demo
         d.modus = modus
+        if modus == "eigen":
+            d.eigen_instel = self._eigen_instel     # jouw zelfgemaakte instellingen
         d.x = cx - d.breedte / 2
         d.y = cy
         d.rotatie = 0

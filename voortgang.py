@@ -34,12 +34,13 @@ def laad_voortgang():
                     "tijden": data.get("tijden", {}),   # beste tijden per level
                     "speler_kleur": data.get("speler_kleur"),  # gekozen spelerkleur (of None)
                     "favorieten": data.get("favorieten", []),  # favoriete poppetjes
+                    "eigen_poppetje": data.get("eigen_poppetje"),  # zelfgemaakt poppetje (of None)
                 }
         except Exception:
             pass  # Als het bestand kapot is, begin dan opnieuw
     return {"voltooid": set(), "punten": 0, "levens": None,
             "arena_record": 0, "race_record": 0, "vlucht_record": 0, "tijden": {},
-            "speler_kleur": None, "favorieten": []}
+            "speler_kleur": None, "favorieten": [], "eigen_poppetje": None}
 
 
 def sla_voortgang_op(voltooid, punten=0, levens=None, arena_record=None,
@@ -63,7 +64,22 @@ def sla_voortgang_op(voltooid, punten=0, levens=None, arena_record=None,
         "tijden": huidig.get("tijden", {}),   # beste tijden blijven bewaard
         "speler_kleur": huidig.get("speler_kleur"),  # gekozen kleur blijft bewaard
         "favorieten": huidig.get("favorieten", []),  # favoriete poppetjes blijven bewaard
+        "eigen_poppetje": huidig.get("eigen_poppetje"),  # zelfgemaakt poppetje blijft bewaard
     }
+    with open(BESTAND, "w", encoding="utf-8") as f:
+        json.dump(data, f)
+
+
+def sla_eigen_poppetje_op(instellingen):
+    """Bewaar het zelfgemaakte poppetje (een dict met vorm/kleur/kunstjes). De rest blijft."""
+    data = {}
+    if os.path.exists(BESTAND):
+        try:
+            with open(BESTAND, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            data = {}
+    data["eigen_poppetje"] = dict(instellingen)
     with open(BESTAND, "w", encoding="utf-8") as f:
         json.dump(data, f)
 

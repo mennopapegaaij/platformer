@@ -845,7 +845,7 @@ class PlatformerSpel(arcade.View):
                      "draaisturing": "draaisturing", "boemerang": "boemerang",
                      "stamper": "stamper", "zweefspringer": "zweefspringer", "groeier": "groeier",
                      "zwaargewicht": "zwaargewicht", "versneller": "versneller",
-                     "wind": "wind", "plakker": "plakker"}
+                     "wind": "wind", "plakker": "plakker", "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
         """Zet de draai-stand van een speler op basis van zijn modus."""
@@ -864,7 +864,7 @@ class PlatformerSpel(arcade.View):
                        "dobbelsteen", "vertraagd", "chaos", "dronken",
                        "turbo", "ritme", "stuiteraar", "klimmer", "draaisturing",
                        "boemerang", "stamper", "zweefspringer", "groeier",
-                       "zwaargewicht", "versneller", "wind", "plakker"):
+                       "zwaargewicht", "versneller", "wind", "plakker", "eigen"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -953,6 +953,9 @@ class PlatformerSpel(arcade.View):
 
     def _zet_vorm(self, sp, nieuwe_modus, richting):
         """Zet een speler (of kloon) netjes in een nieuwe vorm."""
+        if nieuwe_modus == "eigen":
+            # Zelfgemaakt poppetje: laad de instellingen uit de maker
+            sp.eigen_instel = voortgang_module.laad_voortgang().get("eigen_poppetje")
         sp.modus = nieuwe_modus
         sp.snelheid_y = 0                # netjes overschakelen (geen wilde sprong)
         sp.vlieg_omhoog = False
@@ -1226,6 +1229,8 @@ class PlatformerSpel(arcade.View):
         """Botst deze speler tegen de ZIJKANT van een blok? (Geometry Dash-dood.)"""
         if sp.modus in ("draaibol", "ninja", "magneet", "klimmer", "draaisturing", "plakker"):
             return False        # deze modi botsen juist tegen muren (rollen/afzetten/aangetrokken) -> niet dood
+        if sp.modus == "eigen" and getattr(sp, "eigen_instel", None) and sp.eigen_instel.get("muur"):
+            return False        # zelfgemaakt poppetje met muursprong gaat niet dood tegen muren
         for p in self._blokken:
             if not getattr(p, "vast", True):
                 continue                       # verdwenen blok: geen botsing
