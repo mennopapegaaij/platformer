@@ -616,28 +616,35 @@ class Speler:
         self.rotatie = (self.rotatie - run * 3) % 360
 
     def _draaisturing_bijwerken(self, level_breedte, platforms):
-        """Draaibesturing: de stuur-richting draait langzaam rond. 'Rechts' duwt je in
-        die draaiende richting, 'links' precies de andere kant op. Het blijft een
-        blokje met ECHTE zwaartekracht: je valt en landt gewoon, en je kunt springen."""
-        # De stuur-richting draait elke stap een beetje verder (2x langzamer dan eerst)
+        """Draaibesturing: net als de draaibol, maar de zwaartekracht draait CONTINU mee
+        met het blok. 'Beneden' draait dus rond: soms val je opzij, soms naar boven.
+        Links/rechts = langs de vloer/muur rollen; springen = weg van de vloer."""
+        # De hoek (en dus de zwaartekracht-richting) draait langzaam rond
         self._stuur_hoek += DRAAI_SNELHEID
-        dx = math.cos(self._stuur_hoek)
+        gx = math.sin(self._stuur_hoek)         # zwaartekracht-richting (bij hoek 0 = omlaag)
+        gy = -math.cos(self._stuur_hoek)
+        fx, fy = -gy, gx                        # 'vooruit' = een kwartslag naast de zwaartekracht
 
+        # Loop-snelheid langs de vloer (of muur)
         snelheid = SPELER_SNELHEID + self.snelheid_bonus
-        r = 0
+        if self.snelheid_boost_timer > 0:
+            snelheid *= 2
+        snelheid *= self.snelheid_factor
+        run = 0
         if self.rechts_ingedrukt:
-            r = 1
+            run = snelheid
             self.kijkt_rechts = True
         elif self.links_ingedrukt:
-            r = -1
+            run = -snelheid
             self.kijkt_rechts = False
 
-        # Horizontaal: de x-kant van de draaiende richting (soms vooruit, soms achteruit).
-        # Alleen de horizontale besturing draait rond -> geen vliegen, wel gewoon springen!
-        self.snelheid_x = r * snelheid * dx
-        # Verticaal: gewoon echte zwaartekracht (springen doe je met de spring-knop)
-        self.snelheid_y -= ZWAARTEKRACHT
-        self.snelheid_y = max(-14, min(14, self.snelheid_y))
+        # Vallen versnelt in de zwaartekracht-richting
+        self._val_snelheid = min(self._val_snelheid + ZWAARTEKRACHT * 1.3, 11)
+
+        # Zet loop + val om naar een gewone x- en y-snelheid
+        self.snelheid_x = run * fx + self._val_snelheid * gx
+        self.snelheid_y = run * fy + self._val_snelheid * gy
+        self.staat_op_grond = False
 
         # Alleen vaste, rechte blokken tellen als muur/vloer
         vast = [p for p in platforms
@@ -651,19 +658,21 @@ class Speler:
                     self.x = p.x - self.breedte
                 elif self.snelheid_x < 0:
                     self.x = p.x + p.breedte
-                self.snelheid_x = 0
+                if abs(gx) > 0.3:               # zwaartekracht wijst opzij -> je 'staat' tegen de muur
+                    self._val_snelheid = 0
+                    self.staat_op_grond = True
 
         # Daarna y bewegen en botsingen oplossen
         self.y += self.snelheid_y
-        self.staat_op_grond = False
         for p in vast:
             if self._overlapt(p):
                 if self.snelheid_y > 0:
                     self.y = p.y - self.hoogte
                 elif self.snelheid_y < 0:
                     self.y = p.y + p.hoogte
+                if abs(gy) > 0.3:              # zwaartekracht wijst omhoog/omlaag -> vloer/plafond
+                    self._val_snelheid = 0
                     self.staat_op_grond = True
-                self.snelheid_y = 0
 
         # Binnen het speelveld blijven
         if self.x < 0:
@@ -684,6 +693,11 @@ class Speler:
         - Dobbelsteen: de spronghoogte is elke keer willekeurig."""
         if self.modus == "vertraagd":
             self._vert_spring_wacht = VERT_DELAY   # de sprong komt straks pas echt
+            return
+        if self.modus == "draaisturing":
+            # Springen = wegschieten tegen de huidige (draaiende) zwaartekracht in
+            if self.staat_op_grond:
+                self._val_snelheid = -(SPRING_KRACHT + self.sprong_bonus)
             return
         self._doe_sprong()
 
