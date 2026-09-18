@@ -858,13 +858,19 @@ class PlatformerSpel(arcade.View):
             sp.rotatie = (sp.rotatie - 7) % 360                    # rollen
         elif modus == "draaibol":
             pass                                                  # tolt al in zijn eigen natuurkunde
+        elif modus == "eigen":
+            # Zelfgemaakt poppetje: tolt rond als het 'Draaien'-kunstje aanstaat, anders recht
+            if sp.eigen_instel and sp.eigen_instel.get("draaien"):
+                sp.rotatie = (sp.rotatie + 6) % 360
+            else:
+                sp.rotatie = 0
         elif modus in ("ufo", "robot", "spin", "heli", "ballon", "raket",
                        "kolibrie", "draak", "ijs", "ninja",
                        "spiegel", "magneet", "flits",
                        "dobbelsteen", "vertraagd", "chaos", "dronken",
                        "turbo", "ritme", "stuiteraar", "klimmer", "draaisturing",
                        "boemerang", "stamper", "zweefspringer", "groeier",
-                       "zwaargewicht", "versneller", "wind", "plakker", "eigen"):
+                       "zwaargewicht", "versneller", "wind", "plakker"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -956,6 +962,13 @@ class PlatformerSpel(arcade.View):
         if nieuwe_modus == "eigen":
             # Zelfgemaakt poppetje: laad de instellingen uit de maker
             sp.eigen_instel = voortgang_module.laad_voortgang().get("eigen_poppetje")
+            # Start-grootte: Klein, Groot of gewoon
+            if sp.eigen_instel and sp.eigen_instel.get("klein"):
+                sp.zet_grootte(0.6, 0)
+            elif sp.eigen_instel and sp.eigen_instel.get("groot"):
+                sp.zet_grootte(1.6, 0)
+            else:
+                sp.zet_grootte(1.0, 0)
         sp.modus = nieuwe_modus
         sp.snelheid_y = 0                # netjes overschakelen (geen wilde sprong)
         sp.vlieg_omhoog = False

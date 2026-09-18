@@ -9,8 +9,9 @@ from instellingen import SCHERM_BREEDTE, SCHERM_HOOGTE
 import voortgang as voortgang_module
 
 # De vormen waar je uit kunt kiezen
-VORMEN = ["blok", "rond", "driehoek"]
-VORM_NAAM = {"blok": "Blok", "rond": "Rond", "driehoek": "Driehoek"}
+VORMEN = ["blok", "rond", "driehoek", "ster", "hart", "ei", "diamant", "zeshoek"]
+VORM_NAAM = {"blok": "Blok", "rond": "Rond", "driehoek": "Driehoek", "ster": "Ster",
+             "hart": "Hart", "ei": "Ei", "diamant": "Diamant", "zeshoek": "Zeshoek"}
 
 # De kunstjes (aan/uit) die je poppetje kan krijgen
 KUNSTJES = [
@@ -19,15 +20,24 @@ KUNSTJES = [
     ("dubbel", "Dubbelsprong"),
     ("zweef", "Zweven"),
     ("muur", "Muursprong"),
+    ("superhoog", "Superhoog"),
+    ("zwaar", "Zwaar"),
+    ("stuiter", "Stuiteren"),
+    ("groeien", "Groeien"),
+    ("groot", "Groot"),
+    ("klein", "Klein"),
+    ("draaien", "Draaien"),
+    ("glad", "Glad"),
 ]
 
 # De kleuren waar je uit kunt kiezen
 KLEUREN = [(255, 120, 60), (230, 60, 60), (60, 120, 230), (60, 190, 90),
-           (240, 210, 40), (255, 120, 190), (160, 90, 220), (60, 200, 210)]
+           (240, 210, 40), (255, 120, 190), (160, 90, 220), (60, 200, 210),
+           (255, 255, 255), (40, 40, 55), (120, 80, 40), (255, 90, 90),
+           (90, 230, 140), (200, 140, 255), (255, 200, 60)]
 
 # De standaard-instellingen als je nog nooit een poppetje hebt gemaakt
-STANDAARD = {"vorm": "blok", "kleur": [255, 120, 60], "ogen": True,
-             "snel": False, "hoog": False, "dubbel": False, "zweef": False, "muur": False}
+STANDAARD = {"vorm": "blok", "kleur": [255, 120, 60], "ogen": True}
 
 KNOP_L = 380
 KNOP_R = 780
@@ -59,15 +69,20 @@ class PoppetjeMaker(arcade.View):
 
     # ---------- knop-plekken ----------
     def _knop_rect(self, i):
-        """De plek (l, r, b, t) van knop i in de rechterkolom."""
-        t = SCHERM_HOOGTE - 90 - i * 50
-        return (KNOP_L, KNOP_R, t - 42, t)
+        """De plek (l, r, b, t) van knop i in het knoppen-raster (2 kolommen)."""
+        kol = i % 2
+        rij = i // 2
+        l = 388 + kol * 200
+        t = SCHERM_HOOGTE - 74 - rij * 38
+        return (l, l + 190, t - 32, t)
 
     def _kleur_rect(self, i):
-        """De plek van kleurvakje i (rij onder het voorbeeld)."""
-        maat = 30
-        l = 30 + i * (maat + 8)
-        b = 70
+        """De plek van kleurvakje i (twee rijtjes onder het voorbeeld)."""
+        maat = 24
+        kol = i % 8
+        rij = i // 8
+        l = 30 + kol * (maat + 5)
+        b = 74 - rij * (maat + 5)
         return (l, l + maat, b, b + maat)
 
     def _terug_rect(self):
@@ -131,7 +146,7 @@ class PoppetjeMaker(arcade.View):
         arcade.draw_lrbt_rectangle_filled(l, r, b, t, kleur)
         arcade.draw_lrbt_rectangle_outline(l, r, b, t,
                                            (255, 220, 120) if aan else (120, 120, 140), 2)
-        arcade.draw_text(tekst, (l + r) // 2, (b + t) // 2 - 8, arcade.color.WHITE, 14,
+        arcade.draw_text(tekst, (l + r) // 2, (b + t) // 2 - 6, arcade.color.WHITE, 11,
                          bold=True, anchor_x="center")
 
     # ---------- klikken ----------

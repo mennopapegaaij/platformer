@@ -380,6 +380,17 @@ class Speler:
                     self.kijkt_rechts = False
                 else:
                     self.snelheid_x = 0
+            elif self.modus == "eigen" and self._eigen("glad"):
+                # Zelfgemaakt poppetje met het 'Glad'-kunstje: je glijdt door (als op ijs)
+                if L:
+                    doel = -snelheid
+                    self.kijkt_rechts = False
+                elif R:
+                    doel = snelheid
+                    self.kijkt_rechts = True
+                else:
+                    doel = 0
+                self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
             elif L:
                 self.snelheid_x = -snelheid
                 self.kijkt_rechts = False   # Speler kijkt naar links
@@ -457,7 +468,7 @@ class Speler:
                         self.x = p.x + p.breedte
 
         # Groeier: hoe langer je loopt, hoe groter je wordt (stilstaan = weer krimpen)
-        if self.modus == "groeier":
+        if self.modus == "groeier" or (self.modus == "eigen" and self._eigen("groeien")):
             if self.links_ingedrukt or self.rechts_ingedrukt:
                 doel = min(self.grootte_factor + GROEI_STAP, GROEI_MAX)
             else:
@@ -539,8 +550,13 @@ class Speler:
             else:
                 self.snelheid_y -= ZWAARTEKRACHT * self.zwaartekracht_richting
         elif self.modus == "eigen":
-            # Zelfgemaakt poppetje: minder zwaartekracht als het 'Zweven'-kunstje aanstaat
-            deel = ZWEEF_ZWAARTE if self._eigen("zweef") else 1.0
+            # Zelfgemaakt poppetje: 'Zweven' = lichter, 'Zwaar' = valt sneller
+            if self._eigen("zweef"):
+                deel = ZWEEF_ZWAARTE
+            elif self._eigen("zwaar"):
+                deel = ZWAAR_FACTOR
+            else:
+                deel = 1.0
             self.snelheid_y -= ZWAARTEKRACHT * deel * self.zwaartekracht_richting
         else:
             # Blok en UFO: gewone zwaartekracht. De richting kan omgedraaid zijn door
@@ -563,8 +579,9 @@ class Speler:
                     platform.aangeraakt()
                 # Stuiterblok: stuiter omhoog i.p.v. blijven staan
                 stuiter = getattr(platform, "stuiter", 0)
-                if self.modus == "stuiteraar" and not omgedraaid:
-                    # Stuiteraar: je stuitert ALTIJD automatisch omhoog (als een trampoline)
+                eigen_stuiter = self.modus == "eigen" and self._eigen("stuiter")
+                if (self.modus == "stuiteraar" or eigen_stuiter) and not omgedraaid:
+                    # Stuiteraar (of eigen poppetje met Stuiteren): altijd omhoog stuiteren
                     self.snelheid_y = STUITER_KRACHT
                 elif stuiter and not omgedraaid:
                     self.snelheid_y = stuiter
@@ -818,7 +835,12 @@ class Speler:
             return
         if self.modus == "eigen":
             # Zelfgemaakt poppetje: springhoogte + extra kunstjes (dubbel, muur)
-            hoog = 1.4 if self._eigen("hoog") else 1.0
+            if self._eigen("superhoog"):
+                hoog = 1.9
+            elif self._eigen("hoog"):
+                hoog = 1.4
+            else:
+                hoog = 1.0
             kracht = (SPRING_KRACHT + self.sprong_bonus) * hoog * self.zwaartekracht_richting
             if self.staat_op_grond:
                 self.snelheid_y = kracht
@@ -1589,27 +1611,57 @@ class Speler:
 
     def _teken_eigen(self):
         """Teken het ZELFGEMAAKTE poppetje: vorm, kleur en ogen zoals in de maker gekozen."""
-        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
-        cx, cy = x + w / 2, y + h / 2
+        w, h = self.breedte, self.hoogte
+        cx, cy = self.x + w / 2, self.y + h / 2
         kleur = tuple(self._eigen("kleur") or (255, 120, 60))
-        vorm = self._eigen("vorm") or "blok"
         rand = tuple(max(0, c - 70) for c in kleur)
+        vorm = self._eigen("vorm") or "blok"
+        hw, hh = w / 2, h / 2
+        hoek = math.radians(self.rotatie)      # voor het 'Draaien'-kunstje
+        c_h, s_h = math.cos(hoek), math.sin(hoek)
+
+        def draai(dx, dy):
+            return (cx + dx * c_h - dy * s_h, cy + dx * s_h + dy * c_h)
+
+        # Ronde vormen tekenen we los (draaien maakt daar toch niks uit)
         if vorm == "rond":
-            arcade.draw_circle_filled(cx, cy, w / 2, kleur)
-            arcade.draw_circle_outline(cx, cy, w / 2, rand, 3)
-            oog_y = cy + 4
-        elif vorm == "driehoek":
-            arcade.draw_triangle_filled(x, y, x + w, y, cx, y + h, kleur)
-            arcade.draw_triangle_outline(x, y, x + w, y, cx, y + h, rand, 3)
-            oog_y = y + h * 0.45
-        else:  # blok
-            arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, kleur)
-            arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, rand, 3)
-            oog_y = y + h - 10
-        # Oogjes (als dat aanstaat)
+            arcade.draw_circle_filled(cx, cy, hw, kleur)
+            arcade.draw_circle_outline(cx, cy, hw, rand, 3)
+        elif vorm == "ei":
+            arcade.draw_ellipse_filled(cx, cy, w * 0.8, h, kleur)
+            arcade.draw_ellipse_outline(cx, cy, w * 0.8, h, rand, 3)
+        elif vorm == "hart":
+            arcade.draw_circle_filled(cx - hw * 0.45, cy + hh * 0.35, hw * 0.5, kleur)
+            arcade.draw_circle_filled(cx + hw * 0.45, cy + hh * 0.35, hw * 0.5, kleur)
+            arcade.draw_triangle_filled(cx - hw * 0.9, cy + hh * 0.4, cx + hw * 0.9, cy + hh * 0.4,
+                                        cx, cy - hh, kleur)
+        else:
+            # Hoekige vormen als een lijst punten die we kunnen draaien
+            if vorm == "driehoek":
+                punten = [(-hw, -hh), (hw, -hh), (0, hh)]
+            elif vorm == "diamant":
+                punten = [(0, hh), (hw, 0), (0, -hh), (-hw, 0)]
+            elif vorm == "zeshoek":
+                punten = [(hw * math.cos(math.radians(a)), hh * math.sin(math.radians(a)))
+                          for a in range(0, 360, 60)]
+            elif vorm == "ster":
+                punten = []
+                for k in range(10):
+                    r = hw if k % 2 == 0 else hw * 0.45
+                    a = math.radians(-90 + k * 36)
+                    punten.append((r * math.cos(a), r * math.sin(a)))
+            else:  # blok
+                punten = [(-hw, -hh), (hw, -hh), (hw, hh), (-hw, hh)]
+            gedraaid = [draai(dx, dy) for dx, dy in punten]
+            arcade.draw_polygon_filled(gedraaid, kleur)
+            arcade.draw_polygon_outline(gedraaid, rand, 3)
+
+        # Oogjes (als dat aanstaat) — draaien mee met het poppetje
         if self._eigen("ogen") is not False:
-            arcade.draw_circle_filled(cx - 6, oog_y, 3, OOG_KLEUR)
-            arcade.draw_circle_filled(cx + 6, oog_y, 3, OOG_KLEUR)
+            lx, ly = draai(-6, hh * 0.35)
+            rx, ry = draai(6, hh * 0.35)
+            arcade.draw_circle_filled(lx, ly, 3, OOG_KLEUR)
+            arcade.draw_circle_filled(rx, ry, 3, OOG_KLEUR)
 
     def _teken_spin(self):
         """Teken een spinnetje: een rond lijf met acht pootjes (donkerrood)."""
