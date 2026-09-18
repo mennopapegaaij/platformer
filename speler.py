@@ -98,6 +98,17 @@ ZWEEF_ZWAARTE = 0.35      # welk deel van de gewone zwaartekracht je voelt (lich
 GROEI_STAP = 0.01         # hoeveel je per stapje groeit/krimpt
 GROEI_MAX = 2.5           # hoe groot je maximaal wordt
 
+# --- Zwaargewicht-modus: enorme zwaartekracht (valt als een steen, springt laag) ---
+ZWAAR_FACTOR = 2.3        # hoeveel keer sterker de zwaartekracht is
+
+# --- Versneller-modus: hoe langer je één kant op loopt, hoe sneller je gaat ---
+VERSNEL_STAP = 0.12       # hoeveel snelheid je er per stapje bij krijgt
+VERSNEL_MAX = 8           # hoeveel extra snelheid je maximaal krijgt
+
+# --- Wind-modus: een windvlaag duwt je opzij; hij draait op een vaste maat om ---
+WIND_KRACHT = 2.2         # hoe hard de wind je opzij duwt
+WIND_INTERVAL = 120       # om de hoeveel stapjes de wind van kant wisselt
+
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
 #   0 = naar beneden, 1 = naar rechts, 2 = naar boven, 3 = naar links
@@ -177,6 +188,10 @@ class Speler:
         self._ritme_teller = 0           # ritme-flip: tel tot de volgende zwaartekracht-flip
         self._stuur_hoek = 0.0           # draaibesturing: welke kant 'rechts' nu op wijst
         self._anker_x = None             # boemerang: het punt waar het elastiek je heen trekt
+        self._versnel = 0.0              # versneller: hoeveel extra snelheid je nu hebt
+        self._versnel_richting = 0       # versneller: welke kant je op versnelt (-1/0/1)
+        self._wind_teller = 0            # wind: tel tot de wind van kant wisselt
+        self._wind_richting = 1          # wind: welke kant de wind nu op blaast (1/-1)
 
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
@@ -216,6 +231,10 @@ class Speler:
         self._ritme_teller = 0              # ritme-flip: teller reset
         self._stuur_hoek = 0.0              # draaibesturing: stuur-richting terug naar begin
         self._anker_x = None                # boemerang: ankerpunt reset
+        self._versnel = 0.0                 # versneller: reset
+        self._versnel_richting = 0
+        self._wind_teller = 0               # wind: reset
+        self._wind_richting = 1
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -316,6 +335,26 @@ class Speler:
                 # Turbo: je raast altijd op topsnelheid naar rechts en kunt NIET stoppen!
                 self.snelheid_x = TURBO_SNELHEID
                 self.kijkt_rechts = True
+            elif self.modus == "versneller":
+                # Versneller: hoe langer je dezelfde kant op loopt, hoe sneller je gaat
+                if L and not R:
+                    if self._versnel_richting != -1:
+                        self._versnel = 0        # net van kant gewisseld -> opnieuw beginnen
+                    self._versnel_richting = -1
+                    self._versnel = min(self._versnel + VERSNEL_STAP, VERSNEL_MAX)
+                    self.snelheid_x = -(snelheid + self._versnel)
+                    self.kijkt_rechts = False
+                elif R and not L:
+                    if self._versnel_richting != 1:
+                        self._versnel = 0
+                    self._versnel_richting = 1
+                    self._versnel = min(self._versnel + VERSNEL_STAP, VERSNEL_MAX)
+                    self.snelheid_x = snelheid + self._versnel
+                    self.kijkt_rechts = True
+                else:
+                    self._versnel = 0            # stilstaan -> snelheid weer kwijt
+                    self._versnel_richting = 0
+                    self.snelheid_x = 0
             elif self.modus == "ijs":
                 # IJs: spiegelglad! Je snelheid verandert maar langzaam naar wat je wilt,
                 # dus je glijdt door en stopt bijna niet.
@@ -372,11 +411,19 @@ class Speler:
                     self._anker_x = self.x       # onthoud waar je begon
                 self.snelheid_x += (self._anker_x - self.x) * BOEM_VEER
 
+            # Wind: een windvlaag duwt je opzij; om de zoveel tijd draait hij om
+            if self.modus == "wind":
+                self._wind_teller += 1
+                if self._wind_teller >= WIND_INTERVAL:
+                    self._wind_teller = 0
+                    self._wind_richting *= -1
+                self.snelheid_x += WIND_KRACHT * self._wind_richting
+
             self.x += self.snelheid_x
 
         # Ninja, magneet én klimmer: stop tegen een muur (i.p.v. erdoor of dood) en onthoud de kant.
         # Zo kunnen ninja en klimmer zich later van de muur afzetten (muursprong).
-        if self.modus in ("ninja", "magneet", "klimmer"):
+        if self.modus in ("ninja", "magneet", "klimmer", "plakker"):
             self._muur_kant = 0
             for p in platforms:
                 if not getattr(p, "vast", True) or getattr(p, "is_schuin", False):
@@ -478,6 +525,15 @@ class Speler:
         elif self.modus == "zweefspringer":
             # Zweefspringer: lage zwaartekracht -> je blijft lang in de lucht hangen.
             self.snelheid_y -= ZWAARTEKRACHT * ZWEEF_ZWAARTE * self.zwaartekracht_richting
+        elif self.modus == "zwaargewicht":
+            # Zwaargewicht: enorme zwaartekracht, je valt als een steen.
+            self.snelheid_y -= ZWAARTEKRACHT * ZWAAR_FACTOR * self.zwaartekracht_richting
+        elif self.modus == "plakker":
+            # Plakker: raak je een muur, dan blijf je eraan plakken (glijdt niet omlaag).
+            if self._muur_kant != 0 and self.snelheid_y <= 0:
+                self.snelheid_y = 0
+            else:
+                self.snelheid_y -= ZWAARTEKRACHT * self.zwaartekracht_richting
         else:
             # Blok en UFO: gewone zwaartekracht. De richting kan omgedraaid zijn door
             # een draai-bol (dan val je juist naar BOVEN).
@@ -739,6 +795,13 @@ class Speler:
             else:
                 self.snelheid_y = -STAMP_KRACHT * self.zwaartekracht_richting
             return
+        if self.modus == "plakker":
+            # Plakker: op de grond spring je; aan een muur klim je in hopjes omhoog
+            if self.staat_op_grond:
+                self.snelheid_y = (SPRING_KRACHT + self.sprong_bonus) * self.zwaartekracht_richting
+            elif self._muur_kant != 0:
+                self.snelheid_y = (SPRING_KRACHT * 0.7) * self.zwaartekracht_richting
+            return
         self._doe_sprong()
 
     def _doe_sprong(self):
@@ -873,6 +936,18 @@ class Speler:
             return
         if self.modus == "groeier":
             self._teken_groeier()
+            return
+        if self.modus == "zwaargewicht":
+            self._teken_zwaargewicht()
+            return
+        if self.modus == "versneller":
+            self._teken_versneller()
+            return
+        if self.modus == "wind":
+            self._teken_wind()
+            return
+        if self.modus == "plakker":
+            self._teken_plakker()
             return
 
         # Gewoon blokje: in de racemodus tolt het door de lucht → teken het gedraaid
@@ -1420,6 +1495,66 @@ class Speler:
         arcade.draw_circle_filled(x + w * 0.35, y + h * 0.6, 3, OOG_KLEUR)
         arcade.draw_circle_filled(x + w * 0.65, y + h * 0.6, 3, OOG_KLEUR)
         arcade.draw_arc_outline(x + w / 2, y + h * 0.4, w * 0.4, h * 0.3, OOG_KLEUR, 200, 340, 2)
+
+    def _teken_zwaargewicht(self):
+        """Teken een zwaar rotsblok (donker, stevig) met een gewicht-tekentje."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w / 2
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (90, 90, 100))
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h * 0.4, (60, 60, 70))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (30, 30, 40), 3)
+        # Barstjes zodat het op zwaar gesteente lijkt
+        arcade.draw_line(x + w * 0.3, y + h, x + w * 0.4, y + h * 0.5, (40, 40, 50), 1)
+        arcade.draw_line(x + w * 0.7, y + h, x + w * 0.6, y + h * 0.5, (40, 40, 50), 1)
+        # Gewicht-tekentje
+        arcade.draw_text("kg", cx, y + h * 0.5, (230, 230, 240), 9, bold=True, anchor_x="center")
+        arcade.draw_circle_filled(x + 9, y + h - 9, 3, OOG_KLEUR)
+        arcade.draw_circle_filled(x + w - 9, y + h - 9, 3, OOG_KLEUR)
+
+    def _teken_versneller(self):
+        """Teken een raceblokje; meer snelheidsstrepen naarmate je harder gaat."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (60, 140, 210))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (30, 80, 140), 3)
+        # Aantal streepjes hangt af van hoe snel je nu gaat
+        n = 1 + int(self._versnel / (VERSNEL_MAX / 3 + 0.01))     # 1, 2 of 3 streepjes
+        kant = -1 if self.kijkt_rechts else 1                     # strepen achter je
+        for i in range(min(n, 3)):
+            sx = x if self.kijkt_rechts else x + w
+            arcade.draw_line(sx + kant * (4 + i * 5), y + h * 0.3,
+                             sx + kant * (4 + i * 5), y + h * 0.7, (255, 230, 90), 2)
+        arcade.draw_circle_filled(x + 9, y + h - 10, 3, OOG_KLEUR)
+        arcade.draw_circle_filled(x + w - 9, y + h - 10, 3, OOG_KLEUR)
+
+    def _teken_wind(self):
+        """Teken een blokje met wind-vlaagjes die de kant op waaien waar de wind heen blaast."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (170, 210, 230))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (90, 140, 170), 3)
+        # Windvlaagjes (kleine boogjes) naar de kant waar de wind heen blaast
+        r = self._wind_richting
+        for dy in (h * 0.35, h * 0.6):
+            bx = x + w / 2
+            arcade.draw_line(bx - 10 * r, y + dy, bx + 10 * r, y + dy, (255, 255, 255), 2)
+            arcade.draw_line(bx + 10 * r, y + dy, bx + 5 * r, y + dy + 4, (255, 255, 255), 2)
+        arcade.draw_circle_filled(x + 9, y + h - 10, 3, OOG_KLEUR)
+        arcade.draw_circle_filled(x + w - 9, y + h - 10, 3, OOG_KLEUR)
+
+    def _teken_plakker(self):
+        """Teken een gekko-achtig plakkertje met grijphandjes (plakt aan muren)."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w / 2
+        arcade.draw_lrbt_rectangle_filled(x + 2, x + w - 2, y + 2, y + h - 2, (110, 200, 130))
+        arcade.draw_lrbt_rectangle_outline(x + 2, x + w - 2, y + 2, y + h - 2, (50, 130, 70), 2)
+        # Grijp-voetjes aan de zijkanten (zuignapjes)
+        for sy in (y + h * 0.3, y + h * 0.7):
+            arcade.draw_circle_filled(x + 2, sy, 3, (70, 160, 90))
+            arcade.draw_circle_filled(x + w - 2, sy, 3, (70, 160, 90))
+        # Grote gekko-oogjes bovenop
+        arcade.draw_circle_filled(cx - 6, y + h - 8, 4, (255, 255, 255))
+        arcade.draw_circle_filled(cx + 6, y + h - 8, 4, (255, 255, 255))
+        arcade.draw_circle_filled(cx - 6, y + h - 8, 2, OOG_KLEUR)
+        arcade.draw_circle_filled(cx + 6, y + h - 8, 2, OOG_KLEUR)
 
     def _teken_spin(self):
         """Teken een spinnetje: een rond lijf met acht pootjes (donkerrood)."""

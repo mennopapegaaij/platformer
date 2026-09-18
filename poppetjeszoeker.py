@@ -41,6 +41,10 @@ POPPETJES = [
     ("stamper", "Stamper", "Op de grond spring je; in de lucht stamp je keihard omlaag."),
     ("zweefspringer", "Zweefspringer", "Superlange, zwevende sprongen (lage zwaartekracht)."),
     ("groeier", "Groeier", "Hoe langer je loopt, hoe groter je wordt."),
+    ("zwaargewicht", "Zwaargewicht", "Enorme zwaartekracht: je valt als een steen, springt laag."),
+    ("versneller", "Versneller", "Hoe langer je één kant op loopt, hoe sneller je gaat."),
+    ("wind", "Wind", "Een windvlaag duwt je opzij; hij draait op de maat om."),
+    ("plakker", "Plakker", "Plakt aan muren en klimt in hopjes omhoog."),
 ]
 
 KOLOMMEN = 5                 # hoeveel poppetjes naast elkaar

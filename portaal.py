@@ -43,6 +43,10 @@ PORTAAL_KLEUREN = {
     "stamper": ((100, 100, 120), (170, 170, 190)),      # zwaar grijs = stamper
     "zweefspringer": ((120, 190, 240), (200, 230, 255)),# luchtblauw = zweefspringer
     "groeier": ((80, 180, 80), (170, 230, 170)),        # groeigroen = groeier
+    "zwaargewicht": ((80, 80, 95), (150, 150, 165)),    # rotsgrijs = zwaargewicht
+    "versneller": ((50, 130, 210), (150, 200, 250)),    # snelblauw = versneller
+    "wind": ((150, 200, 220), (210, 240, 250)),         # windlichtblauw = wind
+    "plakker": ((90, 190, 110), (170, 235, 180)),       # gekkogroen = plakker
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
     # Snelheid-portalen (veranderen niet je vorm, maar hoe snel je gaat)
@@ -238,6 +242,26 @@ def teken_portaal_icoon(soort, cx, cy):
         # Klein blokje met een groter blokje ernaast (groeien)
         arcade.draw_lrbt_rectangle_outline(cx - 10, cx - 3, cy - 4, cy + 3, arcade.color.WHITE, 2)
         arcade.draw_lrbt_rectangle_outline(cx + 1, cx + 11, cy - 8, cy + 8, arcade.color.WHITE, 2)
+    elif soort == "zwaargewicht":
+        # Gewichtje (kg)
+        arcade.draw_lrbt_rectangle_filled(cx - 8, cx + 8, cy - 7, cy + 5, arcade.color.WHITE)
+        arcade.draw_triangle_filled(cx - 5, cy + 5, cx + 5, cy + 5, cx, cy + 10, arcade.color.WHITE)
+    elif soort == "versneller":
+        # Snelheidspijl met streepjes
+        arcade.draw_triangle_filled(cx + 8, cy, cx - 2, cy - 7, cx - 2, cy + 7, arcade.color.WHITE)
+        arcade.draw_line(cx - 10, cy + 3, cx - 4, cy + 3, arcade.color.WHITE, 2)
+        arcade.draw_line(cx - 10, cy - 3, cx - 4, cy - 3, arcade.color.WHITE, 2)
+    elif soort == "wind":
+        # Windvlaagjes (golvende lijntjes)
+        for dy in (-4, 4):
+            arcade.draw_line(cx - 9, cy + dy, cx + 7, cy + dy, arcade.color.WHITE, 2)
+            arcade.draw_line(cx + 7, cy + dy, cx + 3, cy + dy + 3, arcade.color.WHITE, 2)
+    elif soort == "plakker":
+        # Gekko-oogjes (plakt aan muren)
+        arcade.draw_circle_filled(cx - 5, cy + 2, 4, arcade.color.WHITE)
+        arcade.draw_circle_filled(cx + 5, cy + 2, 4, arcade.color.WHITE)
+        arcade.draw_circle_filled(cx - 5, cy + 2, 2, (40, 90, 50))
+        arcade.draw_circle_filled(cx + 5, cy + 2, 2, (40, 90, 50))
     elif soort in SNELHEID_FACTOR:
         # Snelheid-portaal: laat de keer-factor zien (bv. "x2")
         arcade.draw_text(soort, cx, cy - 6, arcade.color.WHITE, 11, bold=True, anchor_x="center")
