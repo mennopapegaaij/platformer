@@ -824,6 +824,7 @@ class BouwerView(arcade.View):
                              "📁-knop = volgend level (oneindig), toets 1-9 = naar dat level  •  "
                              "L = kleur aan/uit bij alles  •  "
                              "P = alle levels aan elkaar plakken  •  M = je eigen muziek maken  •  "
+                             "Z = poppetje kiezen uit de zoeker  •  "
                              "Klik nog eens op Portaal/Snel/Deco voor een ander soort",
                              SCHERM_BREEDTE // 2, 8, arcade.color.WHITE, 9, anchor_x="center")
 
@@ -1069,6 +1070,8 @@ class BouwerView(arcade.View):
             self._speel_geplakt()       # alle levels aan elkaar geplakt spelen
         elif toets == arcade.key.M:
             self._maak_muziek()         # open de muziek-maker
+        elif toets == arcade.key.Z:
+            self._kies_poppetje()       # open de poppetjes-zoeker om er een te plaatsen
         else:
             # Cijfertoetsen 1 t/m 9: spring direct naar die opslag-plek
             cijfers = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3,
@@ -1385,6 +1388,11 @@ class BouwerView(arcade.View):
         """Open de muziek-maker om je eigen deuntje te maken."""
         from muziekmaker import MuziekMaker
         self.window.show_view(MuziekMaker(self, self.muziek))
+
+    def _kies_poppetje(self):
+        """Open de poppetjes-zoeker; het gekozen poppetje wordt een portaal om te plaatsen."""
+        from poppetjeszoeker import PoppetjeZoeker
+        self.window.show_view(PoppetjeZoeker(self, bouwer=self))
 
     def _naar_kaart(self):
         from levelkaart import LevelKaartView

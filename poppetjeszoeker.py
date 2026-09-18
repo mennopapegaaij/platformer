@@ -47,9 +47,10 @@ ZICHT_RIJEN = 3              # hoeveel rijen je tegelijk ziet
 class PoppetjeZoeker(arcade.View):
     """Blader door alle poppetjes: zie ze staan en lees wat ze doen."""
 
-    def __init__(self, kaart):
+    def __init__(self, terug, bouwer=None):
         super().__init__()
-        self.kaart = kaart          # om naar terug te gaan
+        self.terug = terug          # het scherm waar we naar terug gaan
+        self.bouwer = bouwer        # als dit gezet is: kies een poppetje om te plaatsen
         self.sel = 0                # welk poppetje is gekozen
         self.scroll_rij = 0         # welke rij staat bovenaan
         self._demo = Speler()       # één poppetje dat we in elke vorm tekenen
@@ -112,8 +113,11 @@ class PoppetjeZoeker(arcade.View):
         arcade.draw_lrbt_rectangle_filled(0, SCHERM_BREEDTE, 0, 52, (20, 20, 40))
         arcade.draw_text(naam, 16, 30, (255, 230, 90), 15, bold=True)
         arcade.draw_text(uitleg, 16, 10, arcade.color.WHITE, 12)
-        arcade.draw_text("←→↑↓ bladeren  •  ESC = terug", SCHERM_BREEDTE - 16, 18,
-                         (180, 180, 200), 10, anchor_x="right")
+        if self.bouwer is not None:
+            hint = "Klik of Enter = dit poppetje plaatsen  •  ESC = terug"
+        else:
+            hint = "←→↑↓ bladeren  •  ESC = terug"
+        arcade.draw_text(hint, SCHERM_BREEDTE - 16, 18, (180, 180, 200), 10, anchor_x="right")
 
     def _teken_poppetje(self, modus, cx, cy):
         """Teken één poppetje in een bepaalde vorm op plek (cx, cy)."""
@@ -134,6 +138,13 @@ class PoppetjeZoeker(arcade.View):
             arcade.draw_lrbt_rectangle_filled(d.x, d.x + d.breedte, d.y, d.y + d.hoogte,
                                               (200, 200, 200))
 
+    def _kies(self):
+        """In de bouwmodus: kies het geselecteerde poppetje om te plaatsen (als portaal)."""
+        modus = POPPETJES[self.sel][0]
+        self.bouwer.portaal_soort = modus     # zet het portaal op dit poppetje
+        self.bouwer.gekozen = "portaal"        # en kies het portaal-gereedschap
+        self.window.show_view(self.terug)
+
     def on_key_press(self, toets, modifiers):
         if toets == arcade.key.LEFT:
             self.sel = max(0, self.sel - 1)
@@ -143,9 +154,11 @@ class PoppetjeZoeker(arcade.View):
             self.sel = max(0, self.sel - KOLOMMEN)
         elif toets == arcade.key.DOWN:
             self.sel = min(len(POPPETJES) - 1, self.sel + KOLOMMEN)
+        elif toets in (arcade.key.ENTER, arcade.key.NUM_ENTER) and self.bouwer is not None:
+            self._kies()                          # in de bouwmodus: dit poppetje plaatsen
         elif toets in (arcade.key.ESCAPE, arcade.key.K, arcade.key.P,
                        arcade.key.ENTER, arcade.key.NUM_ENTER):
-            self.window.show_view(self.kaart)     # terug naar de kaart
+            self.window.show_view(self.terug)     # terug
         self._zorg_zichtbaar()
 
     def on_mouse_press(self, x, y, knop, modifiers):
@@ -159,4 +172,6 @@ class PoppetjeZoeker(arcade.View):
                     cy - 24 <= y <= cy + CEL_H - 30):
                 self.sel = i
                 self._zorg_zichtbaar()
+                if self.bouwer is not None:
+                    self._kies()                  # in de bouwmodus: meteen plaatsen-klaar
                 return
