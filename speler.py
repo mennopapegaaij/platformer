@@ -193,6 +193,7 @@ class Speler:
         self._wind_teller = 0            # wind: tel tot de wind van kant wisselt
         self._wind_richting = 1          # wind: welke kant de wind nu op blaast (1/-1)
         self.eigen_instel = None         # zelfgemaakt poppetje: dict met vorm/kleur/kunstjes
+        self._lucht_sprongen = 0         # eigen poppetje: hoeveel keer je al in de lucht sprong
 
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
@@ -236,6 +237,7 @@ class Speler:
         self._versnel_richting = 0
         self._wind_teller = 0               # wind: reset
         self._wind_richting = 1
+        self._lucht_sprongen = 0            # eigen poppetje: luchtsprongen reset
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -334,7 +336,11 @@ class Speler:
             else:
                 L, R = self.links_ingedrukt, self.rechts_ingedrukt
 
-            if self.modus == "turbo":
+            # Eigen poppetje met 'Spiegel': links en rechts omdraaien
+            if self.modus == "eigen" and self._eigen("spiegel"):
+                L, R = R, L
+
+            if self.modus == "turbo" or (self.modus == "eigen" and self._eigen("turbo")):
                 # Turbo: je raast altijd op topsnelheid naar rechts en kunt NIET stoppen!
                 self.snelheid_x = TURBO_SNELHEID
                 self.kijkt_rechts = True
@@ -401,7 +407,7 @@ class Speler:
                 self.snelheid_x = 0
 
             # Magneet: je wordt naar de dichtstbijzijnde muur naast je toe getrokken
-            if self.modus == "magneet":
+            if self.modus == "magneet" or (self.modus == "eigen" and self._eigen("magneet")):
                 mx = self.x + self.breedte / 2
                 dichtst = None
                 beste = 1e9
@@ -426,7 +432,7 @@ class Speler:
                 self.snelheid_x += (self._anker_x - self.x) * BOEM_VEER
 
             # Wind: een windvlaag duwt je opzij; om de zoveel tijd draait hij om
-            if self.modus == "wind":
+            if self.modus == "wind" or (self.modus == "eigen" and self._eigen("wind")):
                 self._wind_teller += 1
                 if self._wind_teller >= WIND_INTERVAL:
                     self._wind_teller = 0
@@ -438,7 +444,8 @@ class Speler:
         # Ninja, magneet én klimmer: stop tegen een muur (i.p.v. erdoor of dood) en onthoud de kant.
         # Zo kunnen ninja en klimmer zich later van de muur afzetten (muursprong).
         if (self.modus in ("ninja", "magneet", "klimmer", "plakker")
-                or (self.modus == "eigen" and self._eigen("muur"))):
+                or (self.modus == "eigen"
+                    and (self._eigen("muur") or self._eigen("magneet") or self._eigen("plakken")))):
             self._muur_kant = 0
             for p in platforms:
                 if not getattr(p, "vast", True) or getattr(p, "is_schuin", False):
@@ -550,14 +557,18 @@ class Speler:
             else:
                 self.snelheid_y -= ZWAARTEKRACHT * self.zwaartekracht_richting
         elif self.modus == "eigen":
-            # Zelfgemaakt poppetje: 'Zweven' = lichter, 'Zwaar' = valt sneller
-            if self._eigen("zweef"):
-                deel = ZWEEF_ZWAARTE
-            elif self._eigen("zwaar"):
-                deel = ZWAAR_FACTOR
+            # Plakken: aan een muur blijf je hangen (glijdt niet naar beneden)
+            if self._eigen("plakken") and self._muur_kant != 0 and self.snelheid_y <= 0:
+                self.snelheid_y = 0
             else:
-                deel = 1.0
-            self.snelheid_y -= ZWAARTEKRACHT * deel * self.zwaartekracht_richting
+                # 'Zweven' = lichter, 'Zwaar' = valt sneller
+                if self._eigen("zweef"):
+                    deel = ZWEEF_ZWAARTE
+                elif self._eigen("zwaar"):
+                    deel = ZWAAR_FACTOR
+                else:
+                    deel = 1.0
+                self.snelheid_y -= ZWAARTEKRACHT * deel * self.zwaartekracht_richting
         else:
             # Blok en UFO: gewone zwaartekracht. De richting kan omgedraaid zijn door
             # een draai-bol (dan val je juist naar BOVEN).
@@ -573,6 +584,7 @@ class Speler:
                 self.y = platform.y + platform.hoogte
                 self.x += getattr(platform, "dx", 0)  # meerijden op een bewegend blok
                 self.heeft_dubbel_gesprongen = False  # Op de grond: extra sprong herlaadbaar
+                self._lucht_sprongen = 0              # eigen poppetje: luchtsprongen herladen
                 self._robot_boost = 0                 # robot mag pas na een nieuwe tik duwen
                 # Verdwijnblok: laat het weten dat je erop staat (het gaat dan verdwijnen)
                 if hasattr(platform, "aangeraakt"):
@@ -834,7 +846,7 @@ class Speler:
                 self.snelheid_y = (SPRING_KRACHT * 0.7) * self.zwaartekracht_richting
             return
         if self.modus == "eigen":
-            # Zelfgemaakt poppetje: springhoogte + extra kunstjes (dubbel, muur)
+            # Zelfgemaakt poppetje: springhoogte + extra kunstjes
             if self._eigen("superhoog"):
                 hoog = 1.9
             elif self._eigen("hoog"):
@@ -844,13 +856,19 @@ class Speler:
             kracht = (SPRING_KRACHT + self.sprong_bonus) * hoog * self.zwaartekracht_richting
             if self.staat_op_grond:
                 self.snelheid_y = kracht
-            elif self._eigen("muur") and self._muur_kant != 0:
+                self._lucht_sprongen = 0
+            elif self._muur_kant != 0 and (self._eigen("muur") or self._eigen("plakken")):
+                # Muursprong (Muur duwt weg van de muur; Plakken klimt recht omhoog)
                 self.snelheid_y = kracht
-                self.snelheid_x = -self._muur_kant * NINJA_MUURSPRONG
+                if self._eigen("muur"):
+                    self.snelheid_x = -self._muur_kant * NINJA_MUURSPRONG
                 self._muur_kant = 0
-            elif self._eigen("dubbel") and not self.heeft_dubbel_gesprongen:
-                self.snelheid_y = kracht
-                self.heeft_dubbel_gesprongen = True
+            else:
+                # Dubbelsprong = 1 keer in de lucht, Driesprong = 2 keer in de lucht
+                max_lucht = 2 if self._eigen("driesprong") else (1 if self._eigen("dubbel") else 0)
+                if self._lucht_sprongen < max_lucht:
+                    self.snelheid_y = kracht
+                    self._lucht_sprongen += 1
             return
         self._doe_sprong()
 

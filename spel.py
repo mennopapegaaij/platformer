@@ -1242,8 +1242,10 @@ class PlatformerSpel(arcade.View):
         """Botst deze speler tegen de ZIJKANT van een blok? (Geometry Dash-dood.)"""
         if sp.modus in ("draaibol", "ninja", "magneet", "klimmer", "draaisturing", "plakker"):
             return False        # deze modi botsen juist tegen muren (rollen/afzetten/aangetrokken) -> niet dood
-        if sp.modus == "eigen" and getattr(sp, "eigen_instel", None) and sp.eigen_instel.get("muur"):
-            return False        # zelfgemaakt poppetje met muursprong gaat niet dood tegen muren
+        if (sp.modus == "eigen" and getattr(sp, "eigen_instel", None)
+                and (sp.eigen_instel.get("muur") or sp.eigen_instel.get("magneet")
+                     or sp.eigen_instel.get("plakken"))):
+            return False        # eigen poppetje met muur/magneet/plakken botst tegen muren -> niet dood
         for p in self._blokken:
             if not getattr(p, "vast", True):
                 continue                       # verdwenen blok: geen botsing
@@ -1548,6 +1550,10 @@ class PlatformerSpel(arcade.View):
 
     def _speler_geraakt(self):
         """Verwerk dat de speler geraakt wordt: leven aftrekken of game over."""
+        # Zelfgemaakt poppetje met het 'Schild'-kunstje kan niet geraakt worden
+        if (self.speler.modus == "eigen" and getattr(self.speler, "eigen_instel", None)
+                and self.speler.eigen_instel.get("schild")):
+            return
         # In de vecht-, race-, vlucht- en bouwmodus ga je wel 'af' (opnieuw proberen),
         # maar je verliest GEEN leven en het is nooit game-over.
         if self.arena or self.race or self.vlucht or self.eigen or self.testruimte:

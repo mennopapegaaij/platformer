@@ -28,6 +28,13 @@ KUNSTJES = [
     ("klein", "Klein"),
     ("draaien", "Draaien"),
     ("glad", "Glad"),
+    ("magneet", "Magneet"),
+    ("wind", "Wind"),
+    ("spiegel", "Spiegel"),
+    ("schild", "Schild"),
+    ("driesprong", "Driesprong"),
+    ("plakken", "Plakken"),
+    ("turbo", "Turbo"),
 ]
 
 # De kleuren waar je uit kunt kiezen
@@ -73,8 +80,8 @@ class PoppetjeMaker(arcade.View):
         kol = i % 2
         rij = i // 2
         l = 388 + kol * 200
-        t = SCHERM_HOOGTE - 74 - rij * 38
-        return (l, l + 190, t - 32, t)
+        t = SCHERM_HOOGTE - 66 - rij * 34
+        return (l, l + 190, t - 30, t)
 
     def _kleur_rect(self, i):
         """De plek van kleurvakje i (twee rijtjes onder het voorbeeld)."""
