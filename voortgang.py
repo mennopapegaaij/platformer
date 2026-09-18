@@ -33,12 +33,13 @@ def laad_voortgang():
                     "vlucht_record": int(data.get("vlucht_record", 0)),
                     "tijden": data.get("tijden", {}),   # beste tijden per level
                     "speler_kleur": data.get("speler_kleur"),  # gekozen spelerkleur (of None)
+                    "favorieten": data.get("favorieten", []),  # favoriete poppetjes
                 }
         except Exception:
             pass  # Als het bestand kapot is, begin dan opnieuw
     return {"voltooid": set(), "punten": 0, "levens": None,
             "arena_record": 0, "race_record": 0, "vlucht_record": 0, "tijden": {},
-            "speler_kleur": None}
+            "speler_kleur": None, "favorieten": []}
 
 
 def sla_voortgang_op(voltooid, punten=0, levens=None, arena_record=None,
@@ -61,7 +62,22 @@ def sla_voortgang_op(voltooid, punten=0, levens=None, arena_record=None,
         "vlucht_record": int(vlucht_record),
         "tijden": huidig.get("tijden", {}),   # beste tijden blijven bewaard
         "speler_kleur": huidig.get("speler_kleur"),  # gekozen kleur blijft bewaard
+        "favorieten": huidig.get("favorieten", []),  # favoriete poppetjes blijven bewaard
     }
+    with open(BESTAND, "w", encoding="utf-8") as f:
+        json.dump(data, f)
+
+
+def sla_favorieten_op(favorieten):
+    """Bewaar de favoriete poppetjes (een lijst met namen). De rest blijft bewaard."""
+    data = {}
+    if os.path.exists(BESTAND):
+        try:
+            with open(BESTAND, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            data = {}
+    data["favorieten"] = list(favorieten)
     with open(BESTAND, "w", encoding="utf-8") as f:
         json.dump(data, f)
 
