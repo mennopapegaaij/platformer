@@ -3,6 +3,7 @@
 
 import arcade
 import math
+import random
 from instellingen import (SPELER_SNELHEID, SPRING_KRACHT, ZWAARTEKRACHT,
                            SPELER_KLEUR, OOG_KLEUR)
 
@@ -55,6 +56,21 @@ MAGNEET_KRACHT = 1.6   # hoe hard de magneet je naar een muur trekt (per stapje)
 # --- Flits-modus: loopt niet, maar teleporteert met sprongetjes vooruit ---
 FLITS_INTERVAL = 9     # om de hoeveel stapjes je een flits maakt (kleiner = vaker)
 FLITS_BLOK = 40        # grootte van één blok: elke flits verspringt precies één blok
+
+# --- Dobbelsteen-modus: elke sprong is een willekeurige hoogte ---
+DOBBEL_MIN = 6         # laagste sprong
+DOBBEL_MAX = 18        # hoogste sprong (soms mega!)
+
+# --- Vertraagd-modus: je toetsen werken pas een halve seconde later ---
+VERT_DELAY = 30        # hoeveel stapjes je invoer vertraagd wordt (~halve seconde)
+
+# --- Chaos-modus: de zwaartekracht draait op willekeurige momenten vanzelf om ---
+CHAOS_KANS = 0.012     # kans per stapje dat de zwaartekracht omklapt
+
+# --- Dronken-modus: zwabbert vanzelf op en neer, je stuurt ertegenin ---
+DRONKEN_SNELHEID = 0.18   # hoe snel de wiebel gaat
+DRONKEN_AMP = 4.5         # hoe hard hij op en neer zwabbert
+DRONKEN_DUW = 3.0         # extra duw omhoog als je de knop vasthoudt
 
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
@@ -129,6 +145,9 @@ class Speler:
         self.snelheid_factor = 1.0       # snelheid-portaal (x0.5 / x1 / x2 / x5 / x10)
         self._muur_kant = 0              # ninja: raak je nu een muur? (-1 links, 1 rechts, 0 nee)
         self._flits_teller = 0           # flits: hoelang geleden je laatste teleport-sprongetje was
+        self._vert_buffer = []           # vertraagd: bewaarde toetsen (voor de vertraging)
+        self._vert_spring_wacht = 0      # vertraagd: hoelang nog tot je sprong echt komt
+        self._dronken_fase = 0.0         # dronken: waar we in de op-en-neer-wiebel zitten
 
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
@@ -162,6 +181,9 @@ class Speler:
         self.kloon = None                   # kloon weg bij herstart
         self._muur_kant = 0                 # ninja: geen muur meer geraakt
         self._flits_teller = 0              # flits: teller reset
+        self._vert_buffer = []              # vertraagd: buffer leeg
+        self._vert_spring_wacht = 0         # vertraagd: geen wachtende sprong
+        self._dronken_fase = 0.0            # dronken: wiebel terug naar begin
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -195,6 +217,10 @@ class Speler:
         if self.modus == "draaibol":
             self._draaibol_bijwerken(level_breedte, platforms)
             return
+
+        # Chaos: de zwaartekracht klapt op willekeurige momenten vanzelf om
+        if self.modus == "chaos" and random.random() < CHAOS_KANS:
+            self.zwaartekracht_richting *= -1
 
         # Bepaal de snelheid: normaal + snelheidsboost power-up + punten-bonus
         snelheid = SPELER_SNELHEID + self.snelheid_bonus
@@ -232,13 +258,23 @@ class Speler:
                         self.x = oude_x
                         break
         else:
+            # Vertraagd: gebruik de toetsen van een halve seconde geleden (superlastig!)
+            if self.modus == "vertraagd":
+                self._vert_buffer.append((self.links_ingedrukt, self.rechts_ingedrukt))
+                if len(self._vert_buffer) > VERT_DELAY:
+                    L, R = self._vert_buffer.pop(0)
+                else:
+                    L, R = False, False       # buffer nog niet vol -> nog niks doen
+            else:
+                L, R = self.links_ingedrukt, self.rechts_ingedrukt
+
             if self.modus == "ijs":
                 # IJs: spiegelglad! Je snelheid verandert maar langzaam naar wat je wilt,
                 # dus je glijdt door en stopt bijna niet.
-                if self.links_ingedrukt:
+                if L:
                     doel = -snelheid
                     self.kijkt_rechts = False
-                elif self.rechts_ingedrukt:
+                elif R:
                     doel = snelheid
                     self.kijkt_rechts = True
                 else:
@@ -246,18 +282,18 @@ class Speler:
                 self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
             elif self.modus == "spiegel":
                 # Spiegel: links en rechts zijn OMGEDRAAID!
-                if self.links_ingedrukt:
+                if L:
                     self.snelheid_x = snelheid    # links ingedrukt -> ga naar rechts
                     self.kijkt_rechts = True
-                elif self.rechts_ingedrukt:
+                elif R:
                     self.snelheid_x = -snelheid   # rechts ingedrukt -> ga naar links
                     self.kijkt_rechts = False
                 else:
                     self.snelheid_x = 0
-            elif self.links_ingedrukt:
+            elif L:
                 self.snelheid_x = -snelheid
                 self.kijkt_rechts = False   # Speler kijkt naar links
-            elif self.rechts_ingedrukt:
+            elif R:
                 self.snelheid_x = snelheid
                 self.kijkt_rechts = True    # Speler kijkt naar rechts
             else:
@@ -315,9 +351,21 @@ class Speler:
                     elif self.snelheid_x < 0:
                         self.x = p.x + p.breedte
 
+        # Vertraagd: een gevraagde sprong komt pas ná de vertraging echt
+        if self.modus == "vertraagd" and self._vert_spring_wacht > 0:
+            self._vert_spring_wacht -= 1
+            if self._vert_spring_wacht == 0:
+                self._doe_sprong()
+
         # Verticale beweging hangt af van de modus
         richting = self.zwaartekracht_richting   # 1 = gewoon, -1 = alles omgedraaid (kloon!)
-        if self.modus == "vliegtuig":
+        if self.modus == "dronken":
+            # Dronken: zwabbert vanzelf op en neer; knop vasthouden = extra duwtje omhoog.
+            self._dronken_fase += DRONKEN_SNELHEID
+            self.snelheid_y = math.sin(self._dronken_fase) * DRONKEN_AMP
+            if self.vlieg_omhoog:
+                self.snelheid_y += DRONKEN_DUW
+        elif self.modus == "vliegtuig":
             # Vliegtuig: knop vasthouden = stuw omhoog, anders zak je langzaam.
             # Maal met de richting, zodat de kloon ondersteboven kan vliegen.
             if self.vlieg_omhoog:
@@ -418,7 +466,7 @@ class Speler:
         # In de speciale modi (of bij omgedraaide zwaartekracht): niet door het plafond.
         # Is self.plafond None, dan is er GEEN plafond en kun je oneindig omhoog.
         if (self.plafond is not None
-                and (self.modus in ("vliegtuig", "ufo", "bal", "golf", "spin", "heli", "ballon", "raket", "kolibrie", "draak") or omgedraaid)
+                and (self.modus in ("vliegtuig", "ufo", "bal", "golf", "spin", "heli", "ballon", "raket", "kolibrie", "draak", "dronken") or omgedraaid)
                 and self.y + self.hoogte > self.plafond):
             self.y = self.plafond - self.hoogte
             if self.snelheid_y > 0:
@@ -539,11 +587,24 @@ class Speler:
             self._robot_boost = ROBOT_BOOST_FRAMES
 
     def spring(self):
-        """Laat de speler springen — hoger naarmate je meer punten hebt!
+        """Vraag een sprong aan. De meeste modi springen meteen, maar:
+        - Vertraagd: de sprong komt pas een halve seconde later.
+        - Dobbelsteen: de spronghoogte is elke keer willekeurig."""
+        if self.modus == "vertraagd":
+            self._vert_spring_wacht = VERT_DELAY   # de sprong komt straks pas echt
+            return
+        self._doe_sprong()
+
+    def _doe_sprong(self):
+        """Doe de sprong nu echt (hoger naarmate je meer punten hebt).
 
         Bij omgekeerde zwaartekracht (na een draai-bol) spring je juist naar BENEDEN,
         zodat je van het plafond af komt."""
-        sprongkracht = (SPRING_KRACHT + self.sprong_bonus) * self.zwaartekracht_richting
+        if self.modus == "dobbelsteen":
+            # Dobbelsteen: een willekeurige spronghoogte (soms mini, soms mega!)
+            sprongkracht = random.uniform(DOBBEL_MIN, DOBBEL_MAX) * self.zwaartekracht_richting
+        else:
+            sprongkracht = (SPRING_KRACHT + self.sprong_bonus) * self.zwaartekracht_richting
         if self.staat_op_grond:
             self.snelheid_y = sprongkracht
         elif self.modus == "ninja" and self._muur_kant != 0:
@@ -620,6 +681,18 @@ class Speler:
             return
         if self.modus == "flits":
             self._teken_flits()
+            return
+        if self.modus == "dobbelsteen":
+            self._teken_dobbelsteen()
+            return
+        if self.modus == "vertraagd":
+            self._teken_vertraagd()
+            return
+        if self.modus == "chaos":
+            self._teken_chaos()
+            return
+        if self.modus == "dronken":
+            self._teken_dronken()
             return
 
         # Gewoon blokje: in de racemodus tolt het door de lucht → teken het gedraaid
@@ -967,6 +1040,59 @@ class Speler:
                   (cx + 8, y + h * 0.5), (cx + 1, y + h * 0.5)]
         arcade.draw_polygon_filled(punten, kleur)
         arcade.draw_polygon_outline(punten, (200, 150, 0), 2)
+
+    def _teken_dobbelsteen(self):
+        """Teken een dobbelsteen: een wit blokje met zwarte stippen (5-ogen)."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (245, 245, 250))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (60, 60, 80), 3)
+        # Vijf stippen (zoals de 5 op een dobbelsteen)
+        cx, cy = x + w / 2, y + h / 2
+        for dx, dy in [(-8, 8), (8, 8), (0, 0), (-8, -8), (8, -8)]:
+            arcade.draw_circle_filled(cx + dx, cy + dy, 3, (40, 40, 55))
+
+    def _teken_vertraagd(self):
+        """Teken een klokje (want je toetsen werken vertraagd)."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx, cy = x + w / 2, y + h / 2
+        r = w * 0.42
+        arcade.draw_circle_filled(cx, cy, r, (235, 225, 180))
+        arcade.draw_circle_outline(cx, cy, r, (120, 90, 40), 3)
+        # De wijzers
+        arcade.draw_line(cx, cy, cx, cy + r * 0.7, (90, 60, 30), 3)     # grote wijzer
+        arcade.draw_line(cx, cy, cx + r * 0.5, cy, (90, 60, 30), 3)     # kleine wijzer
+        arcade.draw_circle_filled(cx, cy, 2, (90, 60, 30))
+
+    def _teken_chaos(self):
+        """Teken een chaos-bal: een paarse bol met wilde vonkjes eromheen."""
+        cx = self.x + self.breedte / 2
+        cy = self.y + self.hoogte / 2
+        arcade.draw_circle_filled(cx, cy, 12, (150, 60, 200))
+        arcade.draw_circle_outline(cx, cy, 12, (90, 30, 130), 3)
+        # Vonkjes die alle kanten op schieten (elk frame anders -> ziet er wild uit)
+        for _ in range(5):
+            hoek = random.uniform(0, 6.28)
+            lengte = random.uniform(12, 20)
+            ex, ey = cx + math.cos(hoek) * lengte, cy + math.sin(hoek) * lengte
+            arcade.draw_line(cx, cy, ex, ey, (255, 230, 90), 2)
+        # Twee draaierige oogjes
+        arcade.draw_circle_filled(cx - 4, cy + 2, 2, (255, 255, 255))
+        arcade.draw_circle_filled(cx + 4, cy + 2, 2, (255, 255, 255))
+
+    def _teken_dronken(self):
+        """Teken een duizelig poppetje met draai-oogjes en een golvend mondje (groen)."""
+        cx = self.x + self.breedte / 2
+        cy = self.y + self.hoogte / 2
+        arcade.draw_circle_filled(cx, cy, 13, (120, 200, 120))
+        arcade.draw_circle_outline(cx, cy, 13, (60, 130, 60), 3)
+        # Draai-oogjes (spiraaltjes = duizelig)
+        for ox in (-5, 5):
+            arcade.draw_circle_outline(cx + ox, cy + 3, 3, (40, 60, 40), 1)
+            arcade.draw_circle_filled(cx + ox, cy + 3, 1, (40, 60, 40))
+        # Golvend (wiebelig) mondje
+        arcade.draw_line(cx - 6, cy - 5, cx - 2, cy - 3, (40, 60, 40), 2)
+        arcade.draw_line(cx - 2, cy - 3, cx + 2, cy - 5, (40, 60, 40), 2)
+        arcade.draw_line(cx + 2, cy - 5, cx + 6, cy - 3, (40, 60, 40), 2)
 
     def _teken_spin(self):
         """Teken een spinnetje: een rond lijf met acht pootjes (donkerrood)."""

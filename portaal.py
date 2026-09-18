@@ -8,6 +8,7 @@
 #   - soort "golf"   -> golf: vasthouden = schuin omhoog, loslaten = schuin omlaag
 
 import arcade
+import math
 
 # Bij elk soort portaal hoort een kleur (buitenring, binnenring)
 PORTAAL_KLEUREN = {
@@ -29,6 +30,10 @@ PORTAAL_KLEUREN = {
     "spiegel": ((120, 150, 190), (210, 230, 250)), # spiegelzilver = spiegel
     "magneet": ((200, 60, 60), (255, 160, 160)),   # magneetrood = magneet
     "flits":  ((220, 200, 40), (255, 245, 150)),   # bliksemgeel = flits
+    "dobbelsteen": ((230, 230, 240), (255, 255, 255)),  # wit = dobbelsteen
+    "vertraagd": ((190, 160, 90), (235, 215, 160)),     # klok-bruin = vertraagd
+    "chaos":  ((150, 60, 200), (210, 150, 250)),        # chaos-paars = chaos
+    "dronken": ((90, 180, 90), (170, 230, 170)),        # duizelig groen = dronken
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
     # Snelheid-portalen (veranderen niet je vorm, maar hoe snel je gaat)
@@ -162,6 +167,28 @@ def teken_portaal_icoon(soort, cx, cy):
         arcade.draw_polygon_filled([(cx + 3, cy + 10), (cx - 5, cy), (cx, cy),
                                     (cx - 4, cy - 10), (cx + 6, cy + 1), (cx + 1, cy + 1)],
                                    arcade.color.WHITE)
+    elif soort == "dobbelsteen":
+        # Dobbelsteentje met stippen
+        arcade.draw_lrbt_rectangle_filled(cx - 8, cx + 8, cy - 8, cy + 8, arcade.color.WHITE)
+        for dx, dy in [(-4, 4), (4, 4), (0, 0), (-4, -4), (4, -4)]:
+            arcade.draw_circle_filled(cx + dx, cy + dy, 1.5, (40, 40, 55))
+    elif soort == "vertraagd":
+        # Klokje
+        arcade.draw_circle_filled(cx, cy, 9, arcade.color.WHITE)
+        arcade.draw_line(cx, cy, cx, cy + 6, (90, 60, 30), 2)
+        arcade.draw_line(cx, cy, cx + 4, cy, (90, 60, 30), 2)
+    elif soort == "chaos":
+        # Wilde vonkjes
+        arcade.draw_circle_filled(cx, cy, 5, arcade.color.WHITE)
+        for hoek in (0.4, 1.6, 2.8, 4.0, 5.2):
+            arcade.draw_line(cx, cy, cx + math.cos(hoek) * 11, cy + math.sin(hoek) * 11,
+                             arcade.color.WHITE, 2)
+    elif soort == "dronken":
+        # Duizelig gezichtje met spiraal-oogjes
+        arcade.draw_circle_outline(cx - 4, cy + 1, 3, arcade.color.WHITE, 1)
+        arcade.draw_circle_outline(cx + 4, cy + 1, 3, arcade.color.WHITE, 1)
+        arcade.draw_line(cx - 5, cy - 6, cx, cy - 4, arcade.color.WHITE, 2)
+        arcade.draw_line(cx, cy - 4, cx + 5, cy - 6, arcade.color.WHITE, 2)
     elif soort in SNELHEID_FACTOR:
         # Snelheid-portaal: laat de keer-factor zien (bv. "x2")
         arcade.draw_text(soort, cx, cy - 6, arcade.color.WHITE, 11, bold=True, anchor_x="center")
