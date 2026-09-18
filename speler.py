@@ -83,7 +83,7 @@ STUITER_KRACHT = 13       # hoe hoog je elke keer automatisch stuitert
 
 # --- Draaibesturing-modus: een blokje met echte zwaartekracht, maar de stuur-richting
 #     draait langzaam rond (geen toeval). Rechts/links duwen in die draaiende richting. ---
-DRAAI_SNELHEID = 0.015    # hoe snel de stuur-richting ronddraait (2x langzamer dan eerst)
+DRAAI_SNELHEID = 0.0075   # hoe snel de stuur-richting ronddraait (nog eens 2x langzamer)
 
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
