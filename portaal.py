@@ -34,6 +34,10 @@ PORTAAL_KLEUREN = {
     "vertraagd": ((190, 160, 90), (235, 215, 160)),     # klok-bruin = vertraagd
     "chaos":  ((150, 60, 200), (210, 150, 250)),        # chaos-paars = chaos
     "dronken": ((90, 180, 90), (170, 230, 170)),        # duizelig groen = dronken
+    "turbo":  ((230, 60, 50), (255, 160, 120)),         # racerood = turbo
+    "ritme":  ((90, 130, 230), (170, 200, 255)),        # ritmeblauw = ritme-flip
+    "stuiteraar": ((255, 140, 40), (255, 210, 150)),    # stuiter-oranje = stuiteraar
+    "klimmer": ((130, 90, 200), (200, 170, 245)),       # klimpaars = klimmer
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
     # Snelheid-portalen (veranderen niet je vorm, maar hoe snel je gaat)
@@ -189,6 +193,24 @@ def teken_portaal_icoon(soort, cx, cy):
         arcade.draw_circle_outline(cx + 4, cy + 1, 3, arcade.color.WHITE, 1)
         arcade.draw_line(cx - 5, cy - 6, cx, cy - 4, arcade.color.WHITE, 2)
         arcade.draw_line(cx, cy - 4, cx + 5, cy - 6, arcade.color.WHITE, 2)
+    elif soort == "turbo":
+        # Snelheidspijl met streepjes
+        arcade.draw_triangle_filled(cx + 8, cy, cx - 2, cy - 8, cx - 2, cy + 8, arcade.color.WHITE)
+        arcade.draw_line(cx - 10, cy + 4, cx - 4, cy + 4, arcade.color.WHITE, 2)
+        arcade.draw_line(cx - 10, cy - 4, cx - 4, cy - 4, arcade.color.WHITE, 2)
+    elif soort == "ritme":
+        # Pijl omhoog + pijl omlaag (zwaartekracht flipt op de maat)
+        arcade.draw_triangle_filled(cx, cy + 10, cx - 6, cy + 2, cx + 6, cy + 2, arcade.color.WHITE)
+        arcade.draw_triangle_filled(cx, cy - 10, cx - 6, cy - 2, cx + 6, cy - 2, arcade.color.WHITE)
+    elif soort == "stuiteraar":
+        # Stuiterbal met een boogje eronder
+        arcade.draw_circle_filled(cx, cy + 2, 7, arcade.color.WHITE)
+        arcade.draw_arc_outline(cx, cy - 8, 16, 10, arcade.color.WHITE, 180, 360, 2)
+    elif soort == "klimmer":
+        # Poppetje tussen twee muurtjes
+        arcade.draw_lrbt_rectangle_filled(cx - 11, cx - 8, cy - 10, cy + 10, arcade.color.WHITE)
+        arcade.draw_lrbt_rectangle_filled(cx + 8, cx + 11, cy - 10, cy + 10, arcade.color.WHITE)
+        arcade.draw_circle_filled(cx, cy, 5, arcade.color.WHITE)
     elif soort in SNELHEID_FACTOR:
         # Snelheid-portaal: laat de keer-factor zien (bv. "x2")
         arcade.draw_text(soort, cx, cy - 6, arcade.color.WHITE, 11, bold=True, anchor_x="center")

@@ -72,6 +72,15 @@ DRONKEN_SNELHEID = 0.18   # hoe snel de wiebel gaat
 DRONKEN_AMP = 4.5         # hoe hard hij op en neer zwabbert
 DRONKEN_DUW = 3.0         # extra duw omhoog als je de knop vasthoudt
 
+# --- Turbo-modus: rent altijd op topsnelheid vooruit, kan niet stoppen (keihard!) ---
+TURBO_SNELHEID = 9        # hoe snel je onstopbaar vooruit raast
+
+# --- Ritme-flip-modus: de zwaartekracht draait op een VASTE maat om (geen toeval) ---
+RITME_INTERVAL = 42       # om de hoeveel stapjes de zwaartekracht omklapt
+
+# --- Stuiteraar-modus: stuitert altijd vanzelf (als op een trampoline) ---
+STUITER_KRACHT = 13       # hoe hoog je elke keer automatisch stuitert
+
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
 #   0 = naar beneden, 1 = naar rechts, 2 = naar boven, 3 = naar links
@@ -148,6 +157,7 @@ class Speler:
         self._vert_buffer = []           # vertraagd: bewaarde toetsen (voor de vertraging)
         self._vert_spring_wacht = 0      # vertraagd: hoelang nog tot je sprong echt komt
         self._dronken_fase = 0.0         # dronken: waar we in de op-en-neer-wiebel zitten
+        self._ritme_teller = 0           # ritme-flip: tel tot de volgende zwaartekracht-flip
 
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
@@ -184,6 +194,7 @@ class Speler:
         self._vert_buffer = []              # vertraagd: buffer leeg
         self._vert_spring_wacht = 0         # vertraagd: geen wachtende sprong
         self._dronken_fase = 0.0            # dronken: wiebel terug naar begin
+        self._ritme_teller = 0              # ritme-flip: teller reset
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -221,6 +232,13 @@ class Speler:
         # Chaos: de zwaartekracht klapt op willekeurige momenten vanzelf om
         if self.modus == "chaos" and random.random() < CHAOS_KANS:
             self.zwaartekracht_richting *= -1
+
+        # Ritme-flip: de zwaartekracht klapt op een VASTE maat om (voorspelbaar, geen toeval)
+        if self.modus == "ritme":
+            self._ritme_teller += 1
+            if self._ritme_teller >= RITME_INTERVAL:
+                self._ritme_teller = 0
+                self.zwaartekracht_richting *= -1
 
         # Bepaal de snelheid: normaal + snelheidsboost power-up + punten-bonus
         snelheid = SPELER_SNELHEID + self.snelheid_bonus
@@ -268,7 +286,11 @@ class Speler:
             else:
                 L, R = self.links_ingedrukt, self.rechts_ingedrukt
 
-            if self.modus == "ijs":
+            if self.modus == "turbo":
+                # Turbo: je raast altijd op topsnelheid naar rechts en kunt NIET stoppen!
+                self.snelheid_x = TURBO_SNELHEID
+                self.kijkt_rechts = True
+            elif self.modus == "ijs":
                 # IJs: spiegelglad! Je snelheid verandert maar langzaam naar wat je wilt,
                 # dus je glijdt door en stopt bijna niet.
                 if L:
@@ -320,9 +342,9 @@ class Speler:
 
             self.x += self.snelheid_x
 
-        # Ninja én magneet: stop tegen een muur (i.p.v. erdoor of dood) en onthoud de kant.
-        # Zo kan de ninja zich later van de muur afzetten (muursprong).
-        if self.modus in ("ninja", "magneet"):
+        # Ninja, magneet én klimmer: stop tegen een muur (i.p.v. erdoor of dood) en onthoud de kant.
+        # Zo kunnen ninja en klimmer zich later van de muur afzetten (muursprong).
+        if self.modus in ("ninja", "magneet", "klimmer"):
             self._muur_kant = 0
             for p in platforms:
                 if not getattr(p, "vast", True) or getattr(p, "is_schuin", False):
@@ -433,7 +455,10 @@ class Speler:
                     platform.aangeraakt()
                 # Stuiterblok: stuiter omhoog i.p.v. blijven staan
                 stuiter = getattr(platform, "stuiter", 0)
-                if stuiter and not omgedraaid:
+                if self.modus == "stuiteraar" and not omgedraaid:
+                    # Stuiteraar: je stuitert ALTIJD automatisch omhoog (als een trampoline)
+                    self.snelheid_y = STUITER_KRACHT
+                elif stuiter and not omgedraaid:
                     self.snelheid_y = stuiter
                 else:
                     self.snelheid_y = 0
@@ -605,6 +630,13 @@ class Speler:
             sprongkracht = random.uniform(DOBBEL_MIN, DOBBEL_MAX) * self.zwaartekracht_richting
         else:
             sprongkracht = (SPRING_KRACHT + self.sprong_bonus) * self.zwaartekracht_richting
+        if self.modus == "klimmer":
+            # Klimmer: kan NIET vanaf de grond springen, alleen zich van een muur afzetten
+            if self._muur_kant != 0:
+                self.snelheid_y = sprongkracht
+                self.snelheid_x = -self._muur_kant * NINJA_MUURSPRONG
+                self._muur_kant = 0
+            return
         if self.staat_op_grond:
             self.snelheid_y = sprongkracht
         elif self.modus == "ninja" and self._muur_kant != 0:
@@ -693,6 +725,18 @@ class Speler:
             return
         if self.modus == "dronken":
             self._teken_dronken()
+            return
+        if self.modus == "turbo":
+            self._teken_turbo()
+            return
+        if self.modus == "ritme":
+            self._teken_ritme()
+            return
+        if self.modus == "stuiteraar":
+            self._teken_stuiteraar()
+            return
+        if self.modus == "klimmer":
+            self._teken_klimmer()
             return
 
         # Gewoon blokje: in de racemodus tolt het door de lucht → teken het gedraaid
@@ -1093,6 +1137,67 @@ class Speler:
         arcade.draw_line(cx - 6, cy - 5, cx - 2, cy - 3, (40, 60, 40), 2)
         arcade.draw_line(cx - 2, cy - 3, cx + 2, cy - 5, (40, 60, 40), 2)
         arcade.draw_line(cx + 2, cy - 5, cx + 6, cy - 3, (40, 60, 40), 2)
+
+    def _teken_turbo(self):
+        """Teken een raceblokje met snelheidsstrepen erachter (rood, superstoer)."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        # Snelheidsstrepen achter je (aan de linkerkant, want je raast naar rechts)
+        for i, dy in enumerate((h * 0.25, h * 0.5, h * 0.75)):
+            arcade.draw_line(x - 14 - i * 3, y + dy, x, y + dy, (255, 200, 80), 2)
+        # Het lijf (fel rood)
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (230, 60, 50))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (120, 20, 20), 3)
+        # Een pijl naar voren
+        cy = y + h / 2
+        arcade.draw_triangle_filled(x + w - 4, cy, x + w - 14, cy - 7, x + w - 14, cy + 7, (255, 240, 120))
+        # Vastberaden oogjes
+        arcade.draw_circle_filled(x + 9, y + h - 10, 3, OOG_KLEUR)
+        arcade.draw_circle_filled(x + w - 9, y + h - 10, 3, OOG_KLEUR)
+
+    def _teken_ritme(self):
+        """Teken een blokje met twee pijlen (omhoog + omlaag): de zwaartekracht flipt op de maat."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w / 2
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (90, 130, 230))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (40, 60, 140), 3)
+        wit = (255, 255, 255)
+        # Pijl omhoog en pijl omlaag (de zwaartekracht wisselt steeds)
+        arcade.draw_triangle_filled(cx, y + h - 4, cx - 6, y + h - 12, cx + 6, y + h - 12, wit)
+        arcade.draw_triangle_filled(cx, y + 4, cx - 6, y + 12, cx + 6, y + 12, wit)
+        # Oogjes in het midden
+        arcade.draw_circle_filled(cx - 5, y + h / 2, 2.5, OOG_KLEUR)
+        arcade.draw_circle_filled(cx + 5, y + h / 2, 2.5, OOG_KLEUR)
+
+    def _teken_stuiteraar(self):
+        """Teken een stuiterbal met een veer eronder (oranje)."""
+        cx = self.x + self.breedte / 2
+        cy = self.y + self.hoogte / 2
+        # De bal
+        arcade.draw_circle_filled(cx, cy + 3, 12, (255, 140, 40))
+        arcade.draw_circle_outline(cx, cy + 3, 12, (180, 80, 10), 3)
+        # Een veertje eronder (zigzag) -> hij stuitert altijd
+        vx = self.x + self.breedte / 2
+        vb = self.y + 2
+        arcade.draw_line(vx - 6, vb, vx + 6, vb + 4, (200, 200, 210), 2)
+        arcade.draw_line(vx + 6, vb + 4, vx - 6, vb + 8, (200, 200, 210), 2)
+        # Blije oogjes
+        arcade.draw_circle_filled(cx - 4, cy + 5, 2, OOG_KLEUR)
+        arcade.draw_circle_filled(cx + 4, cy + 5, 2, OOG_KLEUR)
+
+    def _teken_klimmer(self):
+        """Teken een klimmertje met grijphandjes (kan alleen via muren omhoog)."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w / 2
+        # Lijf (paars klimpak)
+        arcade.draw_lrbt_rectangle_filled(x + 5, x + w - 5, y + 2, y + h - 4, (130, 90, 200))
+        arcade.draw_lrbt_rectangle_outline(x + 5, x + w - 5, y + 2, y + h - 4, (70, 40, 120), 2)
+        # Kopje
+        arcade.draw_circle_filled(cx, y + h - 6, 6, (235, 200, 170))
+        arcade.draw_circle_filled(cx - 2, y + h - 6, 1.5, OOG_KLEUR)
+        arcade.draw_circle_filled(cx + 2, y + h - 6, 1.5, OOG_KLEUR)
+        # Twee grijphandjes die opzij reiken (naar de muren)
+        arcade.draw_circle_filled(x + 3, y + h / 2, 3, (235, 200, 170))
+        arcade.draw_circle_filled(x + w - 3, y + h / 2, 3, (235, 200, 170))
 
     def _teken_spin(self):
         """Teken een spinnetje: een rond lijf met acht pootjes (donkerrood)."""
