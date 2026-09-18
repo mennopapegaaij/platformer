@@ -11,6 +11,7 @@ def maak_testruimte():
     """Bouw de leveldata (14 onderdelen) voor de testruimte."""
     platforms = [
         Platform(0, 0, 2600, 40),                 # lange grond om op te lopen
+        Platform(0, 440, 2600, 40),               # een dak bovenop (je stopt tegen het plafond)
         BlokPlatform(300, 40, 80, 40),            # trapje 1
         BlokPlatform(380, 80, 80, 40),            # trapje 2 (hoger)
         StuiterBlok(560, 40, 40, 40),             # stuiterblok (springt je omhoog)
