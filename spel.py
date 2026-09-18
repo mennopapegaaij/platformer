@@ -366,10 +366,6 @@ class PlatformerSpel(arcade.View):
             naam_tekst = f"Level {self.huidig_level}: {naam}"
         arcade.draw_text(naam_tekst,
                          10, SCHERM_HOOGTE - 30, arcade.color.WHITE, 16, bold=True)
-        # Laat zien of de auto-knop (A) aanstaat
-        if getattr(self, "_auto_knop", False):
-            arcade.draw_text("🅰 AUTO aan (druk A voor uit)", 10, SCHERM_HOOGTE - 52,
-                             (120, 255, 140), 12, bold=True)
 
         # Klok: hoe lang je al bezig bent, en je beste tijd (midden bovenin)
         if self._tijd_id:
@@ -629,14 +625,6 @@ class PlatformerSpel(arcade.View):
         if self.race or self.vlucht:
             self.speler.rechts_ingedrukt = True
             self.speler.links_ingedrukt = False
-
-        # Auto-knop (A): doet alsof je de spring/omhoog-knop de hele tijd ingedrukt houdt
-        if getattr(self, "_auto_knop", False) and not self.twee:
-            self._vlieg_omhoog = True               # vasthoud-modi blijven omhoog
-            self._auto_teller = getattr(self, "_auto_teller", 0) + 1
-            if self._auto_teller >= 9:              # om de 9 stapjes een 'tik' (voor tik-modi)
-                self._auto_teller = 0
-                self._auto_tik()
 
         # In de vasthoud-modi (vliegtuig, golf, robot): geef door of de knop vastgehouden wordt
         if self.speler.modus in ("vliegtuig", "golf", "robot", "ballon", "raket", "draak"):
@@ -1521,22 +1509,6 @@ class PlatformerSpel(arcade.View):
         else:
             self.dood = True
 
-    def _auto_tik(self):
-        """Voor de auto-knop: doe automatisch de 'tik'-actie die bij de modus hoort.
-
-        Vasthoud-modi (vliegtuig/raket/ballon/draak/golf/robot) hoeven geen tik: die
-        krijgen al de vastgehouden knop. Voor tik- en spring-modi doen we hier de tik."""
-        sp = self.speler
-        m = sp.modus
-        if m == "ufo":
-            sp.flap()
-        elif m == "kolibrie":
-            sp.kolibrie_flap()
-        elif m == "robot":
-            sp.robot_sprong()
-        elif m in ("blok", "ijs", "spiegel", "magneet", "flits", "ninja"):
-            sp.spring()          # gewone spring-modi: automatisch springen
-
     def on_key_press(self, toets, modifiers):
         """Wordt aangeroepen als je een toets indrukt."""
         # Meerdere spelers: elke speler heeft eigen knoppen (springen + links/rechts).
@@ -1566,13 +1538,7 @@ class PlatformerSpel(arcade.View):
                 else:
                     self._verlaat_arena()            # terug naar de kaart
             return
-        if toets == arcade.key.A:
-            # A = auto-knop aan/uit: de spring/omhoog-knop blijft dan vanzelf ingedrukt
-            self._auto_knop = not getattr(self, "_auto_knop", False)
-            self._auto_teller = 0
-            if not self._auto_knop:
-                self._vlieg_omhoog = False     # meteen loslaten als je auto uitzet
-        elif toets == arcade.key.LEFT:
+        if toets == arcade.key.LEFT:
             self.speler.links_ingedrukt = True
         elif toets == arcade.key.RIGHT:
             self.speler.rechts_ingedrukt = True
