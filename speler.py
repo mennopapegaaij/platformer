@@ -1270,21 +1270,29 @@ class Speler:
         arcade.draw_circle_filled(x + w - 3, y + h / 2, 3, (235, 200, 170))
 
     def _teken_draaisturing(self):
-        """Teken een blokje met een draaiende stuur-pijl erop (die wijst waar 'rechts' heen duwt)."""
-        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
-        cx, cy = x + w / 2, y + h / 2
-        # Het blokje (blauwgrijs)
-        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (120, 150, 210))
-        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (50, 70, 130), 3)
-        # De stuur-pijl wijst de kant op waar 'rechts' nu heen duwt
-        r = w * 0.34
-        px = cx + math.cos(self._stuur_hoek) * r
-        py = cy + math.sin(self._stuur_hoek) * r
+        """Teken een blokje dat MEEDRAAIT met de stuur-richting (net zo snel als de wijzer)."""
+        cx = self.x + self.breedte / 2
+        cy = self.y + self.hoogte / 2
+        hoek = self._stuur_hoek                 # het blok draait met de stuur-richting mee
+        cos_h, sin_h = math.cos(hoek), math.sin(hoek)
+
+        def draai(dx, dy):
+            # Draai een punt (dx, dy) rond het midden van het blokje
+            return (cx + dx * cos_h - dy * sin_h, cy + dx * sin_h + dy * cos_h)
+
+        hw, hh = self.breedte / 2, self.hoogte / 2
+        hoeken = [draai(-hw, -hh), draai(hw, -hh), draai(hw, hh), draai(-hw, hh)]
+        # Het gedraaide blokje (blauwgrijs)
+        arcade.draw_polygon_filled(hoeken, (120, 150, 210))
+        arcade.draw_polygon_outline(hoeken, (50, 70, 130), 3)
+        # De stuur-pijl wijst de kant op waar 'rechts' nu heen duwt (draait mee)
+        px, py = draai(hw, 0)
         arcade.draw_line(cx, cy, px, py, (255, 240, 90), 3)
         arcade.draw_circle_filled(px, py, 3, (255, 240, 90))
-        # Oogjes bovenin
-        arcade.draw_circle_filled(x + 9, y + h - 9, 3, OOG_KLEUR)
-        arcade.draw_circle_filled(x + w - 9, y + h - 9, 3, OOG_KLEUR)
+        # Oogjes draaien mee met het blok
+        for ox in (-7, 7):
+            ex, ey = draai(ox, 6)
+            arcade.draw_circle_filled(ex, ey, 3, OOG_KLEUR)
 
     def _teken_spin(self):
         """Teken een spinnetje: een rond lijf met acht pootjes (donkerrood)."""
