@@ -81,12 +81,10 @@ RITME_INTERVAL = 42       # om de hoeveel stapjes de zwaartekracht omklapt
 # --- Stuiteraar-modus: stuitert altijd vanzelf (als op een trampoline) ---
 STUITER_KRACHT = 13       # hoe hoog je elke keer automatisch stuitert
 
-# --- Draaibesturing-modus: de stuur-richting draait langzaam rond (geen toeval) ---
-DRAAI_SNELHEID = 0.03     # hoe snel de stuur-richting ronddraait (radialen per stapje)
-DRAAI_DUW = 0.7           # hoe hard je duwt in de draaiende richting
-DRAAI_ZWAARTE = 0.22      # milde zwaartekracht (er is altijd een 'omlaag')
-DRAAI_DEMPING = 0.93      # remt je af zodat je niet oneindig versnelt
-DRAAI_MAX = 7             # topsnelheid
+# --- Draaibesturing-modus: een blokje met echte zwaartekracht, maar de stuur-richting
+#     draait langzaam rond (geen toeval). Rechts/links duwen in die draaiende richting. ---
+DRAAI_SNELHEID = 0.015    # hoe snel de stuur-richting ronddraait (2x langzamer dan eerst)
+DRAAI_LIFT = 0.9          # hoeveel duw omhoog/omlaag je uit de draaiende richting krijgt
 
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
@@ -620,28 +618,28 @@ class Speler:
 
     def _draaisturing_bijwerken(self, level_breedte, platforms):
         """Draaibesturing: de stuur-richting draait langzaam rond. 'Rechts' duwt je in
-        die draaiende richting, 'links' precies de andere kant op. Er is milde
-        zwaartekracht en wat demping, zodat je niet oneindig versnelt."""
-        # De stuur-richting draait elke stap een beetje verder
+        die draaiende richting, 'links' precies de andere kant op. Het blijft een
+        blokje met ECHTE zwaartekracht: je valt en landt gewoon, en je kunt springen."""
+        # De stuur-richting draait elke stap een beetje verder (2x langzamer dan eerst)
         self._stuur_hoek += DRAAI_SNELHEID
         dx = math.cos(self._stuur_hoek)
         dy = math.sin(self._stuur_hoek)
 
+        snelheid = SPELER_SNELHEID + self.snelheid_bonus
+        r = 0
         if self.rechts_ingedrukt:
-            self.snelheid_x += dx * DRAAI_DUW
-            self.snelheid_y += dy * DRAAI_DUW
+            r = 1
             self.kijkt_rechts = True
         elif self.links_ingedrukt:
-            self.snelheid_x -= dx * DRAAI_DUW
-            self.snelheid_y -= dy * DRAAI_DUW
+            r = -1
             self.kijkt_rechts = False
 
-        # Milde zwaartekracht + demping
-        self.snelheid_y -= DRAAI_ZWAARTE
-        self.snelheid_x *= DRAAI_DEMPING
-        self.snelheid_y *= DRAAI_DEMPING
-        self.snelheid_x = max(-DRAAI_MAX, min(DRAAI_MAX, self.snelheid_x))
-        self.snelheid_y = max(-DRAAI_MAX, min(DRAAI_MAX, self.snelheid_y))
+        # Horizontaal: de x-kant van de draaiende richting (soms vooruit, soms achteruit)
+        self.snelheid_x = r * snelheid * dx
+        # Verticaal: echte zwaartekracht, plus een duwtje omhoog/omlaag uit de y-kant
+        self.snelheid_y += r * dy * DRAAI_LIFT
+        self.snelheid_y -= ZWAARTEKRACHT
+        self.snelheid_y = max(-14, min(14, self.snelheid_y))
 
         # Alleen vaste, rechte blokken tellen als muur/vloer
         vast = [p for p in platforms
@@ -1274,22 +1272,21 @@ class Speler:
         arcade.draw_circle_filled(x + w - 3, y + h / 2, 3, (235, 200, 170))
 
     def _teken_draaisturing(self):
-        """Teken een kompas/stuur met een pijl die de huidige stuur-richting aanwijst."""
-        cx = self.x + self.breedte / 2
-        cy = self.y + self.hoogte / 2
-        r = 13
-        # Het ronde stuur (blauwgrijs)
-        arcade.draw_circle_filled(cx, cy, r, (120, 150, 210))
-        arcade.draw_circle_outline(cx, cy, r, (50, 70, 130), 3)
-        # De pijl wijst de kant op waar 'rechts' nu heen duwt
+        """Teken een blokje met een draaiende stuur-pijl erop (die wijst waar 'rechts' heen duwt)."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx, cy = x + w / 2, y + h / 2
+        # Het blokje (blauwgrijs)
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (120, 150, 210))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (50, 70, 130), 3)
+        # De stuur-pijl wijst de kant op waar 'rechts' nu heen duwt
+        r = w * 0.34
         px = cx + math.cos(self._stuur_hoek) * r
         py = cy + math.sin(self._stuur_hoek) * r
         arcade.draw_line(cx, cy, px, py, (255, 240, 90), 3)
         arcade.draw_circle_filled(px, py, 3, (255, 240, 90))
-        # Klein middenpunt + oogjes
-        arcade.draw_circle_filled(cx, cy, 2, (50, 70, 130))
-        arcade.draw_circle_filled(cx - 5, cy + 5, 1.5, OOG_KLEUR)
-        arcade.draw_circle_filled(cx + 5, cy + 5, 1.5, OOG_KLEUR)
+        # Oogjes bovenin
+        arcade.draw_circle_filled(x + 9, y + h - 9, 3, OOG_KLEUR)
+        arcade.draw_circle_filled(x + w - 9, y + h - 9, 3, OOG_KLEUR)
 
     def _teken_spin(self):
         """Teken een spinnetje: een rond lijf met acht pootjes (donkerrood)."""
