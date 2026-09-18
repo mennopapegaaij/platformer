@@ -84,7 +84,6 @@ STUITER_KRACHT = 13       # hoe hoog je elke keer automatisch stuitert
 # --- Draaibesturing-modus: een blokje met echte zwaartekracht, maar de stuur-richting
 #     draait langzaam rond (geen toeval). Rechts/links duwen in die draaiende richting. ---
 DRAAI_SNELHEID = 0.015    # hoe snel de stuur-richting ronddraait (2x langzamer dan eerst)
-DRAAI_LIFT = 0.9          # hoeveel duw omhoog/omlaag je uit de draaiende richting krijgt
 
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
@@ -623,7 +622,6 @@ class Speler:
         # De stuur-richting draait elke stap een beetje verder (2x langzamer dan eerst)
         self._stuur_hoek += DRAAI_SNELHEID
         dx = math.cos(self._stuur_hoek)
-        dy = math.sin(self._stuur_hoek)
 
         snelheid = SPELER_SNELHEID + self.snelheid_bonus
         r = 0
@@ -634,10 +632,10 @@ class Speler:
             r = -1
             self.kijkt_rechts = False
 
-        # Horizontaal: de x-kant van de draaiende richting (soms vooruit, soms achteruit)
+        # Horizontaal: de x-kant van de draaiende richting (soms vooruit, soms achteruit).
+        # Alleen de horizontale besturing draait rond -> geen vliegen, wel gewoon springen!
         self.snelheid_x = r * snelheid * dx
-        # Verticaal: echte zwaartekracht, plus een duwtje omhoog/omlaag uit de y-kant
-        self.snelheid_y += r * dy * DRAAI_LIFT
+        # Verticaal: gewoon echte zwaartekracht (springen doe je met de spring-knop)
         self.snelheid_y -= ZWAARTEKRACHT
         self.snelheid_y = max(-14, min(14, self.snelheid_y))
 
