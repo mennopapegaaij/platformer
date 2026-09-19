@@ -213,7 +213,12 @@ class PlatformerSpel(arcade.View):
                 self.speler.kleur = tuple(gekozen)
         # Geen plafond voor de spelers: je kunt oneindig omhoog (de camera gaat mee).
         # In de Frame Perfect-kamer wél een plafond, zodat vliegers er niet bovenlangs cheesen.
-        plafond = 150 if self.frameperfect else None
+        # Zo strak mogelijk: flappers (ufo/kolibrie) hebben iets meer ruimte nodig,
+        # de andere vliegers moeten in een piepklein baantje (perfect klikken én loslaten!).
+        if self.frameperfect:
+            plafond = 150 if self.speler.modus in ("ufo", "kolibrie") else 120
+        else:
+            plafond = None
         for sp in self.spelers:
             sp.plafond = plafond
         # Deuren die met een sleutel opengaan
