@@ -153,7 +153,7 @@ class PlatformerSpel(arcade.View):
             data = maak_testruimte()
         elif self.frameperfect:
             from frameperfect import maak_frameperfect
-            data = maak_frameperfect()
+            data = maak_frameperfect(self.start_modus)   # baan past bij het gekozen poppetje
             self.speler.snelheid_bonus = 1      # zo is het sprong-venster maar ~2 frames (mega-precies!)
             self.speler.sprong_bonus = 0
         else:
@@ -213,10 +213,15 @@ class PlatformerSpel(arcade.View):
                 self.speler.kleur = tuple(gekozen)
         # Geen plafond voor de spelers: je kunt oneindig omhoog (de camera gaat mee).
         # In de Frame Perfect-kamer wél een plafond, zodat vliegers er niet bovenlangs cheesen.
-        # Zo strak mogelijk: flappers (ufo/kolibrie) hebben iets meer ruimte nodig,
-        # de andere vliegers moeten in een piepklein baantje (perfect klikken én loslaten!).
+        # Vlieg-tunnels: een plafond zodat je er niet bovenlangs kunt cheesen.
         if self.frameperfect:
-            plafond = 150 if self.speler.modus in ("ufo", "kolibrie") else 120
+            from frameperfect import SMOOTH_TUNNEL, FLAP_TUNNEL
+            if self.speler.modus in SMOOTH_TUNNEL:
+                plafond = 130
+            elif self.speler.modus in FLAP_TUNNEL:
+                plafond = 160
+            else:
+                plafond = None
         else:
             plafond = None
         for sp in self.spelers:
