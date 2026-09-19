@@ -12,12 +12,15 @@ from vijand import Spikes
 def maak_frameperfect():
     """Bouw de leveldata (14 onderdelen): een aanloop, 5 spikes en dan de finish."""
     platforms = [
-        Platform(0, 0, 1600, 40),          # één lange grond (aanloop + landing)
+        Platform(0, 0, 1700, 40),          # één lange grond (aanloop + landing)
     ]
-    vijanden = [Spikes(700, 40, aantal=5)]  # 5 grond-spikes naast elkaar
+    vijanden = [
+        Spikes(700, 40, aantal=5),                    # 5 grond-spikes: hier precies OMHOOG
+        Spikes(1050, 70, aantal=5, rotatie=180),      # 5 plafond-spikes: hier precies OMLAAG
+    ]
     powerups = []
-    vlag_x, vlag_y = 1350, 40              # de finish net na de spikes
-    level_breedte = 1600
+    vlag_x, vlag_y = 1450, 40              # de finish na beide hindernissen
+    level_breedte = 1700
     acht_zones = [(0, 8)]                  # ruimte-achtergrond (spannend!)
     return (platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte,
             [], [], [], [], acht_zones, [], [], [])
