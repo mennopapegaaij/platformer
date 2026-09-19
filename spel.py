@@ -154,7 +154,7 @@ class PlatformerSpel(arcade.View):
         elif self.frameperfect:
             from frameperfect import maak_frameperfect
             data = maak_frameperfect()
-            self.speler.snelheid_bonus = 2      # je rent vanzelf op een pittige snelheid
+            self.speler.snelheid_bonus = 1      # zo is het sprong-venster maar ~2 frames (mega-precies!)
             self.speler.sprong_bonus = 0
         else:
             data = levels_module.maak_level(nummer)
