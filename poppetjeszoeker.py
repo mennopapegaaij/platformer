@@ -61,11 +61,12 @@ class PoppetjeZoeker(arcade.View):
     # Knop 'Alleen favorieten' (rechtsboven, in de zoekbalk)
     FAV_KNOP = (SCHERM_BREEDTE - 196, SCHERM_BREEDTE - 10, SCHERM_HOOGTE - 84, SCHERM_HOOGTE - 58)
 
-    def __init__(self, terug, bouwer=None, kies_functie=None):
+    def __init__(self, terug, bouwer=None, kies_functie=None, alleen=None):
         super().__init__()
         self.terug = terug          # het scherm waar we naar terug gaan
         self.bouwer = bouwer        # als dit gezet is: kies een poppetje om te plaatsen
         self.kies_functie = kies_functie   # als dit gezet is: roep dit aan met de gekozen modus
+        self.alleen = alleen        # None = alles; anders alleen deze modi tonen (een set)
         self.zoek = ""              # wat je hebt getypt om te zoeken
         self.alleen_fav = False     # alleen je favorieten laten zien?
         self.favorieten = set(voortgang_module.laad_voortgang().get("favorieten", []))
@@ -89,6 +90,8 @@ class PoppetjeZoeker(arcade.View):
         z = self.zoek.lower()
         uit = []
         for modus, naam, uitleg in POPPETJES:
+            if self.alleen is not None and modus not in self.alleen:
+                continue                          # alleen bepaalde poppetjes tonen
             if z and z not in naam.lower() and z not in modus.lower():
                 continue
             if self.alleen_fav and modus not in self.favorieten:

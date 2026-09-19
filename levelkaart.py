@@ -461,7 +461,8 @@ class LevelKaartView(arcade.View):
                                   kaart_punten=self.punten, kaart_levens=self.levens)
             self.window.show_view(spel)
 
-        self.window.show_view(PoppetjeZoeker(self, kies_functie=start))
+        from frameperfect import FRAME_POPPETJES
+        self.window.show_view(PoppetjeZoeker(self, kies_functie=start, alleen=FRAME_POPPETJES))
 
     def _start_testruimte(self):
         """Open de testruimte om alle poppetjes te proberen."""

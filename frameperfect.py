@@ -12,6 +12,13 @@ from vijand import Spikes
 SMOOTH_TUNNEL = {"vliegtuig", "ballon", "raket", "draak", "golf"}
 FLAP_TUNNEL = {"ufo", "kolibrie"}
 
+# Spring-poppetjes met een écht strak venster (1-2 frames) over de grond-spikes
+SPRING_FRAME = {"blok", "ijs", "magneet", "plakker", "stamper", "eigen"}
+
+# Alle poppetjes waarmee de Frame Perfect-kamer een echte frame-perfect uitdaging is.
+# (De rest vliegt/rolt er te makkelijk overheen of kan niet springen -> niet aangeboden.)
+FRAME_POPPETJES = SPRING_FRAME | SMOOTH_TUNNEL | FLAP_TUNNEL
+
 
 def maak_frameperfect(modus=None):
     """Bouw de leveldata (14 onderdelen), passend bij het gekozen poppetje."""
