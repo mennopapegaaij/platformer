@@ -1,36 +1,21 @@
 # frameperfect.py
-# De FRAME PERFECT-kamer: een pittige race-baan (je rent vanzelf naar rechts)
-# waar je precies op het juiste moment moet springen. Kies eerst een poppetje!
+# De FRAME PERFECT-kamer: je rent vanzelf naar rechts en moet met ÉÉN perfect
+# getimede sprong over 5 spikes naast elkaar springen. Te vroeg of te laat = raak!
 
-from platforms import Platform, BlokPlatform
-from vijand import maak_spike
+from platforms import Platform
+from vijand import Spikes
 
 
 def maak_frameperfect():
-    """Bouw de leveldata (14 onderdelen) voor de frame-perfect race-baan."""
-    # Grond in stukjes met gaten ertussen (over de gaten moet je springen)
+    """Bouw de leveldata (14 onderdelen): een aanloop, 5 spikes en dan de finish."""
     platforms = [
-        Platform(0, 0, 440, 40),
-        Platform(540, 0, 320, 40),
-        Platform(960, 0, 360, 40),
-        Platform(1420, 0, 320, 40),
-        Platform(1840, 0, 360, 40),
-        Platform(2300, 0, 260, 40),
-        Platform(2660, 0, 500, 40),
-        BlokPlatform(1180, 40, 40, 40),   # een bultje om overheen te springen
-        BlokPlatform(2420, 40, 40, 40),   # nog een bultje
+        Platform(0, 0, 1500, 40),          # één lange grond (aanloop + landing)
     ]
-    # Spikes die je precies op tijd moet ontwijken
-    vijanden = [
-        maak_spike("gewoon", 700, 40),
-        maak_spike("gewoon", 1080, 40),
-        maak_spike("dubbel", 1520, 40),
-        maak_spike("gewoon", 1980, 40),
-        maak_spike("gewoon", 2720, 40),
-    ]
+    # 5 spikes vlak naast elkaar (één groep van 5) -> samen 200 breed
+    vijanden = [Spikes(700, 40, aantal=5)]
     powerups = []
-    vlag_x, vlag_y = 3050, 40           # de finish helemaal rechts
-    level_breedte = 3200
-    acht_zones = [(0, 8)]               # ruimte-achtergrond (donker, spannend)
+    vlag_x, vlag_y = 1350, 40              # de finish net na de spikes
+    level_breedte = 1600
+    acht_zones = [(0, 8)]                  # ruimte-achtergrond (spannend!)
     return (platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte,
             [], [], [], [], acht_zones, [], [], [])
