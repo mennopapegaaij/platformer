@@ -57,10 +57,11 @@ class LevelKaartView(arcade.View):
     RACE_KNOP = (_KL, _KR, _ONDER + 2 * (_BH + _GAP), _ONDER + 2 * (_BH + _GAP) + _BH)
     VLUCHT_KNOP = (_KL, _KR, _ONDER + 3 * (_BH + _GAP), _ONDER + 3 * (_BH + _GAP) + _BH)
     ARENA_KNOP = (_KL, _KR, _ONDER + 4 * (_BH + _GAP), _ONDER + 4 * (_BH + _GAP) + _BH)
-    # Drie dunne knoppen op een rijtje rechtsboven: poppetjes-zoeker, testruimte, maker
-    ZOEKER_KNOP = (SCHERM_BREEDTE - 172, SCHERM_BREEDTE - 8, SCHERM_HOOGTE - 24, SCHERM_HOOGTE - 10)
-    TEST_KNOP = (SCHERM_BREEDTE - 172, SCHERM_BREEDTE - 8, SCHERM_HOOGTE - 41, SCHERM_HOOGTE - 27)
-    MAKER_KNOP = (SCHERM_BREEDTE - 172, SCHERM_BREEDTE - 8, SCHERM_HOOGTE - 58, SCHERM_HOOGTE - 44)
+    # Vier dunne knoppen rechtsboven: zoeker, testruimte, maker, frame-perfect
+    ZOEKER_KNOP = (SCHERM_BREEDTE - 180, SCHERM_BREEDTE - 8, SCHERM_HOOGTE - 22, SCHERM_HOOGTE - 9)
+    TEST_KNOP = (SCHERM_BREEDTE - 180, SCHERM_BREEDTE - 8, SCHERM_HOOGTE - 37, SCHERM_HOOGTE - 24)
+    MAKER_KNOP = (SCHERM_BREEDTE - 180, SCHERM_BREEDTE - 8, SCHERM_HOOGTE - 52, SCHERM_HOOGTE - 39)
+    FRAME_KNOP = (SCHERM_BREEDTE - 180, SCHERM_BREEDTE - 8, SCHERM_HOOGTE - 67, SCHERM_HOOGTE - 54)
 
     def __init__(self, voltooid_levels, punten=0, levens=None, arena_record=0,
                  race_record=0, vlucht_record=0):
@@ -179,7 +180,8 @@ class LevelKaartView(arcade.View):
         for rect, kleur, tekst in (
                 (self.ZOEKER_KNOP, (90, 70, 150), "🔎 Poppetjes (P)"),
                 (self.TEST_KNOP, (40, 130, 110), "🧪 Testruimte (T)"),
-                (self.MAKER_KNOP, (170, 100, 40), "🛠️ Maker (M)")):
+                (self.MAKER_KNOP, (170, 100, 40), "🛠️ Maker (M)"),
+                (self.FRAME_KNOP, (180, 50, 60), "🎯 Frame Perfect (G)")):
             l, r, b, t = rect
             arcade.draw_lrbt_rectangle_filled(l, r, b, t, kleur)
             arcade.draw_lrbt_rectangle_outline(l, r, b, t, (255, 220, 120), 2)
@@ -359,6 +361,9 @@ class LevelKaartView(arcade.View):
         elif toets == arcade.key.M:
             # M = open de poppetjes-maker
             self._open_maker()
+        elif toets == arcade.key.G:
+            # G = Frame Perfect-kamer
+            self._start_frameperfect()
 
     def on_mouse_press(self, x, y, knop, modifiers):
         """Start de vecht-, vlucht-, race- of bouwmodus bij een klik op een zij-knop."""
@@ -383,6 +388,11 @@ class LevelKaartView(arcade.View):
         ml, mr, mb, mt = self.MAKER_KNOP
         if ml <= x <= mr and mb <= y <= mt:
             self._open_maker()
+            return
+        # Klik op de frame-perfect-knop?
+        gl, gr, gb, gt = self.FRAME_KNOP
+        if gl <= x <= gr and gb <= y <= gt:
+            self._start_frameperfect()
             return
         al, ar, ab, at = self.ARENA_KNOP
         vl, vr, vb, vt = self.VLUCHT_KNOP
@@ -439,6 +449,19 @@ class LevelKaartView(arcade.View):
         """Open de poppetjes-maker om je eigen poppetje samen te stellen."""
         from poppetjemaker import PoppetjeMaker
         self.window.show_view(PoppetjeMaker(self))
+
+    def _start_frameperfect(self):
+        """Kies eerst een poppetje, en start dan de frame-perfect race-baan."""
+        from poppetjeszoeker import PoppetjeZoeker
+
+        def start(modus):
+            from spel import PlatformerSpel
+            spel = PlatformerSpel(1, self.voltooid, punten=0, levens=None,
+                                  frameperfect=True, start_modus=modus,
+                                  kaart_punten=self.punten, kaart_levens=self.levens)
+            self.window.show_view(spel)
+
+        self.window.show_view(PoppetjeZoeker(self, kies_functie=start))
 
     def _start_testruimte(self):
         """Open de testruimte om alle poppetjes te proberen."""

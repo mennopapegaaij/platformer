@@ -61,10 +61,11 @@ class PoppetjeZoeker(arcade.View):
     # Knop 'Alleen favorieten' (rechtsboven, in de zoekbalk)
     FAV_KNOP = (SCHERM_BREEDTE - 196, SCHERM_BREEDTE - 10, SCHERM_HOOGTE - 84, SCHERM_HOOGTE - 58)
 
-    def __init__(self, terug, bouwer=None):
+    def __init__(self, terug, bouwer=None, kies_functie=None):
         super().__init__()
         self.terug = terug          # het scherm waar we naar terug gaan
         self.bouwer = bouwer        # als dit gezet is: kies een poppetje om te plaatsen
+        self.kies_functie = kies_functie   # als dit gezet is: roep dit aan met de gekozen modus
         self.zoek = ""              # wat je hebt getypt om te zoeken
         self.alleen_fav = False     # alleen je favorieten laten zien?
         self.favorieten = set(voortgang_module.laad_voortgang().get("favorieten", []))
@@ -125,8 +126,9 @@ class PoppetjeZoeker(arcade.View):
         # Titelbalk
         arcade.draw_lrbt_rectangle_filled(0, SCHERM_BREEDTE, SCHERM_HOOGTE - 46,
                                           SCHERM_HOOGTE, (20, 20, 40))
-        arcade.draw_text("🔎  Poppetjes-zoeker", 16, SCHERM_HOOGTE - 34,
-                         arcade.color.WHITE, 20, bold=True)
+        titel = ("🎯  Kies je poppetje voor Frame Perfect"
+                 if self.kies_functie is not None else "🔎  Poppetjes-zoeker")
+        arcade.draw_text(titel, 16, SCHERM_HOOGTE - 34, arcade.color.WHITE, 18, bold=True)
 
         # Zoekbalk
         arcade.draw_lrbt_rectangle_filled(16, SCHERM_BREEDTE - 210, SCHERM_HOOGTE - 84,
@@ -180,7 +182,9 @@ class PoppetjeZoeker(arcade.View):
             ster = "⭐ " if modus in self.favorieten else ""
             arcade.draw_text(ster + naam, 16, 30, (255, 230, 90), 15, bold=True)
             arcade.draw_text(uitleg, 16, 10, arcade.color.WHITE, 12)
-        if self.bouwer is not None:
+        if self.kies_functie is not None:
+            hint = "Klik of Enter = met dit poppetje spelen  •  typ = zoeken  •  ESC = terug"
+        elif self.bouwer is not None:
             hint = "Klik = plaatsen  •  klik ster = favoriet  •  Tab = favoriet  •  ESC = terug"
         else:
             hint = "Klik ster = favoriet  •  Tab = favoriet  •  typ = zoeken  •  ESC = terug"
@@ -216,10 +220,13 @@ class PoppetjeZoeker(arcade.View):
 
     # ---------- kiezen (in de bouwmodus) ----------
     def _kies(self, lijst):
-        """In de bouwmodus: kies het geselecteerde poppetje om te plaatsen (als portaal)."""
+        """Kies het geselecteerde poppetje: start ermee (kies_functie) of plaats het (bouwer)."""
         if not lijst:
             return
         modus = lijst[self.sel][0]
+        if self.kies_functie is not None:
+            self.kies_functie(modus)          # bv. de frame-perfect race starten
+            return
         self.bouwer.portaal_soort = modus
         self.bouwer.gekozen = "portaal"
         self.window.show_view(self.terug)
@@ -252,8 +259,8 @@ class PoppetjeZoeker(arcade.View):
             if lijst:
                 self._wissel_favoriet(lijst[self.sel][0])   # favoriet aan/uit
         elif toets in (arcade.key.ENTER, arcade.key.NUM_ENTER):
-            if self.bouwer is not None:
-                self._kies(lijst)          # in de bouwmodus: dit poppetje plaatsen
+            if self.bouwer is not None or self.kies_functie is not None:
+                self._kies(lijst)          # dit poppetje plaatsen of ermee starten
             else:
                 self.window.show_view(self.terug)
         elif toets == arcade.key.ESCAPE:
@@ -284,6 +291,6 @@ class PoppetjeZoeker(arcade.View):
                     cy - 24 <= y <= cy + CEL_H - 30):
                 self.sel = i
                 self._zorg_zichtbaar(len(lijst))
-                if self.bouwer is not None:
-                    self._kies(lijst)      # in de bouwmodus: meteen plaatsen-klaar
+                if self.bouwer is not None or self.kies_functie is not None:
+                    self._kies(lijst)      # meteen plaatsen of ermee starten
                 return

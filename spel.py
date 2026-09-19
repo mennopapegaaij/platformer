@@ -24,12 +24,15 @@ class PlatformerSpel(arcade.View):
     def __init__(self, level_nummer, voltooid_levels, punten=0, levens=None,
                  arena=False, kaart_punten=0, kaart_levens=None, race=False,
                  eigen_level=None, vlucht=False, twee=False, aantal_spelers=None,
-                 bouw_slot=1, testruimte=False):
+                 bouw_slot=1, testruimte=False, frameperfect=False, start_modus=None):
         super().__init__()
         # Op welke bouw-plek dit eigen level hoort (om er weer op terug te komen)
         self.bouw_slot = bouw_slot
         # Testruimte: een speelkamer om alle poppetjes te proberen (wissel met N)
         self.testruimte = testruimte
+        # Frame Perfect-kamer: een pittige race-baan met een gekozen poppetje
+        self.frameperfect = frameperfect
+        self.start_modus = start_modus       # in welke vorm je begint (of None)
         self._test_index = 0
         if testruimte:
             from poppetjeszoeker import POPPETJES
@@ -148,6 +151,11 @@ class PlatformerSpel(arcade.View):
         elif self.testruimte:
             from testruimte import maak_testruimte
             data = maak_testruimte()
+        elif self.frameperfect:
+            from frameperfect import maak_frameperfect
+            data = maak_frameperfect()
+            self.speler.snelheid_bonus = 2      # je rent vanzelf op een pittige snelheid
+            self.speler.sprong_bonus = 0
         else:
             data = levels_module.maak_level(nummer)
         platforms = data[0]
@@ -195,6 +203,9 @@ class PlatformerSpel(arcade.View):
         # Portalen kunnen dit tijdens het spelen nog omzetten (ufo/bal/golf)!
         self.speler.modus = "vliegtuig" if self.vlucht else "blok"
         self.speler.zwaartekracht_richting = 1
+        # Frame Perfect: begin in het gekozen poppetje
+        if self.start_modus and not self.twee:
+            self._zet_vorm(self.speler, self.start_modus, 1)
         # Jouw gekozen kleur voor de speler (in 1-speler-modus)
         if not self.twee:
             gekozen = voortgang_module.laad_voortgang().get("speler_kleur")
@@ -214,7 +225,7 @@ class PlatformerSpel(arcade.View):
         # (net als Geometry Dash). In de race-, vlucht- en bouwmodus tellen ALLE
         # blokken mee (ook de grasblokken); in de gewone levels doen we dit niet,
         # anders zou springen op zwevende platforms ineens dodelijk zijn.
-        if self.race or self.vlucht or self.eigen:
+        if self.race or self.vlucht or self.eigen or self.frameperfect:
             # alle blokken tellen mee, behalve hellingen (daar loop je overheen)
             # en behalve deuren (daar ga je niet dood van, die houden je alleen tegen)
             self._blokken = [p for p in platforms
@@ -362,7 +373,9 @@ class PlatformerSpel(arcade.View):
         # --- Teken de berichten buiten de camera (altijd midden op het scherm) ---
 
         # Levelnaam altijd bovenin (arena krijgt een korte naam + pijltjes in het midden)
-        if self.testruimte:
+        if self.frameperfect:
+            naam_tekst = "🎯 Frame Perfect — spring precies op tijd!"
+        elif self.testruimte:
             naam_tekst = "🧪 Testruimte — N = ander poppetje (nu: %s)" % self.speler.modus
         elif self.eigen:
             naam_tekst = "🔨 Jouw eigen level"
@@ -632,8 +645,8 @@ class PlatformerSpel(arcade.View):
 
         self._update_platforms()      # verdwijnblokken aftellen
 
-        # In de race- én vliegtuig-modus ga je VANZELF naar rechts
-        if self.race or self.vlucht:
+        # In de race-, vliegtuig- én frame-perfect-modus ga je VANZELF naar rechts
+        if self.race or self.vlucht or self.frameperfect:
             self.speler.rechts_ingedrukt = True
             self.speler.links_ingedrukt = False
 
@@ -1556,7 +1569,8 @@ class PlatformerSpel(arcade.View):
             return
         # In de vecht-, race-, vlucht- en bouwmodus ga je wel 'af' (opnieuw proberen),
         # maar je verliest GEEN leven en het is nooit game-over.
-        if self.arena or self.race or self.vlucht or self.eigen or self.testruimte:
+        if (self.arena or self.race or self.vlucht or self.eigen
+                or self.testruimte or self.frameperfect):
             geluid_manager.speel_geraakt()  # 🎵 Bonk!
             self.dood = True
             return
@@ -1674,7 +1688,8 @@ class PlatformerSpel(arcade.View):
             # K = terug (naar de bouwmodus, of naar de kaart)
             if self.eigen:
                 self._naar_bouwer()
-            elif self.arena or self.race or self.vlucht or self.testruimte:
+            elif (self.arena or self.race or self.vlucht or self.testruimte
+                  or self.frameperfect):
                 self._verlaat_arena()   # zet de kaart-punten/levens terug
             else:
                 self._naar_kaart()
@@ -1683,8 +1698,8 @@ class PlatformerSpel(arcade.View):
             if self.level_gehaald:
                 if self.eigen:
                     self._naar_bouwer()            # Terug naar de bouwmodus
-                elif self.testruimte:
-                    self._verlaat_arena()          # Testruimte: terug naar de kaart
+                elif self.testruimte or self.frameperfect:
+                    self._verlaat_arena()          # Testruimte/Frame Perfect: terug naar de kaart
                 elif self.vlucht:
                     self._volgende_vlucht_baan()   # Door naar de volgende vliegbaan!
                 elif self.race:
@@ -1696,8 +1711,8 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.R:
             if self.arena and self.game_over:
                 self._verlaat_arena()              # Na game-over in de arena: terug naar de kaart
-            elif self.gewonnen and self.testruimte:
-                self._verlaat_arena()              # Testruimte: kaart-punten netjes terug
+            elif self.gewonnen and (self.testruimte or self.frameperfect):
+                self._verlaat_arena()              # Testruimte/Frame Perfect: kaart-punten terug
             elif self.gewonnen:
                 self._naar_kaart()                 # Terug naar de kaart na winst
             elif self.game_over:
