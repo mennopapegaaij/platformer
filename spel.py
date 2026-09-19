@@ -212,8 +212,10 @@ class PlatformerSpel(arcade.View):
             if gekozen:
                 self.speler.kleur = tuple(gekozen)
         # Geen plafond voor de spelers: je kunt oneindig omhoog (de camera gaat mee).
+        # In de Frame Perfect-kamer wél een plafond, zodat vliegers er niet bovenlangs cheesen.
+        plafond = 150 if self.frameperfect else None
         for sp in self.spelers:
-            sp.plafond = None
+            sp.plafond = plafond
         # Deuren die met een sleutel opengaan
         self._deuren = [p for p in platforms if getattr(p, "is_deur", False)]
         # Onthoud de vorige x van de speler (voor de snelheid-portaal 'sweep'-check)
