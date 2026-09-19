@@ -152,9 +152,9 @@ class PlatformerSpel(arcade.View):
             from testruimte import maak_testruimte
             data = maak_testruimte()
         elif self.frameperfect:
-            from frameperfect import maak_frameperfect
-            data = maak_frameperfect(self.start_modus)   # baan past bij het gekozen poppetje
-            self.speler.snelheid_bonus = 1      # zo is het sprong-venster maar ~2 frames (mega-precies!)
+            from frameperfect import frameperfect_baan
+            data, self._fp_plafond, fp_bonus = frameperfect_baan(self.start_modus)
+            self.speler.snelheid_bonus = fp_bonus   # baan + snelheid passen bij het poppetje
             self.speler.sprong_bonus = 0
         else:
             data = levels_module.maak_level(nummer)
@@ -213,17 +213,8 @@ class PlatformerSpel(arcade.View):
                 self.speler.kleur = tuple(gekozen)
         # Geen plafond voor de spelers: je kunt oneindig omhoog (de camera gaat mee).
         # In de Frame Perfect-kamer wél een plafond, zodat vliegers er niet bovenlangs cheesen.
-        # Vlieg-tunnels: een plafond zodat je er niet bovenlangs kunt cheesen.
-        if self.frameperfect:
-            from frameperfect import SMOOTH_TUNNEL, FLAP_TUNNEL
-            if self.speler.modus in SMOOTH_TUNNEL:
-                plafond = 130
-            elif self.speler.modus in FLAP_TUNNEL:
-                plafond = 160
-            else:
-                plafond = None
-        else:
-            plafond = None
+        # In de Frame Perfect-kamer hoort bij elk poppetje een eigen plafond (of geen).
+        plafond = getattr(self, "_fp_plafond", None) if self.frameperfect else None
         for sp in self.spelers:
             sp.plafond = plafond
         # Deuren die met een sleutel opengaan
@@ -659,8 +650,13 @@ class PlatformerSpel(arcade.View):
 
         # In de race-, vliegtuig- én frame-perfect-modus ga je VANZELF naar rechts
         if self.race or self.vlucht or self.frameperfect:
-            self.speler.rechts_ingedrukt = True
-            self.speler.links_ingedrukt = False
+            if self.frameperfect and self.speler.modus == "spiegel":
+                # Spiegel draait links/rechts om, dus 'links' indrukken = vooruit
+                self.speler.links_ingedrukt = True
+                self.speler.rechts_ingedrukt = False
+            else:
+                self.speler.rechts_ingedrukt = True
+                self.speler.links_ingedrukt = False
 
         # In de vasthoud-modi (vliegtuig, golf, robot): geef door of de knop vastgehouden wordt
         if self.speler.modus in ("vliegtuig", "golf", "robot", "ballon", "raket", "draak", "dronken"):
