@@ -180,6 +180,8 @@ class PlatformerSpel(arcade.View):
         self.borden = list(data[12]) if len(data) > 12 else []
         # Checkpoints (een 14e onderdeel): tussenpunten om bij terug te komen
         self.checkpoints = list(data[13]) if len(data) > 13 else []
+        # Eigen achtergrondkleur (een 15e onderdeel): None = het gewone thema
+        self.acht_kleur = tuple(data[14]) if len(data) > 14 and data[14] else None
         # Respawn-punt onthouden tussen herstarts van HETZELFDE level.
         if not hasattr(self, "_respawn"):
             self._respawn = None
@@ -290,14 +292,12 @@ class PlatformerSpel(arcade.View):
 
         # In de 2-spelers-modus tekenen we het scherm (groot) in twee helften
         if self.twee:
-            n = self._achtergrond_nummer(self.spelers[0].x)
-            achtergrond_module.teken_achtergrond(n, self.window.width, self.window.height)
+            self._teken_acht(self.spelers[0].x, self.window.width, self.window.height)
             self._teken_twee()
             return
 
         # --- Teken eerst de achtergrond (kan per plek in het level verschillen) ---
-        achtergrond_module.teken_achtergrond(self._achtergrond_nummer(self.speler.x),
-                                             SCHERM_BREEDTE, SCHERM_HOOGTE)
+        self._teken_acht(self.speler.x, SCHERM_BREEDTE, SCHERM_HOOGTE)
 
         # --- Alleen tekenen wat in beeld is (scheelt heel veel bij lange banen!) ---
         cam_x = max(SCHERM_BREEDTE / 2,
@@ -1046,6 +1046,13 @@ class PlatformerSpel(arcade.View):
                 px = v["x"] + math.cos(rad) * r
                 py = v["y"] + math.sin(rad) * r
                 arcade.draw_circle_filled(px, py, grootte, v["kleur"])
+
+    def _teken_acht(self, px, w, h):
+        """Teken de achtergrond: een eigen gekozen kleur, of anders het gewone thema."""
+        if getattr(self, "acht_kleur", None):
+            arcade.draw_lrbt_rectangle_filled(0, w, 0, h, self.acht_kleur)
+        else:
+            achtergrond_module.teken_achtergrond(self._achtergrond_nummer(px), w, h)
 
     def _achtergrond_nummer(self, px):
         """Welke achtergrond hoort bij de plek px? (verandert per zone in eigen levels)."""

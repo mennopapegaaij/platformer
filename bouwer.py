@@ -64,6 +64,12 @@ VERF_KLEUREN = {
     "geel": (240, 220, 60), "roze": (255, 120, 190), "oranje": (240, 150, 40),
     "paars": (160, 80, 210),
 }
+# Achtergrondkleuren waar je met de B-toets doorheen klikt (None = het gewone thema)
+BG_KLEUREN = [None, (135, 206, 235), (255, 170, 120), (30, 30, 70), (140, 90, 200),
+              (255, 150, 200), (120, 220, 140), (250, 250, 255), (12, 12, 26)]
+BG_NAAM = ["Thema", "Lucht", "Zonsondergang", "Nacht", "Paars",
+           "Roze", "Groen", "Wit", "Zwart"]
+
 VERF_SOORTEN = ["onzichtbaar"] + list(VERF_KLEUREN.keys())
 VERF_NAAM = {"onzichtbaar": "Onzicht", "rood": "Rood", "blauw": "Blauw", "groen": "Groen",
              "geel": "Geel", "roze": "Roze", "oranje": "Oranje", "paars": "Paars"}
@@ -497,6 +503,17 @@ class BouwerView(arcade.View):
                               bouw_slot=self.slot)
         self.window.show_view(spel)
 
+    def _volgende_achtergrond(self):
+        """B: klik door de achtergrondkleuren (None = het gewone thema)."""
+        try:
+            i = BG_KLEUREN.index(self.acht_kleur)
+        except ValueError:
+            i = 0
+        i = (i + 1) % len(BG_KLEUREN)
+        self.acht_kleur = BG_KLEUREN[i]
+        self._melding = "🎨 Achtergrond: " + BG_NAAM[i]
+        self._melding_teller = 120
+
     def _regenboog_alles(self):
         """R: maak ALLES regenboog (elk voorwerp vloeit door alle kleuren).
         Nog een keer op R = weer normaal."""
@@ -574,6 +591,7 @@ class BouwerView(arcade.View):
         self._bord_bewerk = None
         self.muziek = []
         self.mode = "gewoon"
+        self.acht_kleur = None          # eigen achtergrondkleur (None = het gewone thema)
         self.scroll = 0
         self.scroll_y = 0
 
@@ -616,6 +634,8 @@ class BouwerView(arcade.View):
                             waarde = "onzichtbaar"
                         self.verf[(int(kr[0]), int(kr[1]))] = waarde
                     self.muziek = list(data.get("muziek", []))   # je eigen deuntje
+                    ak = data.get("acht_kleur")                  # eigen achtergrondkleur
+                    self.acht_kleur = tuple(ak) if ak else None
                     for br in data.get("borden", []):            # tekstbordjes
                         self.bord_teksten[(int(br[0]), int(br[1]))] = br[2]
                 else:
@@ -643,6 +663,7 @@ class BouwerView(arcade.View):
                 "draden": [[a[0], a[1], b[0], b[1], s] for (a, b, s) in self.draden],
                 "verf": [[k, r, s] for (k, r), s in self.verf.items()],
                 "muziek": list(self.muziek),
+                "acht_kleur": list(self.acht_kleur) if self.acht_kleur else None,
                 "borden": [[k, r, t] for (k, r), t in self.bord_teksten.items()]}
         with open(self._bestand(), "w", encoding="utf-8") as f:
             json.dump(data, f)
@@ -657,6 +678,8 @@ class BouwerView(arcade.View):
         arcade.set_background_color((120, 190, 230))   # lichtblauwe lucht
 
     def on_draw(self):
+        # De gekozen achtergrondkleur (of de gewone lichtblauwe lucht)
+        arcade.set_background_color(self.acht_kleur if self.acht_kleur else (120, 190, 230))
         self.clear()
         self._teken_raster()
         self._teken_items()
@@ -847,7 +870,7 @@ class BouwerView(arcade.View):
         else:
             arcade.draw_text("Klik om te plaatsen  •  ←→↑↓ = schuiven (ook omhoog!)  •  D = draaien  •  "
                              "📁-knop = volgend level (oneindig), toets 1-9 = naar dat level  •  "
-                             "L = kleur aan/uit bij alles  •  R = alles regenboog  •  "
+                             "L = kleur aan/uit bij alles  •  R = alles regenboog  •  B = achtergrondkleur  •  "
                              "P = alle levels aan elkaar plakken  •  M = je eigen muziek maken  •  "
                              "Z = poppetje kiezen uit de zoeker  •  "
                              "Klik nog eens op Portaal/Snel/Deco voor een ander soort",
@@ -1093,6 +1116,8 @@ class BouwerView(arcade.View):
             self._verf_alles()          # alles ineens de gekozen verf-kleur geven
         elif toets == arcade.key.R:
             self._regenboog_alles()     # alles regenboog (aan/uit)
+        elif toets == arcade.key.B:
+            self._volgende_achtergrond()  # kies de achtergrondkleur
         elif toets == arcade.key.P:
             self._speel_geplakt()       # alle levels aan elkaar geplakt spelen
         elif toets == arcade.key.M:
@@ -1397,7 +1422,8 @@ class BouwerView(arcade.View):
         acht_zones.sort()            # op x-volgorde
         return (platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte,
                 portalen, decoraties, springers, teleporters, acht_zones,
-                list(self.muziek), borden, checkpoints)
+                list(self.muziek), borden, checkpoints,
+                list(self.acht_kleur) if self.acht_kleur else None)
 
     def _speel(self):
         """Sla het level op en speel het."""
