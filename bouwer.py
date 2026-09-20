@@ -70,6 +70,11 @@ BG_KLEUREN = [None, (135, 206, 235), (255, 170, 120), (30, 30, 70), (140, 90, 20
 BG_NAAM = ["Thema", "Lucht", "Zonsondergang", "Nacht", "Paars",
            "Roze", "Groen", "Wit", "Zwart"]
 
+# Hoe alles beweegt (met de A-toets doorklikken)
+ANIM_SOORTEN = ["uit", "opneer", "zij", "rondje", "wiebel"]
+ANIM_NAAM = {"uit": "uit", "opneer": "op en neer", "zij": "links-rechts",
+             "rondje": "rondje", "wiebel": "wiebel"}
+
 VERF_SOORTEN = ["onzichtbaar"] + list(VERF_KLEUREN.keys())
 VERF_NAAM = {"onzichtbaar": "Onzicht", "rood": "Rood", "blauw": "Blauw", "groen": "Groen",
              "geel": "Geel", "roze": "Roze", "oranje": "Oranje", "paars": "Paars"}
@@ -592,7 +597,7 @@ class BouwerView(arcade.View):
         self.muziek = []
         self.mode = "gewoon"
         self.acht_kleur = None          # eigen achtergrondkleur (None = het gewone thema)
-        self.alles_animatie = False     # laat alles in het level zachtjes bewegen
+        self.anim_soort = "uit"         # hoe alles beweegt (uit/opneer/zij/rondje/wiebel)
         self.scroll = 0
         self.scroll_y = 0
 
@@ -637,7 +642,13 @@ class BouwerView(arcade.View):
                     self.muziek = list(data.get("muziek", []))   # je eigen deuntje
                     ak = data.get("acht_kleur")                  # eigen achtergrondkleur
                     self.acht_kleur = tuple(ak) if ak else None
-                    self.alles_animatie = bool(data.get("alles_animatie", False))
+                    # Nieuw formaat heeft "anim_soort"; oud had alleen "alles_animatie" (True/False)
+                    if "anim_soort" in data:
+                        self.anim_soort = data["anim_soort"]
+                    elif data.get("alles_animatie"):
+                        self.anim_soort = "wiebel"
+                    else:
+                        self.anim_soort = "uit"
                     for br in data.get("borden", []):            # tekstbordjes
                         self.bord_teksten[(int(br[0]), int(br[1]))] = br[2]
                 else:
@@ -666,7 +677,7 @@ class BouwerView(arcade.View):
                 "verf": [[k, r, s] for (k, r), s in self.verf.items()],
                 "muziek": list(self.muziek),
                 "acht_kleur": list(self.acht_kleur) if self.acht_kleur else None,
-                "alles_animatie": self.alles_animatie,
+                "anim_soort": self.anim_soort,
                 "borden": [[k, r, t] for (k, r), t in self.bord_teksten.items()]}
         with open(self._bestand(), "w", encoding="utf-8") as f:
             json.dump(data, f)
@@ -873,7 +884,7 @@ class BouwerView(arcade.View):
         else:
             arcade.draw_text("Klik om te plaatsen  •  ←→↑↓ = schuiven (ook omhoog!)  •  D = draaien  •  "
                              "📁-knop = volgend level (oneindig), toets 1-9 = naar dat level  •  "
-                             "L = kleur aan/uit bij alles  •  R = alles regenboog  •  B = achtergrondkleur  •  A = alles beweegt  •  "
+                             "L = kleur aan/uit bij alles  •  R = alles regenboog  •  B = achtergrondkleur  •  A = hoe alles beweegt  •  "
                              "P = alle levels aan elkaar plakken  •  M = je eigen muziek maken  •  "
                              "Z = poppetje kiezen uit de zoeker  •  "
                              "Klik nog eens op Portaal/Snel/Deco voor een ander soort",
@@ -1122,10 +1133,13 @@ class BouwerView(arcade.View):
         elif toets == arcade.key.B:
             self._volgende_achtergrond()  # kies de achtergrondkleur
         elif toets == arcade.key.A:
-            # A = laat alles in het level bewegen (aan/uit)
-            self.alles_animatie = not self.alles_animatie
-            self._melding = ("💃 Alles beweegt!" if self.alles_animatie
-                             else "Beweging uit")
+            # A = kies HOE alles beweegt (klik erdoorheen)
+            i = ANIM_SOORTEN.index(self.anim_soort) if self.anim_soort in ANIM_SOORTEN else 0
+            self.anim_soort = ANIM_SOORTEN[(i + 1) % len(ANIM_SOORTEN)]
+            if self.anim_soort == "uit":
+                self._melding = "Beweging uit"
+            else:
+                self._melding = "💃 Alles beweegt: " + ANIM_NAAM[self.anim_soort]
             self._melding_teller = 120
         elif toets == arcade.key.P:
             self._speel_geplakt()       # alle levels aan elkaar geplakt spelen
@@ -1433,7 +1447,7 @@ class BouwerView(arcade.View):
                 portalen, decoraties, springers, teleporters, acht_zones,
                 list(self.muziek), borden, checkpoints,
                 list(self.acht_kleur) if self.acht_kleur else None,
-                self.alles_animatie)
+                self.anim_soort)
 
     def _speel(self):
         """Sla het level op en speel het."""

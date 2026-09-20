@@ -182,8 +182,13 @@ class PlatformerSpel(arcade.View):
         self.checkpoints = list(data[13]) if len(data) > 13 else []
         # Eigen achtergrondkleur (een 15e onderdeel): None = het gewone thema
         self.acht_kleur = tuple(data[14]) if len(data) > 14 and data[14] else None
-        # Alles-beweegt (een 16e onderdeel): laat alle voorwerpen zachtjes wiebelen
-        self.alles_animatie = bool(data[15]) if len(data) > 15 else False
+        # Alles-beweegt (een 16e onderdeel): HOE alle voorwerpen bewegen
+        a = data[15] if len(data) > 15 else None
+        if a is True:              # oud formaat (True/False) -> wiebel
+            a = "wiebel"
+        elif not a:
+            a = "uit"
+        self.anim_soort = a
         self._anim_t = 0.0
         # Respawn-punt onthouden tussen herstarts van HETZELFDE level.
         if not hasattr(self, "_respawn"):
@@ -1052,12 +1057,20 @@ class PlatformerSpel(arcade.View):
                 arcade.draw_circle_filled(px, py, grootte, v["kleur"])
 
     def _anim_teken(self, obj):
-        """Teken een voorwerp. Staat 'alles beweegt' aan, dan krijgt het een zacht
-        wiebel-deinen (alleen hoe het eruitziet; de botsing verandert niet)."""
-        if getattr(self, "alles_animatie", False):
+        """Teken een voorwerp. Bij 'alles beweegt' krijgt het een beweging in de
+        gekozen stijl (alleen hoe het eruitziet; de botsing verandert niet)."""
+        soort = getattr(self, "anim_soort", "uit")
+        if soort and soort != "uit":
             fase = obj.x * 0.03
-            dx = math.cos(self._anim_t * 2.0 + fase) * 3
-            dy = math.sin(self._anim_t * 3.0 + fase) * 5
+            t = self._anim_t
+            if soort == "opneer":
+                dx, dy = 0, math.sin(t * 3.0 + fase) * 7
+            elif soort == "zij":
+                dx, dy = math.sin(t * 3.0 + fase) * 7, 0
+            elif soort == "rondje":
+                dx, dy = math.cos(t * 3.0 + fase) * 5, math.sin(t * 3.0 + fase) * 5
+            else:  # wiebel
+                dx, dy = math.cos(t * 2.0 + fase) * 3, math.sin(t * 3.0 + fase) * 5
             obj.x += dx
             obj.y += dy
             obj.teken()
