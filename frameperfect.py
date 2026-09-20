@@ -46,6 +46,15 @@ def frameperfect_baan(modus):
         data = (platforms, vijanden, [], 230, 40, 500, [], [], [], [], acht, [], [], [])
         return data, None, 6
 
+    # --- Bal & spin: een zwaartekracht-gang (vloer + plafond, spikes op allebei).
+    #     Je moet op tijd van de vloer naar het plafond en weer terug wisselen. ---
+    if modus in ("bal", "spin"):
+        platforms = [Platform(0, 0, 1400, 40), Platform(0, 300, 1400, 40)]
+        vijanden = [Spikes(600, 40, aantal=4),                 # vloer-spikes: wees op het plafond
+                    Spikes(900, 255, aantal=4, rotatie=180)]   # plafond-spikes: wees op de vloer
+        data = (platforms, vijanden, [], 1250, 40, 1400, [], [], [], [], acht, [], [], [])
+        return data, None, 1
+
     # --- Vlieg-poppetjes: een tunneltje ---
     if modus in TUNNEL:
         cy, plaf = TUNNEL[modus]
