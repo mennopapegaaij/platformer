@@ -1057,9 +1057,9 @@ class PlatformerSpel(arcade.View):
                 arcade.draw_circle_filled(px, py, grootte, v["kleur"])
 
     def _anim_teken(self, obj):
-        """Teken een voorwerp. Bij 'alles beweegt' krijgt het een beweging in de
-        gekozen stijl (alleen hoe het eruitziet; de botsing verandert niet)."""
-        soort = getattr(self, "anim_soort", "uit")
+        """Teken een voorwerp. Het beweegt in zijn eigen stijl (beweeg-kwast) of, als
+        die er niet is, in de stijl van 'alles beweegt'. Alleen visueel; botsing blijft."""
+        soort = getattr(obj, "beweeg", None) or getattr(self, "anim_soort", "uit")
         if soort and soort != "uit":
             fase = obj.x * 0.03
             t = self._anim_t

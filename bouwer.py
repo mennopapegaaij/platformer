@@ -75,9 +75,13 @@ ANIM_SOORTEN = ["uit", "opneer", "zij", "rondje", "wiebel"]
 ANIM_NAAM = {"uit": "uit", "opneer": "op en neer", "zij": "links-rechts",
              "rondje": "rondje", "wiebel": "wiebel"}
 
-VERF_SOORTEN = ["onzichtbaar"] + list(VERF_KLEUREN.keys())
+# Beweeg-kwasten: klik op een voorwerp om ALLEEN dat voorwerp te laten bewegen
+BEWEEG_KWASTEN = ["b_opneer", "b_zij", "b_rondje", "b_wiebel"]
+VERF_SOORTEN = ["onzichtbaar"] + list(VERF_KLEUREN.keys()) + BEWEEG_KWASTEN
 VERF_NAAM = {"onzichtbaar": "Onzicht", "rood": "Rood", "blauw": "Blauw", "groen": "Groen",
-             "geel": "Geel", "roze": "Roze", "oranje": "Oranje", "paars": "Paars"}
+             "geel": "Geel", "roze": "Roze", "oranje": "Oranje", "paars": "Paars",
+             "b_opneer": "Bew op-neer", "b_zij": "Bew links-rechts",
+             "b_rondje": "Bew rondje", "b_wiebel": "Bew wiebel"}
 
 # De spring-dingen waar je met de Spring-knop doorheen klikt:
 # bol1..bol5 en mat1..mat5 (kracht 1 t/m 5), en "neer" (paarse bol waarmee je valt)
@@ -592,6 +596,7 @@ class BouwerView(arcade.View):
         self.draden = []
         self._draad_start = None
         self.verf = {}
+        self.beweeg = {}                # (kol,rij) -> bewegings-stijl voor dat ene voorwerp
         self.bord_teksten = {}
         self._bord_bewerk = None
         self.muziek = []
@@ -639,6 +644,8 @@ class BouwerView(arcade.View):
                         else:
                             waarde = "onzichtbaar"
                         self.verf[(int(kr[0]), int(kr[1]))] = waarde
+                    for kr in data.get("beweeg", []):            # beweeg-kwast per voorwerp
+                        self.beweeg[(int(kr[0]), int(kr[1]))] = kr[2]
                     self.muziek = list(data.get("muziek", []))   # je eigen deuntje
                     ak = data.get("acht_kleur")                  # eigen achtergrondkleur
                     self.acht_kleur = tuple(ak) if ak else None
@@ -675,6 +682,7 @@ class BouwerView(arcade.View):
                 "deco_rotaties": [[k, r, rot] for (k, r), rot in self.deco_rotaties.items()],
                 "draden": [[a[0], a[1], b[0], b[1], s] for (a, b, s) in self.draden],
                 "verf": [[k, r, s] for (k, r), s in self.verf.items()],
+                "beweeg": [[k, r, s] for (k, r), s in self.beweeg.items()],
                 "muziek": list(self.muziek),
                 "acht_kleur": list(self.acht_kleur) if self.acht_kleur else None,
                 "anim_soort": self.anim_soort,
@@ -830,13 +838,13 @@ class BouwerView(arcade.View):
                            l + 2, BALK_Y + 10, 20)
                 naam = BOSS_NAAM[self.boss_soort]
             elif soort == "verf":
-                if self.verf_soort == "onzichtbaar":
-                    teken_item("verf", l + 2, BALK_Y + 10, 20)   # het verfpotje
-                else:
+                if self.verf_soort in VERF_KLEUREN:
                     # een gekleurd blokje in de gekozen kleur
                     kl = VERF_KLEUREN[self.verf_soort]
                     arcade.draw_lrbt_rectangle_filled(l + 6, l + 24, BALK_Y + 12,
                                                       SCHERM_HOOGTE - 22, kl)
+                else:
+                    teken_item("verf", l + 2, BALK_Y + 10, 20)   # potje (onzicht / beweeg)
                 naam = VERF_NAAM[self.verf_soort]
             elif soort == "draad":
                 teken_item("draad", l + 2, BALK_Y + 10, 20)
@@ -911,6 +919,14 @@ class BouwerView(arcade.View):
             if not (cel in self.grid or cel in self.deco):
                 return
             s = self.verf_soort
+            if s.startswith("b_"):
+                # Beweeg-kwast: dit ene voorwerp beweegt (nog eens klikken = uit)
+                stijl = s[2:]
+                if self.beweeg.get(cel) == stijl:
+                    self.beweeg.pop(cel, None)
+                else:
+                    self.beweeg[cel] = stijl
+                return
             if s == "onzichtbaar":
                 if self.verf.get(cel) == "onzichtbaar":
                     self.verf.pop(cel, None)
@@ -935,9 +951,10 @@ class BouwerView(arcade.View):
             else:
                 self.grid.pop((kol, rij), None)
                 self.rotaties.pop((kol, rij), None)
-            # Draden, verf en bord-tekst die aan dit vakje vastzitten ook weghalen
+            # Draden, verf, beweging en bord-tekst die aan dit vakje vastzitten ook weghalen
             self.draden = [d for d in self.draden if (kol, rij) not in d]
             self.verf.pop((kol, rij), None)
+            self.beweeg.pop((kol, rij), None)
             self.bord_teksten.pop((kol, rij), None)
         elif self.gekozen == "deco":
             # Decoratie in de aparte laag -> die kan dus BOVENOP een blok liggen
@@ -1309,17 +1326,19 @@ class BouwerView(arcade.View):
             elif soort == "checkpoint":
                 # Checkpoint: tussenpunt om bij terug te komen na doodgaan
                 checkpoints.append(Checkpoint(wx, wy, CEL))
-            # Verf toepassen op elk voorwerp dat we net voor dit vakje maakten:
-            # onzichtbaar (blijft wel werken/botsen) of een gekleurde-verf-lijst.
-            if onz or verf_rgbs:
+            # Verf én beweging toepassen op elk voorwerp dat we net voor dit vakje maakten.
+            bew = self.beweeg.get((kol, rij))
+            if onz or verf_rgbs or bew:
                 for lijst, n in ((platforms, voor[0]), (vijanden, voor[1]),
                                  (portalen, voor[2]), (teleporters, voor[3]),
                                  (springers, voor[4]), (powerups, voor[5])):
                     for o in lijst[n:]:
                         if onz:
                             o.onzichtbaar = True
-                        else:
+                        elif verf_rgbs:
                             o.verf_kleuren = verf_rgbs
+                        if bew:
+                            o.beweeg = bew        # dit voorwerp beweegt in deze stijl
 
         # Decoratie uit de aparte laag (ligt bovenop blokken, geen botsing)
         for (kol, rij), soort in self.deco.items():
@@ -1334,6 +1353,9 @@ class BouwerView(arcade.View):
                 rgbs = [VERF_KLEUREN[c] for c in w if c in VERF_KLEUREN]
                 if rgbs:
                     deco.verf_kleuren = rgbs  # gekleurde decoratie
+            bew = self.beweeg.get((kol, rij))
+            if bew:
+                deco.beweeg = bew             # deze decoratie beweegt in deze stijl
             decoraties.append(deco)
 
         # Hulpje: maak het ECHTE voorwerp (zoals het in het spel eruitziet) met
