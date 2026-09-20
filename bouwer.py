@@ -497,6 +497,27 @@ class BouwerView(arcade.View):
                               bouw_slot=self.slot)
         self.window.show_view(spel)
 
+    def _regenboog_alles(self):
+        """R: maak ALLES regenboog (elk voorwerp vloeit door alle kleuren).
+        Nog een keer op R = weer normaal."""
+        alle = list(set(self.grid) | set(self.deco))
+        if not alle:
+            self._melding = "Zet eerst iets neer!"
+            self._melding_teller = 120
+            return
+        regen = ["rood", "oranje", "geel", "groen", "blauw", "paars"]
+        heeft_alles = all(self.verf.get(c) == regen for c in alle)
+        if heeft_alles:                                  # nog eens R -> weer normaal
+            for c in alle:
+                if self.verf.get(c) == regen:
+                    self.verf.pop(c, None)
+            self._melding = "Regenboog uit"
+        else:
+            for c in alle:
+                self.verf[c] = list(regen)               # elke cel zijn eigen kleurenlijst
+            self._melding = "🌈 Alles regenboog!"
+        self._melding_teller = 150
+
     def _verf_alles(self):
         """L: schakel de gekozen verf bij ALLE voorwerpen aan of uit.
 
@@ -826,7 +847,7 @@ class BouwerView(arcade.View):
         else:
             arcade.draw_text("Klik om te plaatsen  •  ←→↑↓ = schuiven (ook omhoog!)  •  D = draaien  •  "
                              "📁-knop = volgend level (oneindig), toets 1-9 = naar dat level  •  "
-                             "L = kleur aan/uit bij alles  •  "
+                             "L = kleur aan/uit bij alles  •  R = alles regenboog  •  "
                              "P = alle levels aan elkaar plakken  •  M = je eigen muziek maken  •  "
                              "Z = poppetje kiezen uit de zoeker  •  "
                              "Klik nog eens op Portaal/Snel/Deco voor een ander soort",
@@ -1070,6 +1091,8 @@ class BouwerView(arcade.View):
             self._naar_kaart()          # terug naar de kaart
         elif toets == arcade.key.L:
             self._verf_alles()          # alles ineens de gekozen verf-kleur geven
+        elif toets == arcade.key.R:
+            self._regenboog_alles()     # alles regenboog (aan/uit)
         elif toets == arcade.key.P:
             self._speel_geplakt()       # alle levels aan elkaar geplakt spelen
         elif toets == arcade.key.M:
