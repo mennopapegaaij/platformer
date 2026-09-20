@@ -182,6 +182,9 @@ class PlatformerSpel(arcade.View):
         self.checkpoints = list(data[13]) if len(data) > 13 else []
         # Eigen achtergrondkleur (een 15e onderdeel): None = het gewone thema
         self.acht_kleur = tuple(data[14]) if len(data) > 14 and data[14] else None
+        # Alles-beweegt (een 16e onderdeel): laat alle voorwerpen zachtjes wiebelen
+        self.alles_animatie = bool(data[15]) if len(data) > 15 else False
+        self._anim_t = 0.0
         # Respawn-punt onthouden tussen herstarts van HETZELFDE level.
         if not hasattr(self, "_respawn"):
             self._respawn = None
@@ -317,23 +320,23 @@ class PlatformerSpel(arcade.View):
             # Teken alleen de platforms die in beeld zijn (onzichtbare verf-blokken NIET)
             for platform in self.platforms:
                 if in_beeld(platform, platform.breedte) and not getattr(platform, "onzichtbaar", False):
-                    platform.teken()
+                    self._anim_teken(platform)
 
             # Teken alleen de vijanden die in beeld zijn
             for vijand in self.vijanden:
                 if in_beeld(vijand, vijand.breedte) and not getattr(vijand, "onzichtbaar", False):
-                    vijand.teken()
+                    self._anim_teken(vijand)
 
             # Teken de spring-bollen en spring-matten
             for springer in self.springers:
                 if in_beeld(springer, springer.breedte) and not getattr(springer, "onzichtbaar", False):
-                    springer.teken()
+                    self._anim_teken(springer)
 
             # Teken de power-ups die nog niet opgepakt zijn en in beeld zijn
             for powerup in self.powerups:
                 if (not powerup.opgepakt and in_beeld(powerup, powerup.breedte)
                         and not getattr(powerup, "onzichtbaar", False)):
-                    powerup.teken()
+                    self._anim_teken(powerup)
 
             # Teken de vlag (in de arena is er geen vlag)
             if not self.arena:
@@ -347,18 +350,18 @@ class PlatformerSpel(arcade.View):
             # Teken de portalen die in beeld zijn (vorm-wissel poortjes)
             for portaal in self.portalen:
                 if in_beeld(portaal, portaal.breedte) and not getattr(portaal, "onzichtbaar", False):
-                    portaal.teken()
+                    self._anim_teken(portaal)
 
             # Teken de teleporters (blauw <-> oranje paren)
             for tele in self.teleporters:
                 if in_beeld(tele, tele.breedte) and not getattr(tele, "onzichtbaar", False):
-                    tele.teken()
+                    self._anim_teken(tele)
 
             # Decoratie helemaal VOORAAN tekenen (vóór blokken, spikes, alles) — geen botsing.
             # Met onzichtbare verf overgeschilderde decoratie tekenen we NIET.
             for deco in self.decoraties:
                 if in_beeld(deco, deco.breedte) and not getattr(deco, "onzichtbaar", False):
-                    deco.teken()
+                    self._anim_teken(deco)
 
             # Teken de tekstbordjes die in beeld zijn (bovenop de decoratie, goed leesbaar)
             for bord in self.borden:
@@ -607,6 +610,7 @@ class PlatformerSpel(arcade.View):
 
         self._verf_tijd += 1        # tikt door voor de overvloeiende verf-kleuren
         self._werk_verf_bij()       # zet de huidige kleur op elk gekleurd voorwerp
+        self._anim_t += delta_time  # tikt door voor 'alles beweegt'
 
         # Je eigen deuntje afspelen (loopt steeds rond)
         if self._heeft_muziek:
@@ -1046,6 +1050,21 @@ class PlatformerSpel(arcade.View):
                 px = v["x"] + math.cos(rad) * r
                 py = v["y"] + math.sin(rad) * r
                 arcade.draw_circle_filled(px, py, grootte, v["kleur"])
+
+    def _anim_teken(self, obj):
+        """Teken een voorwerp. Staat 'alles beweegt' aan, dan krijgt het een zacht
+        wiebel-deinen (alleen hoe het eruitziet; de botsing verandert niet)."""
+        if getattr(self, "alles_animatie", False):
+            fase = obj.x * 0.03
+            dx = math.cos(self._anim_t * 2.0 + fase) * 3
+            dy = math.sin(self._anim_t * 3.0 + fase) * 5
+            obj.x += dx
+            obj.y += dy
+            obj.teken()
+            obj.x -= dx
+            obj.y -= dy
+        else:
+            obj.teken()
 
     def _teken_acht(self, px, w, h):
         """Teken de achtergrond: een eigen gekozen kleur, of anders het gewone thema."""

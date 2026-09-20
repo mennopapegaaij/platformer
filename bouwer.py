@@ -592,6 +592,7 @@ class BouwerView(arcade.View):
         self.muziek = []
         self.mode = "gewoon"
         self.acht_kleur = None          # eigen achtergrondkleur (None = het gewone thema)
+        self.alles_animatie = False     # laat alles in het level zachtjes bewegen
         self.scroll = 0
         self.scroll_y = 0
 
@@ -636,6 +637,7 @@ class BouwerView(arcade.View):
                     self.muziek = list(data.get("muziek", []))   # je eigen deuntje
                     ak = data.get("acht_kleur")                  # eigen achtergrondkleur
                     self.acht_kleur = tuple(ak) if ak else None
+                    self.alles_animatie = bool(data.get("alles_animatie", False))
                     for br in data.get("borden", []):            # tekstbordjes
                         self.bord_teksten[(int(br[0]), int(br[1]))] = br[2]
                 else:
@@ -664,6 +666,7 @@ class BouwerView(arcade.View):
                 "verf": [[k, r, s] for (k, r), s in self.verf.items()],
                 "muziek": list(self.muziek),
                 "acht_kleur": list(self.acht_kleur) if self.acht_kleur else None,
+                "alles_animatie": self.alles_animatie,
                 "borden": [[k, r, t] for (k, r), t in self.bord_teksten.items()]}
         with open(self._bestand(), "w", encoding="utf-8") as f:
             json.dump(data, f)
@@ -870,7 +873,7 @@ class BouwerView(arcade.View):
         else:
             arcade.draw_text("Klik om te plaatsen  •  ←→↑↓ = schuiven (ook omhoog!)  •  D = draaien  •  "
                              "📁-knop = volgend level (oneindig), toets 1-9 = naar dat level  •  "
-                             "L = kleur aan/uit bij alles  •  R = alles regenboog  •  B = achtergrondkleur  •  "
+                             "L = kleur aan/uit bij alles  •  R = alles regenboog  •  B = achtergrondkleur  •  A = alles beweegt  •  "
                              "P = alle levels aan elkaar plakken  •  M = je eigen muziek maken  •  "
                              "Z = poppetje kiezen uit de zoeker  •  "
                              "Klik nog eens op Portaal/Snel/Deco voor een ander soort",
@@ -1118,6 +1121,12 @@ class BouwerView(arcade.View):
             self._regenboog_alles()     # alles regenboog (aan/uit)
         elif toets == arcade.key.B:
             self._volgende_achtergrond()  # kies de achtergrondkleur
+        elif toets == arcade.key.A:
+            # A = laat alles in het level bewegen (aan/uit)
+            self.alles_animatie = not self.alles_animatie
+            self._melding = ("💃 Alles beweegt!" if self.alles_animatie
+                             else "Beweging uit")
+            self._melding_teller = 120
         elif toets == arcade.key.P:
             self._speel_geplakt()       # alle levels aan elkaar geplakt spelen
         elif toets == arcade.key.M:
@@ -1423,7 +1432,8 @@ class BouwerView(arcade.View):
         return (platforms, vijanden, powerups, vlag_x, vlag_y, level_breedte,
                 portalen, decoraties, springers, teleporters, acht_zones,
                 list(self.muziek), borden, checkpoints,
-                list(self.acht_kleur) if self.acht_kleur else None)
+                list(self.acht_kleur) if self.acht_kleur else None,
+                self.alles_animatie)
 
     def _speel(self):
         """Sla het level op en speel het."""
