@@ -5,14 +5,19 @@
 
 import arcade
 import math
+import time
 
-# De soorten decoratie waar je met de Deco-knop doorheen klikt
+# De soorten decoratie waar je met de Deco-knop doorheen klikt.
+# De laatste zes BEWEGEN (animatie) — en net als alle deco loop je er doorheen.
 DECO_SOORTEN = ["bloem", "boom", "wolk", "ster", "struik",
-                "zon", "maan", "regenboog", "paddenstoel", "steen", "vlinder"]
+                "zon", "maan", "regenboog", "paddenstoel", "steen", "vlinder",
+                "vuur", "fonkel", "draaister", "waterval", "hartje", "bel"]
 DECO_NAAM = {"bloem": "Bloem", "boom": "Boom", "wolk": "Wolk",
              "ster": "Ster", "struik": "Struik", "zon": "Zon", "maan": "Maan",
              "regenboog": "Regenboog", "paddenstoel": "Paddenstoel",
-             "steen": "Steen", "vlinder": "Vlinder"}
+             "steen": "Steen", "vlinder": "Vlinder",
+             "vuur": "Vuur", "fonkel": "Fonkel", "draaister": "Draaister",
+             "waterval": "Waterval", "hartje": "Hartje", "bel": "Belletjes"}
 
 
 def teken_deco(soort, x, y, g, rotatie=0, kleur=None):
@@ -126,6 +131,62 @@ def teken_deco(soort, x, y, g, rotatie=0, kleur=None):
         b1 = d(cx, cy + g * 0.22)
         b2 = d(cx, cy - g * 0.22)
         arcade.draw_line(b1[0], b1[1], b2[0], b2[1], K((60, 40, 30)), 3)      # lijfje
+
+    # ---------- BEWEGENDE decoratie (animatie met een tijd-klok) ----------
+    elif soort == "vuur":
+        t = time.perf_counter() * 8
+        basis_y = y + g * 0.15
+        hoog = 0.55 + 0.25 * math.sin(t) + 0.1 * math.sin(t * 2.3)   # flakkeren
+        # gloed onderaan
+        arcade.draw_ellipse_filled(cx, basis_y, g * 0.55, g * 0.16, K((255, 150, 40)))
+        # buitenvlam (oranje) en binnenvlam (geel)
+        arcade.draw_triangle_filled(cx - g * 0.28, basis_y, cx + g * 0.28, basis_y,
+                                    cx + math.sin(t) * g * 0.08, basis_y + g * hoog, K((240, 110, 30)))
+        arcade.draw_triangle_filled(cx - g * 0.15, basis_y, cx + g * 0.15, basis_y,
+                                    cx + math.sin(t * 1.5) * g * 0.05, basis_y + g * hoog * 0.6,
+                                    K((255, 225, 90)))
+    elif soort == "fonkel":
+        t = time.perf_counter()
+        for i, (ddx, ddy) in enumerate([(0.3, 0.7), (0.68, 0.45), (0.45, 0.28), (0.72, 0.72)]):
+            s = (math.sin(t * 4 + i * 1.7) + 1) / 2             # 0..1 twinkelen
+            r = g * 0.05 + g * 0.11 * s
+            px, py = x + g * ddx, y + g * ddy
+            kl = K((255, 255, 190))
+            arcade.draw_line(px - r, py, px + r, py, kl, 2)
+            arcade.draw_line(px, py - r, px, py + r, kl, 2)
+    elif soort == "draaister":
+        t = time.perf_counter()
+        cy = y + g * 0.5
+        R, r = g * 0.42, g * 0.18
+        hoek0 = t * 2.2                                          # draait rond
+        punten = []
+        for i in range(10):
+            hoek = hoek0 + math.radians(i * 36)
+            straal = R if i % 2 == 0 else r
+            punten.append((cx + math.cos(hoek) * straal, cy + math.sin(hoek) * straal))
+        arcade.draw_polygon_filled(punten, K((255, 210, 70)))
+    elif soort == "waterval":
+        t = time.perf_counter()
+        arcade.draw_lrbt_rectangle_filled(x + g * 0.15, x + g * 0.85, y, y + g, K((90, 170, 255, 150)))
+        for i in range(3):
+            ry = y + ((t * 55 + i * g / 3) % g)                 # ribbels stromen omlaag
+            arcade.draw_line(x + g * 0.15, ry, x + g * 0.85, ry, K((230, 245, 255)), 2)
+        arcade.draw_ellipse_filled(cx, y + g * 0.06, g * 0.7, g * 0.14, K((225, 240, 255)))
+    elif soort == "hartje":
+        t = time.perf_counter()
+        s = 1 + 0.14 * math.sin(t * 6)                          # klopt
+        r = g * 0.17 * s
+        hy = y + g * 0.52
+        arcade.draw_circle_filled(cx - r * 0.9, hy + r * 0.5, r, K((230, 60, 90)))
+        arcade.draw_circle_filled(cx + r * 0.9, hy + r * 0.5, r, K((230, 60, 90)))
+        arcade.draw_triangle_filled(cx - r * 1.7, hy + r * 0.55, cx + r * 1.7, hy + r * 0.55,
+                                    cx, hy - r * 1.6, K((230, 60, 90)))
+    elif soort == "bel":
+        t = time.perf_counter()
+        for i in range(4):
+            by = y + ((t * 42 + i * g * 0.45) % g)              # belletjes stijgen op
+            bx = cx + (i - 1.5) * g * 0.12 + math.sin(t * 3 + i) * g * 0.08
+            arcade.draw_circle_outline(bx, by, g * 0.07 + (i % 2) * g * 0.03, K((180, 230, 255)), 2)
 
 
 class Decoratie:
