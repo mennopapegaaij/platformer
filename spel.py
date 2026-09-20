@@ -1064,13 +1064,13 @@ class PlatformerSpel(arcade.View):
             fase = obj.x * 0.03
             t = self._anim_t
             if soort == "opneer":
-                dx, dy = 0, math.sin(t * 3.0 + fase) * 7
+                dx, dy = 0, math.sin(t * 3.0 + fase) * 70
             elif soort == "zij":
-                dx, dy = math.sin(t * 3.0 + fase) * 7, 0
+                dx, dy = math.sin(t * 3.0 + fase) * 70, 0
             elif soort == "rondje":
-                dx, dy = math.cos(t * 3.0 + fase) * 5, math.sin(t * 3.0 + fase) * 5
+                dx, dy = math.cos(t * 3.0 + fase) * 50, math.sin(t * 3.0 + fase) * 50
             else:  # wiebel
-                dx, dy = math.cos(t * 2.0 + fase) * 3, math.sin(t * 3.0 + fase) * 5
+                dx, dy = math.cos(t * 2.0 + fase) * 30, math.sin(t * 3.0 + fase) * 50
             obj.x += dx
             obj.y += dy
             obj.teken()
