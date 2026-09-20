@@ -793,6 +793,29 @@ class BouwerView(arcade.View):
             sx, sy = cel_midden(self._draad_start)
             arcade.draw_circle_outline(sx, sy, CEL / 2, (255, 255, 0), 3)
 
+        # Beweeg-kwast: laat op elk vakje met beweging een geel teken zien (met de stijl)
+        for (kol, rij), stijl in self.beweeg.items():
+            sx = kol * CEL - self.scroll
+            sy = rij * CEL - self.scroll_y
+            if not self._in_beeld(sx, sy):
+                continue
+            bcx, bcy = sx + CEL - 9, sy + CEL - 9        # badge rechtsboven in het vakje
+            arcade.draw_circle_filled(bcx, bcy, 8, (255, 220, 40))
+            arcade.draw_circle_outline(bcx, bcy, 8, (120, 90, 0), 2)
+            c = (60, 40, 0)
+            if stijl == "opneer":                         # pijltjes omhoog + omlaag
+                arcade.draw_triangle_filled(bcx, bcy + 5, bcx - 3, bcy + 1, bcx + 3, bcy + 1, c)
+                arcade.draw_triangle_filled(bcx, bcy - 5, bcx - 3, bcy - 1, bcx + 3, bcy - 1, c)
+            elif stijl == "zij":                          # pijltjes links + rechts
+                arcade.draw_triangle_filled(bcx - 5, bcy, bcx - 1, bcy - 3, bcx - 1, bcy + 3, c)
+                arcade.draw_triangle_filled(bcx + 5, bcy, bcx + 1, bcy - 3, bcx + 1, bcy + 3, c)
+            elif stijl == "rondje":                       # een rondje
+                arcade.draw_circle_outline(bcx, bcy, 4, c, 2)
+            else:                                         # wiebel: een zigzagje
+                arcade.draw_line(bcx - 5, bcy, bcx - 1, bcy + 3, c, 2)
+                arcade.draw_line(bcx - 1, bcy + 3, bcx + 2, bcy - 3, c, 2)
+                arcade.draw_line(bcx + 2, bcy - 3, bcx + 5, bcy + 2, c, 2)
+
     def _teken_startmarker(self):
         """Teken waar de speler begint (linksonder)."""
         sx = 50 - self.scroll
