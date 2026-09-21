@@ -54,6 +54,8 @@ class Vijand:
 
     def raakt_speler(self, px, py, pw, ph):
         """Controleer of de vijand de speler raakt (zijkant of van onder)."""
+        if getattr(self, "doorheen", False):
+            return False                     # doorheen-verf: je loopt er dwars doorheen
         return (px < self.x + self.breedte and
                 px + pw > self.x and
                 py < self.y + self.hoogte and
@@ -1427,6 +1429,8 @@ class Spikes(Vijand):
     def raakt_speler(self, px, py, pw, ph):
         """Kleinere hitbox dan het plaatje (net als in het echte Geometry Dash),
         die met de spike meedraait als hij gedraaid staat."""
+        if getattr(self, "doorheen", False):
+            return False                     # doorheen-verf: je loopt er dwars doorheen
         pb = self.PUNT_BREEDTE
         for i in range(self.aantal):
             sx = self.x + i * pb

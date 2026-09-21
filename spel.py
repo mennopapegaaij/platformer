@@ -243,7 +243,8 @@ class PlatformerSpel(arcade.View):
             # en behalve deuren (daar ga je niet dood van, die houden je alleen tegen)
             self._blokken = [p for p in platforms
                              if not getattr(p, "is_schuin", False)
-                             and not getattr(p, "is_deur", False)]
+                             and not getattr(p, "is_deur", False)
+                             and not getattr(p, "doorheen", False)]
         else:
             self._blokken = []                       # gewone levels: geen zijkant-dood
         self.vijanden = vijanden

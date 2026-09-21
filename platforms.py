@@ -38,8 +38,15 @@ class Platform:
                 arcade.color.GREEN
             )
 
+    @property
+    def vast(self):
+        """Of dit platform vast is (waar je op botst). 'Doorheen'-verf zet dit uit."""
+        return not getattr(self, "doorheen", False)
+
     def raakt(self, px, py, pw, ph):
         """Controleer of de speler dit platform raakt van bovenaf."""
+        if getattr(self, "doorheen", False):
+            return False                     # doorheen-verf: je loopt er dwars doorheen
         speler_links = px
         speler_rechts = px + pw
         speler_onder = py
@@ -58,6 +65,8 @@ class Platform:
 
     def raakt_van_onder(self, px, py, pw, ph):
         """Controleer of de speler met zijn hoofd tegen de onderkant stoot."""
+        if getattr(self, "doorheen", False):
+            return False                     # doorheen-verf: geen botsing
         speler_links = px
         speler_rechts = px + pw
         speler_boven = py + ph
