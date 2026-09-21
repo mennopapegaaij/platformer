@@ -168,6 +168,11 @@ class PlatformerSpel(arcade.View):
         self.portalen = list(data[6]) if len(data) > 6 else []
         # Decoratie is optioneel (een 8e onderdeel); alleen zelfgebouwde levels hebben het
         self.decoraties = list(data[7]) if len(data) > 7 else []
+        # Volg-sliert: een kettinkje van blokjes dat achter de speler aan komt.
+        # De 'sliert'-deco's halen we uit de gewone deco-lijst (we tekenen ze zelf, volgend).
+        self.heeft_sliert = any(getattr(d, "soort", None) == "sliert" for d in self.decoraties)
+        self.decoraties = [d for d in self.decoraties if getattr(d, "soort", None) != "sliert"]
+        self.sliert = None
         # Spring-bollen en spring-matten (een 9e onderdeel)
         self.springers = list(data[8]) if len(data) > 8 else []
         # Teleporters (een 10e onderdeel): blauw <-> oranje paren
@@ -377,6 +382,9 @@ class PlatformerSpel(arcade.View):
             # Teken de kogels
             for kogel in self.kogels:
                 kogel.teken()
+
+            # Teken de volg-sliert (net achter/onder de speler)
+            self._teken_sliert()
 
             # Teken de speler (en zijn spiegel-kloon als die er is)
             self.speler.teken()
@@ -690,6 +698,9 @@ class PlatformerSpel(arcade.View):
 
         # Checkpoints: raak je er een aan, dan is dat je nieuwe startpunt
         self._check_checkpoints(self.speler)
+
+        # Volg-sliert achter de speler aan laten komen
+        self._update_sliert()
 
         # Draaien hangt af van de modus
         self._pas_rotatie_toe(self.speler)
@@ -1079,6 +1090,38 @@ class PlatformerSpel(arcade.View):
             obj.y -= dy
         else:
             obj.teken()
+
+    def _update_sliert(self):
+        """Laat de volg-sliert (kettinkje van blokjes) achter de speler aan komen."""
+        if not self.heeft_sliert or self.twee:
+            return
+        cx = self.speler.x + self.speler.breedte / 2
+        cy = self.speler.y + self.speler.hoogte / 2
+        if self.sliert is None:
+            self.sliert = [[cx, cy] for _ in range(6)]   # 6 blokjes, beginnen bij de speler
+        D = 26                                            # touw-lengte tussen de blokjes
+        lead_x, lead_y = cx, cy
+        for seg in self.sliert:
+            dx, dy = lead_x - seg[0], lead_y - seg[1]
+            afstand = math.hypot(dx, dy) or 1
+            seg[0] = lead_x - dx / afstand * D           # blijf D achter het vorige punt
+            seg[1] = lead_y - dy / afstand * D
+            lead_x, lead_y = seg[0], seg[1]
+
+    def _teken_sliert(self):
+        """Teken de volg-sliert: een touwtje met blokjes (decoratie, geen botsing)."""
+        if not self.heeft_sliert or self.twee or not self.sliert:
+            return
+        cx = self.speler.x + self.speler.breedte / 2
+        cy = self.speler.y + self.speler.hoogte / 2
+        punten = [(cx, cy)] + [(s[0], s[1]) for s in self.sliert]
+        for i in range(len(punten) - 1):                 # het touwtje
+            arcade.draw_line(punten[i][0], punten[i][1],
+                             punten[i + 1][0], punten[i + 1][1], (160, 160, 170), 3)
+        for i, s in enumerate(self.sliert):              # de blokjes (iets kleiner naar achter)
+            r = 9 - i * 0.7
+            arcade.draw_lrbt_rectangle_filled(s[0] - r, s[0] + r, s[1] - r, s[1] + r, (150, 90, 220))
+            arcade.draw_lrbt_rectangle_outline(s[0] - r, s[0] + r, s[1] - r, s[1] + r, (90, 50, 150), 2)
 
     def _teken_acht(self, px, w, h):
         """Teken de achtergrond: een eigen gekozen kleur, of anders het gewone thema."""
