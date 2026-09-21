@@ -1118,8 +1118,8 @@ class PlatformerSpel(arcade.View):
         for i in range(len(punten) - 1):                 # het touwtje
             arcade.draw_line(punten[i][0], punten[i][1],
                              punten[i + 1][0], punten[i + 1][1], (160, 160, 170), 3)
-        for i, s in enumerate(self.sliert):              # de blokjes (iets kleiner naar achter)
-            r = 9 - i * 0.7
+        for i, s in enumerate(self.sliert):              # de blokjes worden steeds groter
+            r = 7 + i * 3
             arcade.draw_lrbt_rectangle_filled(s[0] - r, s[0] + r, s[1] - r, s[1] + r, (150, 90, 220))
             arcade.draw_lrbt_rectangle_outline(s[0] - r, s[0] + r, s[1] - r, s[1] + r, (90, 50, 150), 2)
 
