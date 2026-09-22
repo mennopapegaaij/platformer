@@ -49,6 +49,10 @@ POPPETJES = [
     ("katapult", "Katapult", "Wordt steeds in dezelfde boog weggeschoten; stuur klein bij."),
     ("krimpsprong", "Krimpsprong", "Elke sprong in de lucht is lager dan de vorige."),
     ("tegendraads", "Tegendraads", "Elke keer dat je landt draaien links en rechts om!"),
+    ("turboflip", "Turbo-flip", "Onstopbaar vooruit én de zwaartekracht flipt op de maat."),
+    ("spiegelkatapult", "Spiegel-katapult", "Weggeschoten in een boog, maar bijsturen is omgedraaid."),
+    ("schaduw", "Schaduw", "Een schaduw loopt je oude route na; raakt hij je, dan ga je af!"),
+    ("pingpong", "Ping-pong", "Kaatst vanzelf tussen vloer en plafond; elke kaats flipt de zwaartekracht."),
     ("eigen", "Mijn poppetje", "Je zelfgemaakte poppetje uit de poppetjes-maker."),
 ]
 

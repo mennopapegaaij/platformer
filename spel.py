@@ -719,6 +719,15 @@ class PlatformerSpel(arcade.View):
             self._speler_geraakt()
             return
 
+        # Schaduw-poppetje: raakt de schaduw (je oude ik) je aan, dan ga je af!
+        if self.speler.modus == "schaduw" and not self.speler.is_onkwetsbaar():
+            pos = self.speler.schaduw_pos()
+            if (pos is not None
+                    and abs(pos[0] - self.speler.x) < self.speler.breedte
+                    and abs(pos[1] - self.speler.y) < self.speler.hoogte):
+                self._speler_geraakt()
+                return
+
         # --- Camera laten meebewegen met de speler ---
         cam_x = self.speler.x + self.speler.breedte / 2
         cam_x = max(SCHERM_BREEDTE / 2, min(cam_x, self.level_breedte - SCHERM_BREEDTE / 2))
@@ -888,6 +897,8 @@ class PlatformerSpel(arcade.View):
                      "wind": "wind", "plakker": "plakker",
                      "metronoom": "metronoom", "katapult": "katapult",
                      "krimpsprong": "krimpsprong", "tegendraads": "tegendraads",
+                     "turboflip": "turboflip", "spiegelkatapult": "spiegelkatapult",
+                     "schaduw": "schaduw", "pingpong": "pingpong",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -914,7 +925,8 @@ class PlatformerSpel(arcade.View):
                        "turbo", "ritme", "stuiteraar", "klimmer", "draaisturing",
                        "boemerang", "stamper", "zweefspringer", "groeier",
                        "zwaargewicht", "versneller", "wind", "plakker",
-                       "metronoom", "katapult", "krimpsprong", "tegendraads"):
+                       "metronoom", "katapult", "krimpsprong", "tegendraads",
+                       "turboflip", "spiegelkatapult", "schaduw", "pingpong"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:

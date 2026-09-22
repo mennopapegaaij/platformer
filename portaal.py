@@ -51,6 +51,10 @@ PORTAAL_KLEUREN = {
     "katapult": ((150, 110, 70), (220, 180, 130)),      # hout-bruin = katapult
     "krimpsprong": ((40, 170, 140), (150, 230, 200)),   # krimp-groenblauw = krimpsprong
     "tegendraads": ((160, 80, 190), (225, 160, 245)),   # tegen-paars = tegendraads
+    "turboflip": ((210, 70, 130), (255, 160, 190)),     # turbo-roze = turbo-flip
+    "spiegelkatapult": ((120, 140, 180), (200, 215, 240)),  # spiegel-zilver = spiegel-katapult
+    "schaduw": ((70, 60, 100), (150, 140, 190)),        # schaduw-paars = schaduw
+    "pingpong": ((230, 230, 240), (255, 255, 255)),     # pingpong-wit = ping-pong
     "eigen": ((255, 150, 40), (255, 210, 130)),         # oranje = zelfgemaakt poppetje
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
@@ -285,6 +289,24 @@ def teken_portaal_icoon(soort, cx, cy):
         # Tegendraads: een pijl naar links en een pijl naar rechts
         arcade.draw_triangle_filled(cx - 11, cy, cx - 4, cy - 5, cx - 4, cy + 5, arcade.color.WHITE)
         arcade.draw_triangle_filled(cx + 11, cy, cx + 4, cy - 5, cx + 4, cy + 5, arcade.color.WHITE)
+    elif soort == "turboflip":
+        # Turbo-flip: een pijl vooruit met flip-pijltjes boven en onder
+        arcade.draw_triangle_filled(cx + 9, cy, cx - 1, cy - 6, cx - 1, cy + 6, arcade.color.WHITE)
+        arcade.draw_triangle_filled(cx - 6, cy + 9, cx - 9, cy + 4, cx - 3, cy + 4, arcade.color.WHITE)
+        arcade.draw_triangle_filled(cx - 6, cy - 9, cx - 9, cy - 4, cx - 3, cy - 4, arcade.color.WHITE)
+    elif soort == "spiegelkatapult":
+        # Spiegel-katapult: een boogje met een spiegel-streep erdoorheen
+        arcade.draw_arc_outline(cx, cy - 3, 20, 18, arcade.color.WHITE, 20, 160, 2)
+        arcade.draw_line(cx - 7, cy + 7, cx + 7, cy - 7, arcade.color.WHITE, 2)
+    elif soort == "schaduw":
+        # Schaduw: twee blokjes achter elkaar (jij + je schaduw)
+        arcade.draw_lrbt_rectangle_filled(cx - 10, cx + 2, cy - 6, cy + 6, (120, 120, 160))
+        arcade.draw_lrbt_rectangle_filled(cx - 2, cx + 10, cy - 8, cy + 8, arcade.color.WHITE)
+    elif soort == "pingpong":
+        # Ping-pong: een balletje met een pijl omhoog en omlaag
+        arcade.draw_circle_filled(cx, cy, 6, arcade.color.WHITE)
+        arcade.draw_triangle_filled(cx, cy + 11, cx - 4, cy + 6, cx + 4, cy + 6, arcade.color.WHITE)
+        arcade.draw_triangle_filled(cx, cy - 11, cx - 4, cy - 6, cx + 4, cy - 6, arcade.color.WHITE)
     elif soort == "eigen":
         # Zelfgemaakt poppetje: een sterretje/blokje met een plusje
         arcade.draw_lrbt_rectangle_filled(cx - 7, cx + 7, cy - 7, cy + 7, arcade.color.WHITE)

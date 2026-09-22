@@ -122,6 +122,17 @@ KATA_STUUR = 0.25         # hoe klein beetje je in de lucht mag bijsturen
 KRIMP_AF = 0.62           # elke volgende sprong is nog maar dit deel van de vorige
 KRIMP_MIN = 0.18          # kleiner dan dit -> geen sprong meer (tot je weer land)
 
+# --- Turbo-flip: turbo-snelheid + de zwaartekracht flipt op de maat (heel moeilijk) ---
+#     (gebruikt TURBO_SNELHEID en RITME_INTERVAL die hierboven al bestaan)
+
+# --- Spiegel-katapult: als katapult, maar je bijsturen is omgedraaid (gebruikt KATA_-waarden) ---
+
+# --- Schaduw: een schaduw loopt je oude route na; raakt hij je, dan ga je af ---
+SCHADUW_DELAY = 45        # hoeveel stapjes de schaduw achter je aan loopt (~0.75 sec)
+
+# --- Ping-pong: kaatst vanzelf tussen vloer en plafond; elke kaats flipt de zwaartekracht ---
+PINGPONG_SNELHEID = 7     # hoe snel je op en neer kaatst
+
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
 #   0 = naar beneden, 1 = naar rechts, 2 = naar boven, 3 = naar links
@@ -211,6 +222,7 @@ class Speler:
         self._krimp_nr = 0               # krimpsprong: hoeveelste sprong sinds je laatst stond
         self._tegen_flip = False         # tegendraads: zijn links/rechts nu omgedraaid?
         self._vorige_grond = False       # onthoud of je vorige stap op de grond stond
+        self._schaduw_pad = []           # schaduw: bewaarde plekjes (x, y) van je route
 
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
@@ -259,6 +271,7 @@ class Speler:
         self._krimp_nr = 0                  # krimpsprong: teller reset
         self._tegen_flip = False            # tegendraads: links/rechts weer gewoon
         self._vorige_grond = False          # grond-onthoud reset
+        self._schaduw_pad = []              # schaduw: route-geheugen leeg
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -302,12 +315,18 @@ class Speler:
         if self.modus == "chaos" and random.random() < CHAOS_KANS:
             self.zwaartekracht_richting *= -1
 
-        # Ritme-flip: de zwaartekracht klapt op een VASTE maat om (voorspelbaar, geen toeval)
-        if self.modus == "ritme":
+        # Ritme-flip (en turbo-flip): de zwaartekracht klapt op een VASTE maat om
+        if self.modus in ("ritme", "turboflip"):
             self._ritme_teller += 1
             if self._ritme_teller >= RITME_INTERVAL:
                 self._ritme_teller = 0
                 self.zwaartekracht_richting *= -1
+
+        # Schaduw: bewaar elke stap je plekje, zodat de schaduw je oude route kan nalopen
+        if self.modus == "schaduw":
+            self._schaduw_pad.append((self.x, self.y))
+            if len(self._schaduw_pad) > SCHADUW_DELAY:
+                self._schaduw_pad.pop(0)
 
         # Metronoom: tel de maat mee. Springen mag straks alleen precies op de 'tik'.
         if self.modus == "metronoom":
@@ -367,8 +386,10 @@ class Speler:
             if self.modus == "eigen" and self._eigen("spiegel"):
                 L, R = R, L
 
-            if self.modus == "turbo" or (self.modus == "eigen" and self._eigen("turbo")):
+            if (self.modus in ("turbo", "turboflip")
+                    or (self.modus == "eigen" and self._eigen("turbo"))):
                 # Turbo: je raast altijd op topsnelheid naar rechts en kunt NIET stoppen!
+                # (Turbo-flip doet dit óók, plus de zwaartekracht flipt op de maat.)
                 self.snelheid_x = TURBO_SNELHEID
                 self.kijkt_rechts = True
             elif self.modus == "versneller":
@@ -435,12 +456,16 @@ class Speler:
                     self.kijkt_rechts = True
                 else:
                     self.snelheid_x = 0
-            elif self.modus == "katapult":
+            elif self.modus in ("katapult", "spiegelkatapult"):
                 # Katapult: je stuurt maar een heel klein beetje bij; de vaste boog doet de rest.
-                if L:
+                # Spiegel-katapult: het bijsturen is OMGEDRAAID (links duwt naar rechts).
+                omgekeerd = self.modus == "spiegelkatapult"
+                links_duw = R if omgekeerd else L
+                rechts_duw = L if omgekeerd else R
+                if links_duw:
                     self.snelheid_x -= KATA_STUUR
                     self.kijkt_rechts = False
-                elif R:
+                elif rechts_duw:
                     self.snelheid_x += KATA_STUUR
                     self.kijkt_rechts = True
                 self.snelheid_x *= 0.99         # een piepklein beetje luchtweerstand
@@ -580,6 +605,10 @@ class Speler:
                 self.snelheid_y += DRAAK_STUW * richting
             self.snelheid_y -= DRAAK_ZWAARTE * richting
             self.snelheid_y = max(-DRAAK_MAX, min(DRAAK_MAX, self.snelheid_y))
+        elif self.modus == "pingpong":
+            # Ping-pong: constante snelheid op of neer. De richting flipt bij elke kaats
+            # tegen de vloer of het plafond (zie de botsingen hieronder).
+            self.snelheid_y = PINGPONG_SNELHEID * (-self.zwaartekracht_richting)
         elif self.modus in ("bal", "spin"):
             # Bal/spin: zwaartekracht in de huidige richting (kan omgedraaid zijn)
             self.snelheid_y -= ZWAARTEKRACHT * 1.3 * self.zwaartekracht_richting
@@ -640,7 +669,10 @@ class Speler:
                 # Stuiterblok: stuiter omhoog i.p.v. blijven staan
                 stuiter = getattr(platform, "stuiter", 0)
                 eigen_stuiter = self.modus == "eigen" and self._eigen("stuiter")
-                if (self.modus == "stuiteraar" or eigen_stuiter) and not omgedraaid:
+                if self.modus == "pingpong":
+                    # Ping-pong: raak je de vloer, dan flipt de zwaartekracht en kaats je omhoog
+                    self.zwaartekracht_richting = -1
+                elif (self.modus == "stuiteraar" or eigen_stuiter) and not omgedraaid:
                     # Stuiteraar (of eigen poppetje met Stuiteren): altijd omhoog stuiteren
                     self.snelheid_y = STUITER_KRACHT
                 elif stuiter and not omgedraaid:
@@ -653,10 +685,14 @@ class Speler:
             elif (self.snelheid_y > 0 and
                   platform.raakt_van_onder(self.x, self.y, self.breedte, self.hoogte)):
                 self.y = platform.y - self.hoogte
-                self.snelheid_y = 0
-                # Met omgekeerde zwaartekracht 'sta' je ONDER een platform
-                if omgedraaid:
-                    self.staat_op_grond = True
+                if self.modus == "pingpong":
+                    # Ping-pong: raak je het plafond, dan flipt de zwaartekracht en kaats je omlaag
+                    self.zwaartekracht_richting = 1
+                else:
+                    self.snelheid_y = 0
+                    # Met omgekeerde zwaartekracht 'sta' je ONDER een platform
+                    if omgedraaid:
+                        self.staat_op_grond = True
 
         # Schuine blokken (hellingen): loop er soepel overheen omhoog/omlaag
         if not omgedraaid:
@@ -676,19 +712,22 @@ class Speler:
         # In de speciale modi (of bij omgedraaide zwaartekracht): niet door het plafond.
         # Is self.plafond None, dan is er GEEN plafond en kun je oneindig omhoog.
         if (self.plafond is not None
-                and (self.modus in ("vliegtuig", "ufo", "bal", "golf", "spin", "heli", "ballon", "raket", "kolibrie", "draak", "dronken") or omgedraaid)
+                and (self.modus in ("vliegtuig", "ufo", "bal", "golf", "spin", "heli", "ballon", "raket", "kolibrie", "draak", "dronken", "pingpong") or omgedraaid)
                 and self.y + self.hoogte > self.plafond):
             self.y = self.plafond - self.hoogte
             if self.snelheid_y > 0:
-                self.snelheid_y = 0
-                if omgedraaid or self.modus in ("bal", "spin"):
-                    self.staat_op_grond = True   # je 'ligt' tegen het plafond
+                if self.modus == "pingpong":
+                    self.zwaartekracht_richting = 1   # tegen het plafond -> kaats omlaag
+                else:
+                    self.snelheid_y = 0
+                    if omgedraaid or self.modus in ("bal", "spin"):
+                        self.staat_op_grond = True   # je 'ligt' tegen het plafond
 
         # Net geland (van de lucht op de grond)? Sommige poppetjes doen dan iets speciaals.
         net_geland = self.staat_op_grond and not self._vorige_grond
         if self.modus == "tegendraads" and net_geland:
             self._tegen_flip = not self._tegen_flip     # links en rechts wisselen om
-        if self.modus == "katapult" and self.staat_op_grond:
+        if self.modus in ("katapult", "spiegelkatapult") and self.staat_op_grond:
             # Meteen weer in precies dezelfde boog wegschieten (omhoog én vooruit)
             self.snelheid_y = KATA_OMHOOG
             self.snelheid_x = KATA_VOORUIT
@@ -892,8 +931,8 @@ class Speler:
             if op_de_tel:
                 self._doe_sprong()
             return
-        if self.modus == "katapult":
-            return                                 # katapult springt vanzelf, jij mag niet
+        if self.modus in ("katapult", "spiegelkatapult", "pingpong"):
+            return                                 # deze poppetjes bewegen vanzelf, springen doet niks
         if self.modus == "krimpsprong":
             # Elke sprong in de lucht is lager dan de vorige; op de grond weer vol.
             factor = KRIMP_AF ** self._krimp_nr
@@ -1105,6 +1144,18 @@ class Speler:
             return
         if self.modus == "tegendraads":
             self._teken_tegendraads()
+            return
+        if self.modus == "turboflip":
+            self._teken_turboflip()
+            return
+        if self.modus == "spiegelkatapult":
+            self._teken_spiegelkatapult()
+            return
+        if self.modus == "schaduw":
+            self._teken_schaduw()
+            return
+        if self.modus == "pingpong":
+            self._teken_pingpong()
             return
         if self.modus == "eigen":
             self._teken_eigen()
@@ -1696,6 +1747,81 @@ class Speler:
         # Oogjes bovenin
         arcade.draw_circle_filled(cx - 5, y + h - 9, 2.5, OOG_KLEUR)
         arcade.draw_circle_filled(cx + 5, y + h - 9, 2.5, OOG_KLEUR)
+
+    def schaduw_pos(self):
+        """Waar staat de schaduw nu? (de plek waar jij ~SCHADUW_DELAY stapjes geleden was)
+        Geeft (x, y) terug, of None als er nog geen schaduw is."""
+        if self.modus != "schaduw" or len(self._schaduw_pad) < SCHADUW_DELAY:
+            return None
+        return self._schaduw_pad[0]
+
+    def _teken_turboflip(self):
+        """Teken een raceblokje (turbo) met twee flip-pijlen (de zwaartekracht flipt op de maat)."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w / 2
+        # Snelheidsstrepen achter je
+        for i, dy in enumerate((h * 0.3, h * 0.6)):
+            arcade.draw_line(x - 12 - i * 3, y + dy, x, y + dy, (255, 200, 80), 2)
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (210, 70, 130))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (110, 20, 60), 3)
+        wit = (255, 255, 255)
+        # Pijl omhoog + pijl omlaag (de zwaartekracht wisselt)
+        arcade.draw_triangle_filled(cx, y + h - 4, cx - 5, y + h - 11, cx + 5, y + h - 11, wit)
+        arcade.draw_triangle_filled(cx, y + 4, cx - 5, y + 11, cx + 5, y + 11, wit)
+        # Vastberaden oogjes
+        arcade.draw_circle_filled(cx - 6, y + h / 2, 2.5, OOG_KLEUR)
+        arcade.draw_circle_filled(cx + 6, y + h / 2, 2.5, OOG_KLEUR)
+
+    def _teken_spiegelkatapult(self):
+        """Teken een katapult-steentje met een spiegel-glans (het bijsturen is omgedraaid)."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w / 2
+        cy = y + h / 2
+        # Zilverachtig steentje (spiegel)
+        arcade.draw_circle_filled(cx, cy, 11, (170, 180, 200))
+        arcade.draw_circle_outline(cx, cy, 11, (90, 100, 120), 3)
+        # Spiegel-glans (een schuine witte streep)
+        arcade.draw_line(cx - 6, cy + 6, cx + 4, cy - 6, (240, 245, 255), 3)
+        # Twee tegengestelde pijltjes (omgedraaid sturen)
+        arcade.draw_triangle_filled(cx - 12, cy - 8, cx - 6, cy - 11, cx - 6, cy - 5, (60, 60, 80))
+        arcade.draw_triangle_filled(cx + 12, cy - 8, cx + 6, cy - 11, cx + 6, cy - 5, (60, 60, 80))
+        # Oogjes
+        arcade.draw_circle_filled(cx - 4, cy + 2, 2, OOG_KLEUR)
+        arcade.draw_circle_filled(cx + 4, cy + 2, 2, OOG_KLEUR)
+
+    def _teken_schaduw(self):
+        """Teken eerst de donkere schaduw (op je oude plek), dan het gewone poppetje."""
+        pos = self.schaduw_pos()
+        if pos is not None:
+            sx, sy = pos
+            w, h = self.breedte, self.hoogte
+            arcade.draw_lrbt_rectangle_filled(sx, sx + w, sy, sy + h, (40, 40, 60))
+            arcade.draw_lrbt_rectangle_outline(sx, sx + w, sy, sy + h, (110, 90, 150), 2)
+            # Griezelige spookoogjes
+            arcade.draw_circle_filled(sx + 9, sy + h - 10, 3, (210, 90, 210))
+            arcade.draw_circle_filled(sx + w - 9, sy + h - 10, 3, (210, 90, 210))
+        # Het gewone poppetje (paarsblauw zodat het bij de schaduw past)
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (150, 150, 230))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (70, 70, 140), 3)
+        arcade.draw_circle_filled(x + 9, y + h - 10, 4, OOG_KLEUR)
+        arcade.draw_circle_filled(x + w - 9, y + h - 10, 4, OOG_KLEUR)
+        arcade.draw_arc_outline(x + w // 2, y + 9, 10, 6, OOG_KLEUR, 200, 340, 2)
+
+    def _teken_pingpong(self):
+        """Teken een pingpong-balletje met dubbele pijl (kaatst tussen vloer en plafond)."""
+        cx = self.x + self.breedte / 2
+        cy = self.y + self.hoogte / 2
+        # Wit balletje
+        arcade.draw_circle_filled(cx, cy, 11, (245, 245, 250))
+        arcade.draw_circle_outline(cx, cy, 11, (120, 120, 140), 3)
+        # Dubbele pijl (omhoog + omlaag): het kaatst op en neer
+        rood = (220, 60, 60)
+        arcade.draw_triangle_filled(cx, cy + 9, cx - 5, cy + 3, cx + 5, cy + 3, rood)
+        arcade.draw_triangle_filled(cx, cy - 9, cx - 5, cy - 3, cx + 5, cy - 3, rood)
+        # Oogjes
+        arcade.draw_circle_filled(cx - 4, cy, 2, OOG_KLEUR)
+        arcade.draw_circle_filled(cx + 4, cy, 2, OOG_KLEUR)
 
     def _teken_zweefspringer(self):
         """Teken een licht blokje met twee vleugeltjes (zweeft lang in de lucht)."""
