@@ -71,18 +71,19 @@ BG_NAAM = ["Thema", "Lucht", "Zonsondergang", "Nacht", "Paars",
            "Roze", "Groen", "Wit", "Zwart"]
 
 # Hoe alles beweegt (met de A-toets doorklikken)
-ANIM_SOORTEN = ["uit", "opneer", "zij", "rondje", "wiebel"]
+ANIM_SOORTEN = ["uit", "opneer", "zij", "rondje", "wiebel", "draai"]
 ANIM_NAAM = {"uit": "uit", "opneer": "op en neer", "zij": "links-rechts",
-             "rondje": "rondje", "wiebel": "wiebel"}
+             "rondje": "rondje", "wiebel": "wiebel", "draai": "ronddraaien"}
 
 # Beweeg-kwasten: klik op een voorwerp om ALLEEN dat voorwerp te laten bewegen
-BEWEEG_KWASTEN = ["b_opneer", "b_zij", "b_rondje", "b_wiebel"]
+BEWEEG_KWASTEN = ["b_opneer", "b_zij", "b_rondje", "b_wiebel", "b_draai"]
 VERF_SOORTEN = ["onzichtbaar", "doorheen", "volg"] + list(VERF_KLEUREN.keys()) + BEWEEG_KWASTEN
 VERF_NAAM = {"onzichtbaar": "Onzicht", "doorheen": "Doorheen", "volg": "Volg mij",
              "rood": "Rood", "blauw": "Blauw", "groen": "Groen",
              "geel": "Geel", "roze": "Roze", "oranje": "Oranje", "paars": "Paars",
              "b_opneer": "Bew op-neer", "b_zij": "Bew links-rechts",
-             "b_rondje": "Bew rondje", "b_wiebel": "Bew wiebel"}
+             "b_rondje": "Bew rondje", "b_wiebel": "Bew wiebel",
+             "b_draai": "Bew draaien"}
 
 # De spring-dingen waar je met de Spring-knop doorheen klikt:
 # bol1..bol5 en mat1..mat5 (kracht 1 t/m 5), en "neer" (paarse bol waarmee je valt)
@@ -841,6 +842,10 @@ class BouwerView(arcade.View):
                 arcade.draw_triangle_filled(bcx + 5, bcy, bcx + 1, bcy - 3, bcx + 1, bcy + 3, c)
             elif stijl == "rondje":                       # een rondje
                 arcade.draw_circle_outline(bcx, bcy, 4, c, 2)
+            elif stijl == "draai":                        # draai-pijl (ronddraaien)
+                arcade.draw_arc_outline(bcx, bcy, 9, 9, c, 40, 320, 2)
+                arcade.draw_triangle_filled(bcx + 4, bcy + 4, bcx + 1, bcy + 1,
+                                            bcx + 6, bcy, c)
             else:                                         # wiebel: een zigzagje
                 arcade.draw_line(bcx - 5, bcy, bcx - 1, bcy + 3, c, 2)
                 arcade.draw_line(bcx - 1, bcy + 3, bcx + 2, bcy - 3, c, 2)
@@ -1514,7 +1519,14 @@ class BouwerView(arcade.View):
             max_x = max(max_x, mx + straal + CEL)
             # De motor komt NA de voorwerpen in de lijst, zodat hij ze als laatste
             # op hun gedraaide plek zet (anders lopen monsters weg van het draad).
-            vijanden.append(DraaiPaar(objA, objB, mx, my, straal, soort))
+            motor = DraaiPaar(objA, objB, mx, my, straal, soort)
+            # Volg-verf op een van de twee kanten? Dan komt het HELE draaiende
+            # draad achter de speler aan (op de hoogte waar je het neerzette).
+            if self.verf.get(a) == "volg" or self.verf.get(b) == "volg":
+                motor.volg = True
+                objA.doorheen = True               # geen botsing: het zweeft bij je
+                objB.doorheen = True
+            vijanden.append(motor)
 
         # Zet voor elke boss de stop-plek: de dichtstbijzijnde 'boss-uit'-lijn vóór hem
         for b in bosses:

@@ -1070,7 +1070,12 @@ class PlatformerSpel(arcade.View):
         """Teken een voorwerp. Het beweegt in zijn eigen stijl (beweeg-kwast) of, als
         die er niet is, in de stijl van 'alles beweegt'. Alleen visueel; botsing blijft."""
         soort = getattr(obj, "beweeg", None) or getattr(self, "anim_soort", "uit")
-        if soort and soort != "uit":
+        if soort == "draai":
+            # Ronddraaien rond het eigen midden (als een wiel). De hoek loopt rond.
+            fase = obj.x * 0.5
+            hoek = (self._anim_t * 180.0 + fase) % 360
+            self._teken_draaiend(obj, hoek)
+        elif soort and soort != "uit":
             fase = obj.x * 0.03
             t = self._anim_t
             if soort == "opneer":
@@ -1089,6 +1094,100 @@ class PlatformerSpel(arcade.View):
         else:
             obj.teken()
 
+    def _teken_draaiend(self, obj, hoek):
+        """Teken een voorwerp dat rond zijn eigen midden draait (als een wiel).
+        Slim trucje: we laten ALLE teken-opdrachten even 'meedraaien' rond het
+        midden. Zo kan elk voorwerp draaien zonder dat we het apart hoeven aan te
+        passen. Na het tekenen zetten we de gewone teken-opdrachten weer terug."""
+        cx = obj.x + getattr(obj, "breedte", 32) / 2
+        cy = obj.y + getattr(obj, "hoogte", 32) / 2
+        rad = math.radians(hoek)
+        cos_a, sin_a = math.cos(rad), math.sin(rad)
+
+        def rp(px, py):
+            """Draai één puntje rond het midden."""
+            dx, dy = px - cx, py - cy
+            return (cx + dx * cos_a - dy * sin_a, cy + dx * sin_a + dy * cos_a)
+
+        # De ECHTE teken-functies onthouden zodat we ze straks terugzetten
+        namen = ("draw_circle_filled", "draw_circle_outline",
+                 "draw_lrbt_rectangle_filled", "draw_lrbt_rectangle_outline",
+                 "draw_line", "draw_triangle_filled", "draw_triangle_outline",
+                 "draw_polygon_filled", "draw_polygon_outline",
+                 "draw_ellipse_filled", "draw_ellipse_outline",
+                 "draw_arc_outline", "draw_text")
+        echt = {n: getattr(arcade, n) for n in namen}
+
+        def cirkel_f(x, y, r, kleur, tilt_angle=0, num_segments=-1):
+            nx, ny = rp(x, y)
+            echt["draw_circle_filled"](nx, ny, r, kleur, tilt_angle, num_segments)
+
+        def cirkel_o(x, y, r, kleur, border_width=1, tilt_angle=0, num_segments=-1):
+            nx, ny = rp(x, y)
+            echt["draw_circle_outline"](nx, ny, r, kleur, border_width, tilt_angle, num_segments)
+
+        def rect_f(l, r, b, t, kleur):
+            echt["draw_polygon_filled"]([rp(l, b), rp(r, b), rp(r, t), rp(l, t)], kleur)
+
+        def rect_o(l, r, b, t, kleur, border_width=1):
+            echt["draw_polygon_outline"]([rp(l, b), rp(r, b), rp(r, t), rp(l, t)], kleur, border_width)
+
+        def lijn(x1, y1, x2, y2, kleur, line_width=1):
+            p1, p2 = rp(x1, y1), rp(x2, y2)
+            echt["draw_line"](p1[0], p1[1], p2[0], p2[1], kleur, line_width)
+
+        def drie_f(x1, y1, x2, y2, x3, y3, kleur):
+            p1, p2, p3 = rp(x1, y1), rp(x2, y2), rp(x3, y3)
+            echt["draw_triangle_filled"](p1[0], p1[1], p2[0], p2[1], p3[0], p3[1], kleur)
+
+        def drie_o(x1, y1, x2, y2, x3, y3, kleur, border_width=1):
+            p1, p2, p3 = rp(x1, y1), rp(x2, y2), rp(x3, y3)
+            echt["draw_triangle_outline"](p1[0], p1[1], p2[0], p2[1], p3[0], p3[1], kleur, border_width)
+
+        def poly_f(punten, kleur):
+            echt["draw_polygon_filled"]([rp(px, py) for (px, py) in punten], kleur)
+
+        def poly_o(punten, kleur, line_width=1.0):
+            echt["draw_polygon_outline"]([rp(px, py) for (px, py) in punten], kleur, line_width)
+
+        def ellips_f(x, y, w, h, kleur, tilt_angle=0, num_segments=-1):
+            nx, ny = rp(x, y)
+            echt["draw_ellipse_filled"](nx, ny, w, h, kleur, tilt_angle + hoek, num_segments)
+
+        def ellips_o(x, y, w, h, kleur, border_width=1, tilt_angle=0, num_segments=-1):
+            nx, ny = rp(x, y)
+            echt["draw_ellipse_outline"](nx, ny, w, h, kleur, border_width, tilt_angle + hoek, num_segments)
+
+        def boog_o(x, y, w, h, kleur, start_angle, end_angle, border_width=1, tilt_angle=0, num_segments=128):
+            nx, ny = rp(x, y)
+            echt["draw_arc_outline"](nx, ny, w, h, kleur, start_angle, end_angle,
+                                     border_width, tilt_angle + hoek, num_segments)
+
+        def tekst(text, x, y, *args, **kwargs):
+            nx, ny = rp(x, y)
+            kwargs["rotation"] = kwargs.get("rotation", 0) + hoek
+            echt["draw_text"](text, nx, ny, *args, **kwargs)
+
+        arcade.draw_circle_filled = cirkel_f
+        arcade.draw_circle_outline = cirkel_o
+        arcade.draw_lrbt_rectangle_filled = rect_f
+        arcade.draw_lrbt_rectangle_outline = rect_o
+        arcade.draw_line = lijn
+        arcade.draw_triangle_filled = drie_f
+        arcade.draw_triangle_outline = drie_o
+        arcade.draw_polygon_filled = poly_f
+        arcade.draw_polygon_outline = poly_o
+        arcade.draw_ellipse_filled = ellips_f
+        arcade.draw_ellipse_outline = ellips_o
+        arcade.draw_arc_outline = boog_o
+        arcade.draw_text = tekst
+        try:
+            obj.teken()
+        finally:
+            # Altijd terugzetten, ook als er iets misgaat tijdens het tekenen
+            for n, f in echt.items():
+                setattr(arcade, n, f)
+
     def _update_volgers(self):
         """Laat de 'volg'-voorwerpen de speler volgen: hun x schuift naar de speler toe,
         maar ze blijven op de hoogte (y) waar je ze hebt neergezet."""
@@ -1096,8 +1195,14 @@ class PlatformerSpel(arcade.View):
             return
         doel_x = self.speler.x + self.speler.breedte / 2
         for o in self.volgers:
-            mid = o.x + o.breedte / 2
-            o.x += (doel_x - mid) * 0.06        # rustig naar de speler toe (met vertraging)
+            if hasattr(o, "mx"):
+                # Een draai-motor (draad): schuif het HELE midden mee, dan draait
+                # het draaiende paar keurig achter de speler aan.
+                o.mx += (doel_x - o.mx) * 0.06
+                o.x = o.mx - o.breedte / 2
+            else:
+                mid = o.x + o.breedte / 2
+                o.x += (doel_x - mid) * 0.06    # rustig naar de speler toe (met vertraging)
 
     def _teken_acht(self, px, w, h):
         """Teken de achtergrond: een eigen gekozen kleur, of anders het gewone thema."""
