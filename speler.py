@@ -133,6 +133,26 @@ SCHADUW_DELAY = 45        # hoeveel stapjes de schaduw achter je aan loopt (~0.7
 # --- Ping-pong: kaatst vanzelf tussen vloer en plafond; elke kaats flipt de zwaartekracht ---
 PINGPONG_SNELHEID = 7     # hoe snel je op en neer kaatst
 
+# --- Spook: zweeft zacht (knop = omhoog) en wordt steeds even onzichtbaar ---
+SPOOK_STUW = 0.4          # hoe hard de knop je omhoog duwt
+SPOOK_ZWAARTE = 0.22      # hoe zacht je zakt (zweverig)
+SPOOK_MAX = 5             # hoogste zweefsnelheid
+SPOOK_ONZICHT_NA = 80     # om de zoveel stapjes verdwijnt hij even
+SPOOK_ONZICHT_DUUR = 22   # hoelang hij dan (bijna) onzichtbaar is
+
+# --- Vleermuis: fladdert (tik = vleugelslag omhoog) en wiebelt griezelig heen en weer ---
+VLEERMUIS_FLAP = 6        # hoe hard elke vleugelslag omhoog duwt
+VLEERMUIS_ZWAARTE = 0.35  # lichte zwaartekracht (zweverig)
+VLEERMUIS_WIEBEL = 1.8    # hoe ver hij vanzelf heen en weer wiebelt
+
+# --- Zombie: sjokt langzaam en zwaar, springt maar laag ---
+ZOMBIE_TRAAG = 0.55       # zombie loopt maar half zo snel
+ZOMBIE_SPRONG = 0.62      # zombie springt maar laag
+ZOMBIE_ZWAARTE = 1.4      # iets zwaardere val (voelt log)
+
+# --- Pompoenkop: laat een vurig spoor achter en gloeit eng ---
+POMP_SPOOR = 14           # hoeveel vuur-plekjes er achter je aan zweven
+
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
 #   0 = naar beneden, 1 = naar rechts, 2 = naar boven, 3 = naar links
@@ -223,6 +243,9 @@ class Speler:
         self._tegen_flip = False         # tegendraads: zijn links/rechts nu omgedraaid?
         self._vorige_grond = False       # onthoud of je vorige stap op de grond stond
         self._schaduw_pad = []           # schaduw: bewaarde plekjes (x, y) van je route
+        self._spook_teller = 0           # spook: tel tot hij weer even onzichtbaar wordt
+        self._vleer_fase = 0.0           # vleermuis: waar we in de wiebel zitten
+        self._pomp_spoor = []            # pompoenkop: bewaarde plekjes voor het vuur-spoor
 
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
@@ -272,6 +295,9 @@ class Speler:
         self._tegen_flip = False            # tegendraads: links/rechts weer gewoon
         self._vorige_grond = False          # grond-onthoud reset
         self._schaduw_pad = []              # schaduw: route-geheugen leeg
+        self._spook_teller = 0              # spook: onzichtbaar-teller reset
+        self._vleer_fase = 0.0              # vleermuis: wiebel terug naar begin
+        self._pomp_spoor = []               # pompoenkop: vuur-spoor leeg
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -328,6 +354,16 @@ class Speler:
             if len(self._schaduw_pad) > SCHADUW_DELAY:
                 self._schaduw_pad.pop(0)
 
+        # Spook: tel door zodat hij steeds een moment (bijna) onzichtbaar wordt
+        if self.modus == "spook":
+            self._spook_teller = (self._spook_teller + 1) % (SPOOK_ONZICHT_NA + SPOOK_ONZICHT_DUUR)
+
+        # Pompoenkop: bewaar plekjes voor het vurige spoor achter je aan
+        if self.modus == "pompoenkop":
+            self._pomp_spoor.append((self.x + self.breedte / 2, self.y + self.hoogte / 2))
+            if len(self._pomp_spoor) > POMP_SPOOR:
+                self._pomp_spoor.pop(0)
+
         # Metronoom: tel de maat mee. Springen mag straks alleen precies op de 'tik'.
         if self.modus == "metronoom":
             self._metro_teller += 1
@@ -341,6 +377,8 @@ class Speler:
         snelheid *= self.snelheid_factor   # snelheid-portaal (x0.5 / x2 / x10 ...)
         if self.modus == "ninja":
             snelheid *= NINJA_SNELHEID     # de ninja is lekker snel
+        if self.modus == "zombie":
+            snelheid *= ZOMBIE_TRAAG       # de zombie sjokt langzaam
         if self.modus == "eigen" and self._eigen("snel"):
             snelheid *= 1.6                # zelfgemaakt poppetje met het 'Snel'-kunstje
 
@@ -469,6 +507,18 @@ class Speler:
                     self.snelheid_x += KATA_STUUR
                     self.kijkt_rechts = True
                 self.snelheid_x *= 0.99         # een piepklein beetje luchtweerstand
+            elif self.modus == "vleermuis":
+                # Vleermuis: gewone links/rechts, plus een griezelige wiebel heen en weer
+                self._vleer_fase += 0.15
+                wiebel = math.sin(self._vleer_fase) * VLEERMUIS_WIEBEL
+                if L:
+                    self.snelheid_x = -snelheid + wiebel
+                    self.kijkt_rechts = False
+                elif R:
+                    self.snelheid_x = snelheid + wiebel
+                    self.kijkt_rechts = True
+                else:
+                    self.snelheid_x = wiebel
             elif L:
                 self.snelheid_x = -snelheid
                 self.kijkt_rechts = False   # Speler kijkt naar links
@@ -605,6 +655,19 @@ class Speler:
                 self.snelheid_y += DRAAK_STUW * richting
             self.snelheid_y -= DRAAK_ZWAARTE * richting
             self.snelheid_y = max(-DRAAK_MAX, min(DRAAK_MAX, self.snelheid_y))
+        elif self.modus == "spook":
+            # Spook: zweeft zacht. Knop vasthouden = omhoog, anders zak je langzaam.
+            if self.vlieg_omhoog:
+                self.snelheid_y += SPOOK_STUW * richting
+            self.snelheid_y -= SPOOK_ZWAARTE * richting
+            self.snelheid_y = max(-SPOOK_MAX, min(SPOOK_MAX, self.snelheid_y))
+        elif self.modus == "vleermuis":
+            # Vleermuis: lichte zwaartekracht (zweverig); elke tik geeft een vleugelslag omhoog.
+            self.snelheid_y -= ZWAARTEKRACHT * VLEERMUIS_ZWAARTE * self.zwaartekracht_richting
+            self.snelheid_y = max(-8, min(8, self.snelheid_y))
+        elif self.modus == "zombie":
+            # Zombie: iets zwaardere val, voelt log en zwaar.
+            self.snelheid_y -= ZWAARTEKRACHT * ZOMBIE_ZWAARTE * self.zwaartekracht_richting
         elif self.modus == "pingpong":
             # Ping-pong: constante snelheid op of neer. De richting flipt bij elke kaats
             # tegen de vloer of het plafond (zie de botsingen hieronder).
@@ -712,7 +775,7 @@ class Speler:
         # In de speciale modi (of bij omgedraaide zwaartekracht): niet door het plafond.
         # Is self.plafond None, dan is er GEEN plafond en kun je oneindig omhoog.
         if (self.plafond is not None
-                and (self.modus in ("vliegtuig", "ufo", "bal", "golf", "spin", "heli", "ballon", "raket", "kolibrie", "draak", "dronken", "pingpong") or omgedraaid)
+                and (self.modus in ("vliegtuig", "ufo", "bal", "golf", "spin", "heli", "ballon", "raket", "kolibrie", "draak", "dronken", "pingpong", "spook", "vleermuis") or omgedraaid)
                 and self.y + self.hoogte > self.plafond):
             self.y = self.plafond - self.hoogte
             if self.snelheid_y > 0:
@@ -749,6 +812,10 @@ class Speler:
     def kolibrie_flap(self):
         """Kolibrie: een KLEIN wiekje per tik. Je moet snel blijven tikken om te zweven."""
         self.snelheid_y = KOLIBRIE_FLAP * self.zwaartekracht_richting
+
+    def vleermuis_flap(self):
+        """Vleermuis: een vleugelslag omhoog bij elke tik (fladderen)."""
+        self.snelheid_y = VLEERMUIS_FLAP * self.zwaartekracht_richting
 
     def zet_grootte(self, factor, frames):
         """Maak de speler groter of kleiner (factor) voor een aantal frames."""
@@ -996,6 +1063,9 @@ class Speler:
         if self.modus == "dobbelsteen":
             # Dobbelsteen: een willekeurige spronghoogte (soms mini, soms mega!)
             sprongkracht = random.uniform(DOBBEL_MIN, DOBBEL_MAX) * self.zwaartekracht_richting
+        elif self.modus == "zombie":
+            # Zombie springt maar laag (log en zwaar)
+            sprongkracht = (SPRING_KRACHT + self.sprong_bonus) * ZOMBIE_SPRONG * self.zwaartekracht_richting
         else:
             sprongkracht = (SPRING_KRACHT + self.sprong_bonus) * self.zwaartekracht_richting
         if self.modus == "klimmer":
@@ -1156,6 +1226,18 @@ class Speler:
             return
         if self.modus == "pingpong":
             self._teken_pingpong()
+            return
+        if self.modus == "spook":
+            self._teken_spook()
+            return
+        if self.modus == "vleermuis":
+            self._teken_vleermuis_dier()
+            return
+        if self.modus == "zombie":
+            self._teken_zombie()
+            return
+        if self.modus == "pompoenkop":
+            self._teken_pompoenkop()
             return
         if self.modus == "eigen":
             self._teken_eigen()
@@ -1822,6 +1904,87 @@ class Speler:
         # Oogjes
         arcade.draw_circle_filled(cx - 4, cy, 2, OOG_KLEUR)
         arcade.draw_circle_filled(cx + 4, cy, 2, OOG_KLEUR)
+
+    def _teken_spook(self):
+        """Teken een zwevend spookje dat steeds even (bijna) onzichtbaar wordt."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w / 2
+        onzichtbaar = self._spook_teller >= SPOOK_ONZICHT_NA
+        a = 45 if onzichtbaar else 215            # bijna doorzichtig als hij 'verdwijnt'
+        oog_a = 60 if onzichtbaar else 255
+        wit = (235, 235, 255, a)
+        # Ronde kop + lijf
+        arcade.draw_circle_filled(cx, y + h * 0.6, w * 0.5, wit)
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y + h * 0.22, y + h * 0.6, wit)
+        # Golvende onderrand (drie bochtjes)
+        for i in range(3):
+            bx = x + w * (i + 0.5) / 3
+            arcade.draw_circle_filled(bx, y + h * 0.22, w / 6, wit)
+        # Donkere spookoogjes + mondje
+        donker = (30, 30, 55, oog_a)
+        arcade.draw_circle_filled(cx - 6, y + h * 0.62, 3, donker)
+        arcade.draw_circle_filled(cx + 6, y + h * 0.62, 3, donker)
+        arcade.draw_circle_filled(cx, y + h * 0.45, 3, donker)
+
+    def _teken_vleermuis_dier(self):
+        """Teken een fladderende vleermuis met klappende vleugels en rode oogjes."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx, cy = x + w / 2, y + h / 2
+        flap = math.sin(self._vleer_fase * 2) * 5      # de vleugels klappen op en neer
+        zwart = (45, 25, 65)
+        # Vleugels links en rechts (klappen mee)
+        arcade.draw_triangle_filled(cx - 4, cy, x - 7, cy + flap + 7, x - 7, cy + flap - 5, zwart)
+        arcade.draw_triangle_filled(cx + 4, cy, x + w + 7, cy + flap + 7, x + w + 7, cy + flap - 5, zwart)
+        # Lijfje
+        arcade.draw_circle_filled(cx, cy, 8, zwart)
+        # Twee spitse oortjes
+        arcade.draw_triangle_filled(cx - 6, cy + 6, cx - 1, cy + 13, cx - 9, cy + 10, zwart)
+        arcade.draw_triangle_filled(cx + 6, cy + 6, cx + 1, cy + 13, cx + 9, cy + 10, zwart)
+        # Rode oogjes
+        arcade.draw_circle_filled(cx - 3, cy + 2, 2, (255, 60, 60))
+        arcade.draw_circle_filled(cx + 3, cy + 2, 2, (255, 60, 60))
+
+    def _teken_zombie(self):
+        """Teken een groen zombie-blokje met holle oogjes en een naad."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w / 2
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (110, 150, 80))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (60, 90, 40), 3)
+        # Scheve, holle oogjes (eng)
+        arcade.draw_circle_filled(x + 9, y + h - 11, 4, (25, 35, 18))
+        arcade.draw_circle_filled(x + w - 9, y + h - 13, 4, (25, 35, 18))
+        # Een naad met stiksel dwars over zijn gezicht
+        ny = y + h * 0.5
+        arcade.draw_line(x + 4, ny, x + w - 4, ny, (60, 90, 40), 2)
+        for sx in range(int(x + 7), int(x + w - 4), 6):
+            arcade.draw_line(sx, ny - 3, sx, ny + 3, (60, 90, 40), 1)
+        # Scheve mond
+        arcade.draw_line(cx - 6, y + 8, cx + 6, y + 6, (25, 35, 18), 2)
+
+    def _teken_pompoenkop(self):
+        """Teken een pompoenkop met een vurig spoor dat achter hem aan zweeft."""
+        # Eerst het vurige spoor (oud = klein en donker, nieuw = groot en fel)
+        n = len(self._pomp_spoor)
+        for i, (px, py) in enumerate(self._pomp_spoor):
+            deel = (i + 1) / max(1, n)
+            r = 3 + deel * 7
+            kl = (255, int(120 + 100 * deel), 20, int(50 + 130 * deel))
+            arcade.draw_circle_filled(px, py, r, kl)
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx, cy = x + w / 2, y + h / 2
+        # Oranje pompoen
+        arcade.draw_circle_filled(cx, cy, w * 0.55, (240, 130, 20))
+        arcade.draw_circle_outline(cx, cy, w * 0.55, (180, 80, 10), 2)
+        # Ribbels
+        arcade.draw_line(cx - 6, cy - 8, cx - 6, cy + 8, (200, 90, 10), 2)
+        arcade.draw_line(cx + 6, cy - 8, cx + 6, cy + 8, (200, 90, 10), 2)
+        # Steeltje bovenop
+        arcade.draw_lrbt_rectangle_filled(cx - 2, cx + 2, cy + w * 0.5, cy + w * 0.5 + 5, (90, 150, 40))
+        # Enge, gloeiende driehoek-oogjes en een getande mond
+        geel = (255, 240, 120)
+        arcade.draw_triangle_filled(cx - 9, cy + 4, cx - 2, cy + 4, cx - 5, cy - 3, geel)
+        arcade.draw_triangle_filled(cx + 9, cy + 4, cx + 2, cy + 4, cx + 5, cy - 3, geel)
+        arcade.draw_triangle_filled(cx - 8, cy - 6, cx + 8, cy - 6, cx, cy - 12, geel)
 
     def _teken_zweefspringer(self):
         """Teken een licht blokje met twee vleugeltjes (zweeft lang in de lucht)."""

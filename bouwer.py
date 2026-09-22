@@ -103,6 +103,7 @@ PORTAAL_SOORTEN = ["vlucht", "blok", "ufo", "bal", "golf", "robot", "spin", "hel
                    "zwaargewicht", "versneller", "wind", "plakker",
                    "metronoom", "katapult", "krimpsprong", "tegendraads",
                    "turboflip", "spiegelkatapult", "schaduw", "pingpong",
+                   "spook", "vleermuis", "zombie", "pompoenkop",
                    "eigen", "dubbel", "enkel"]
 PORTAAL_NAAM = {"vlucht": "Vlieg", "blok": "Blok", "ufo": "UFO", "bal": "Bal",
                 "golf": "Golf", "robot": "Robot", "spin": "Spin", "heli": "Heli",
@@ -116,7 +117,9 @@ PORTAAL_NAAM = {"vlucht": "Vlieg", "blok": "Blok", "ufo": "UFO", "bal": "Bal",
                 "versneller": "Sneller", "wind": "Wind", "plakker": "Plakker",
                 "metronoom": "Metro", "katapult": "Katapult", "krimpsprong": "Krimp",
                 "tegendraads": "Tegen", "turboflip": "TurboFlip", "spiegelkatapult": "SpiegKat",
-                "schaduw": "Schaduw", "pingpong": "PingPong", "eigen": "Mijn",
+                "schaduw": "Schaduw", "pingpong": "PingPong",
+                "spook": "Spook", "vleermuis": "Vleermuis", "zombie": "Zombie",
+                "pompoenkop": "Pompoen", "eigen": "Mijn",
                 "dubbel": "Dubbel", "enkel": "Enkel"}
 
 # De snelheid-portalen waar je met de Snel-knop doorheen klikt

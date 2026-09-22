@@ -55,6 +55,10 @@ PORTAAL_KLEUREN = {
     "spiegelkatapult": ((120, 140, 180), (200, 215, 240)),  # spiegel-zilver = spiegel-katapult
     "schaduw": ((70, 60, 100), (150, 140, 190)),        # schaduw-paars = schaduw
     "pingpong": ((230, 230, 240), (255, 255, 255)),     # pingpong-wit = ping-pong
+    "spook": ((90, 90, 130), (210, 210, 245)),          # spookwit = spook
+    "vleermuis": ((60, 40, 90), (150, 110, 190)),       # nachtpaars = vleermuis
+    "zombie": ((80, 120, 60), (160, 200, 120)),         # zombiegroen = zombie
+    "pompoenkop": ((220, 110, 20), (255, 180, 80)),     # pompoen-oranje = pompoenkop
     "eigen": ((255, 150, 40), (255, 210, 130)),         # oranje = zelfgemaakt poppetje
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
@@ -307,6 +311,30 @@ def teken_portaal_icoon(soort, cx, cy):
         arcade.draw_circle_filled(cx, cy, 6, arcade.color.WHITE)
         arcade.draw_triangle_filled(cx, cy + 11, cx - 4, cy + 6, cx + 4, cy + 6, arcade.color.WHITE)
         arcade.draw_triangle_filled(cx, cy - 11, cx - 4, cy - 6, cx + 4, cy - 6, arcade.color.WHITE)
+    elif soort == "spook":
+        # Spookje (rond kopje met golvende onderrand)
+        arcade.draw_circle_filled(cx, cy + 2, 8, arcade.color.WHITE)
+        arcade.draw_lrbt_rectangle_filled(cx - 8, cx + 8, cy - 6, cy + 2, arcade.color.WHITE)
+        for i in range(3):
+            arcade.draw_circle_filled(cx - 6 + i * 6, cy - 6, 3, arcade.color.WHITE)
+        arcade.draw_circle_filled(cx - 3, cy + 3, 1.5, (40, 40, 70))
+        arcade.draw_circle_filled(cx + 3, cy + 3, 1.5, (40, 40, 70))
+    elif soort == "vleermuis":
+        # Vleermuisje (lijfje met twee vleugel-driehoeken)
+        arcade.draw_circle_filled(cx, cy, 5, arcade.color.WHITE)
+        arcade.draw_triangle_filled(cx - 3, cy, cx - 12, cy + 6, cx - 12, cy - 4, arcade.color.WHITE)
+        arcade.draw_triangle_filled(cx + 3, cy, cx + 12, cy + 6, cx + 12, cy - 4, arcade.color.WHITE)
+    elif soort == "zombie":
+        # Zombiekopje (vierkant met scheve oogjes)
+        arcade.draw_lrbt_rectangle_filled(cx - 8, cx + 8, cy - 8, cy + 8, arcade.color.WHITE)
+        arcade.draw_circle_filled(cx - 4, cy + 2, 2, (40, 60, 30))
+        arcade.draw_circle_filled(cx + 4, cy, 2, (40, 60, 30))
+    elif soort == "pompoenkop":
+        # Pompoentje met driehoek-oogjes
+        arcade.draw_circle_filled(cx, cy - 1, 8, arcade.color.WHITE)
+        arcade.draw_lrbt_rectangle_filled(cx - 1, cx + 1, cy + 7, cy + 11, (90, 150, 40))
+        arcade.draw_triangle_filled(cx - 6, cy + 3, cx - 1, cy + 3, cx - 3, cy - 2, (220, 110, 20))
+        arcade.draw_triangle_filled(cx + 6, cy + 3, cx + 1, cy + 3, cx + 3, cy - 2, (220, 110, 20))
     elif soort == "eigen":
         # Zelfgemaakt poppetje: een sterretje/blokje met een plusje
         arcade.draw_lrbt_rectangle_filled(cx - 7, cx + 7, cy - 7, cy + 7, arcade.color.WHITE)

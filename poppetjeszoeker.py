@@ -53,6 +53,10 @@ POPPETJES = [
     ("spiegelkatapult", "Spiegel-katapult", "Weggeschoten in een boog, maar bijsturen is omgedraaid."),
     ("schaduw", "Schaduw", "Een schaduw loopt je oude route na; raakt hij je, dan ga je af!"),
     ("pingpong", "Ping-pong", "Kaatst vanzelf tussen vloer en plafond; elke kaats flipt de zwaartekracht."),
+    ("spook", "Spook", "Zweeft griezelig en wordt steeds even onzichtbaar!"),
+    ("vleermuis", "Vleermuis", "Fladdert omhoog bij elke tik en wiebelt eng heen en weer."),
+    ("zombie", "Zombie", "Sjokt langzaam en zwaar vooruit en springt maar laag."),
+    ("pompoenkop", "Pompoenkop", "Laat een vurig spoor achter en gloeit eng."),
     ("eigen", "Mijn poppetje", "Je zelfgemaakte poppetje uit de poppetjes-maker."),
 ]
 
