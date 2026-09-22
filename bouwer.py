@@ -77,8 +77,8 @@ ANIM_NAAM = {"uit": "uit", "opneer": "op en neer", "zij": "links-rechts",
 
 # Beweeg-kwasten: klik op een voorwerp om ALLEEN dat voorwerp te laten bewegen
 BEWEEG_KWASTEN = ["b_opneer", "b_zij", "b_rondje", "b_wiebel"]
-VERF_SOORTEN = ["onzichtbaar", "doorheen"] + list(VERF_KLEUREN.keys()) + BEWEEG_KWASTEN
-VERF_NAAM = {"onzichtbaar": "Onzicht", "doorheen": "Doorheen",
+VERF_SOORTEN = ["onzichtbaar", "doorheen", "volg"] + list(VERF_KLEUREN.keys()) + BEWEEG_KWASTEN
+VERF_NAAM = {"onzichtbaar": "Onzicht", "doorheen": "Doorheen", "volg": "Volg mij",
              "rood": "Rood", "blauw": "Blauw", "groen": "Groen",
              "geel": "Geel", "roze": "Roze", "oranje": "Oranje", "paars": "Paars",
              "b_opneer": "Bew op-neer", "b_zij": "Bew links-rechts",
@@ -568,7 +568,7 @@ class BouwerView(arcade.View):
                 for c in alle:
                     self.beweeg[c] = stijl
                 self._melding = "💃 %s bij alles" % naam
-        elif s in ("onzichtbaar", "doorheen"):
+        elif s in ("onzichtbaar", "doorheen", "volg"):
             heeft_alles = all(self.verf.get(c) == s for c in alle)
             if heeft_alles:                              # andersom: overal weer normaal
                 for c in alle:
@@ -654,7 +654,7 @@ class BouwerView(arcade.View):
                     for kr in data.get("verf", []):
                         if len(kr) > 2:
                             waarde = kr[2]
-                            if isinstance(waarde, str) and waarde not in ("onzichtbaar", "doorheen"):
+                            if isinstance(waarde, str) and waarde not in ("onzichtbaar", "doorheen", "volg"):
                                 waarde = [waarde]        # oude enkele kleur -> lijstje
                         else:
                             waarde = "onzichtbaar"
@@ -784,6 +784,13 @@ class BouwerView(arcade.View):
                 arcade.draw_line(sx + 8, cy, sx + CEL - 8, cy, (40, 160, 70), 3)
                 arcade.draw_triangle_filled(sx + CEL - 6, cy, sx + CEL - 14, cy - 5,
                                             sx + CEL - 14, cy + 5, (40, 160, 70))
+            elif verf_soort == "volg":
+                # paars waas met drie stippen -> dit voorwerp komt achter je aan
+                arcade.draw_lrbt_rectangle_filled(sx, sx + CEL, sy, sy + CEL, (220, 150, 255, 90))
+                arcade.draw_lrbt_rectangle_outline(sx, sx + CEL, sy, sy + CEL, (180, 90, 230, 200), 2)
+                cy = sy + CEL / 2
+                for i in range(3):
+                    arcade.draw_circle_filled(sx + 10 + i * 9, cy, 3 - i * 0.6, (150, 60, 210))
             elif isinstance(verf_soort, list):
                 # De gekozen kleuren als strepen (zo zie je welke kleuren erin zitten)
                 n = len(verf_soort)
@@ -973,8 +980,9 @@ class BouwerView(arcade.View):
                 else:
                     self.beweeg[cel] = stijl
                 return
-            if s in ("onzichtbaar", "doorheen"):
-                # aan/uit: onzichtbaar (blijft botsen) of doorheen (geen botsing)
+            if s in ("onzichtbaar", "doorheen", "volg"):
+                # aan/uit: onzichtbaar (blijft botsen), doorheen (geen botsing)
+                # of volg (het voorwerp komt tijdens het spelen achter je aan)
                 if self.verf.get(cel) == s:
                     self.verf.pop(cel, None)
                 else:
@@ -1284,6 +1292,7 @@ class BouwerView(arcade.View):
             waarde_v = self.verf.get((kol, rij))
             onz = waarde_v == "onzichtbaar"
             door = waarde_v == "doorheen"        # doorheen-verf: geen botsing
+            vlg = waarde_v == "volg"             # volg-verf: komt achter je aan
             verf_rgbs = None
             if isinstance(waarde_v, list):
                 verf_rgbs = [VERF_KLEUREN[c] for c in waarde_v if c in VERF_KLEUREN] or None
@@ -1376,7 +1385,7 @@ class BouwerView(arcade.View):
                 checkpoints.append(Checkpoint(wx, wy, CEL))
             # Verf én beweging toepassen op elk voorwerp dat we net voor dit vakje maakten.
             bew = self.beweeg.get((kol, rij))
-            if onz or door or verf_rgbs or bew:
+            if onz or door or vlg or verf_rgbs or bew:
                 for lijst, n in ((platforms, voor[0]), (vijanden, voor[1]),
                                  (portalen, voor[2]), (teleporters, voor[3]),
                                  (springers, voor[4]), (powerups, voor[5])):
@@ -1385,6 +1394,9 @@ class BouwerView(arcade.View):
                             o.onzichtbaar = True
                         elif door:
                             o.doorheen = True     # geen botsing: je loopt er doorheen
+                        elif vlg:
+                            o.volg = True         # komt tijdens het spelen achter je aan
+                            o.doorheen = True     # geen botsing (het zweeft bij je)
                         elif verf_rgbs:
                             o.verf_kleuren = verf_rgbs
                         if bew:
@@ -1399,6 +1411,8 @@ class BouwerView(arcade.View):
             w = self.verf.get((kol, rij))
             if w == "onzichtbaar":
                 deco.onzichtbaar = True       # met verf ook de decoratie onzichtbaar
+            elif w == "volg":
+                deco.volg = True              # deze decoratie komt achter je aan
             elif isinstance(w, list):
                 rgbs = [VERF_KLEUREN[c] for c in w if c in VERF_KLEUREN]
                 if rgbs:

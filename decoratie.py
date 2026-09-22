@@ -11,14 +11,13 @@ import time
 # De laatste zes BEWEGEN (animatie) — en net als alle deco loop je er doorheen.
 DECO_SOORTEN = ["bloem", "boom", "wolk", "ster", "struik",
                 "zon", "maan", "regenboog", "paddenstoel", "steen", "vlinder",
-                "vuur", "fonkel", "draaister", "waterval", "hartje", "bel", "sliert"]
+                "vuur", "fonkel", "draaister", "waterval", "hartje", "bel"]
 DECO_NAAM = {"bloem": "Bloem", "boom": "Boom", "wolk": "Wolk",
              "ster": "Ster", "struik": "Struik", "zon": "Zon", "maan": "Maan",
              "regenboog": "Regenboog", "paddenstoel": "Paddenstoel",
              "steen": "Steen", "vlinder": "Vlinder",
              "vuur": "Vuur", "fonkel": "Fonkel", "draaister": "Draaister",
-             "waterval": "Waterval", "hartje": "Hartje", "bel": "Belletjes",
-             "sliert": "Volg-sliert"}
+             "waterval": "Waterval", "hartje": "Hartje", "bel": "Belletjes"}
 
 
 def teken_deco(soort, x, y, g, rotatie=0, kleur=None):
@@ -188,14 +187,6 @@ def teken_deco(soort, x, y, g, rotatie=0, kleur=None):
             by = y + ((t * 42 + i * g * 0.45) % g)              # belletjes stijgen op
             bx = cx + (i - 1.5) * g * 0.12 + math.sin(t * 3 + i) * g * 0.08
             arcade.draw_circle_outline(bx, by, g * 0.07 + (i % 2) * g * 0.03, K((180, 230, 255)), 2)
-    elif soort == "sliert":
-        # Kettinkje van blokjes aan een touwtje (in het spel komt het achter je aan)
-        cy = y + g * 0.5
-        arcade.draw_line(x + g * 0.12, cy, x + g * 0.88, cy, K((150, 150, 160)), 2)
-        for fx in (0.25, 0.5, 0.75):
-            px = x + g * fx
-            arcade.draw_lrbt_rectangle_filled(px - g * 0.09, px + g * 0.09,
-                                              cy - g * 0.09, cy + g * 0.09, K((150, 90, 220)))
 
 
 class Decoratie:
