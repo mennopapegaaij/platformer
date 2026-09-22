@@ -109,6 +109,19 @@ VERSNEL_MAX = 8           # hoeveel extra snelheid je maximaal krijgt
 WIND_KRACHT = 2.2         # hoe hard de wind je opzij duwt
 WIND_INTERVAL = 120       # om de hoeveel stapjes de wind van kant wisselt
 
+# --- Metronoom-modus: springen mag ALLEEN precies op de tel (geen toeval) ---
+METRO_INTERVAL = 30       # om de hoeveel stapjes er een 'tik' is (30 = elke halve seconde)
+METRO_VENSTER = 4         # hoeveel stapjes rond de tik je sprong nog telt (klein = moeilijk)
+
+# --- Katapult-modus: je wordt steeds in dezelfde boog weggeschoten ---
+KATA_OMHOOG = 13          # hoe hard je omhoog wordt geschoten bij elke lancering
+KATA_VOORUIT = 6          # hoe hard je vooruit wordt geschoten bij elke lancering
+KATA_STUUR = 0.25         # hoe klein beetje je in de lucht mag bijsturen
+
+# --- Krimpsprong-modus: elke sprong in de lucht is lager dan de vorige ---
+KRIMP_AF = 0.62           # elke volgende sprong is nog maar dit deel van de vorige
+KRIMP_MIN = 0.18          # kleiner dan dit -> geen sprong meer (tot je weer land)
+
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
 #   0 = naar beneden, 1 = naar rechts, 2 = naar boven, 3 = naar links
@@ -194,6 +207,10 @@ class Speler:
         self._wind_richting = 1          # wind: welke kant de wind nu op blaast (1/-1)
         self.eigen_instel = None         # zelfgemaakt poppetje: dict met vorm/kleur/kunstjes
         self._lucht_sprongen = 0         # eigen poppetje: hoeveel keer je al in de lucht sprong
+        self._metro_teller = 0           # metronoom: tel tot de volgende 'tik'
+        self._krimp_nr = 0               # krimpsprong: hoeveelste sprong sinds je laatst stond
+        self._tegen_flip = False         # tegendraads: zijn links/rechts nu omgedraaid?
+        self._vorige_grond = False       # onthoud of je vorige stap op de grond stond
 
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
@@ -238,6 +255,10 @@ class Speler:
         self._wind_teller = 0               # wind: reset
         self._wind_richting = 1
         self._lucht_sprongen = 0            # eigen poppetje: luchtsprongen reset
+        self._metro_teller = 0              # metronoom: teller terug naar begin
+        self._krimp_nr = 0                  # krimpsprong: teller reset
+        self._tegen_flip = False            # tegendraads: links/rechts weer gewoon
+        self._vorige_grond = False          # grond-onthoud reset
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -287,6 +308,12 @@ class Speler:
             if self._ritme_teller >= RITME_INTERVAL:
                 self._ritme_teller = 0
                 self.zwaartekracht_richting *= -1
+
+        # Metronoom: tel de maat mee. Springen mag straks alleen precies op de 'tik'.
+        if self.modus == "metronoom":
+            self._metro_teller += 1
+            if self._metro_teller >= METRO_INTERVAL:
+                self._metro_teller = 0
 
         # Bepaal de snelheid: normaal + snelheidsboost power-up + punten-bonus
         snelheid = SPELER_SNELHEID + self.snelheid_bonus
@@ -397,6 +424,26 @@ class Speler:
                 else:
                     doel = 0
                 self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
+            elif self.modus == "tegendraads":
+                # Tegendraads: elke keer dat je landt wisselen links en rechts (zie onderaan).
+                Lt, Rt = (R, L) if self._tegen_flip else (L, R)
+                if Lt:
+                    self.snelheid_x = -snelheid
+                    self.kijkt_rechts = False
+                elif Rt:
+                    self.snelheid_x = snelheid
+                    self.kijkt_rechts = True
+                else:
+                    self.snelheid_x = 0
+            elif self.modus == "katapult":
+                # Katapult: je stuurt maar een heel klein beetje bij; de vaste boog doet de rest.
+                if L:
+                    self.snelheid_x -= KATA_STUUR
+                    self.kijkt_rechts = False
+                elif R:
+                    self.snelheid_x += KATA_STUUR
+                    self.kijkt_rechts = True
+                self.snelheid_x *= 0.99         # een piepklein beetje luchtweerstand
             elif L:
                 self.snelheid_x = -snelheid
                 self.kijkt_rechts = False   # Speler kijkt naar links
@@ -586,6 +633,7 @@ class Speler:
                 self.heeft_dubbel_gesprongen = False  # Op de grond: extra sprong herlaadbaar
                 self._lucht_sprongen = 0              # eigen poppetje: luchtsprongen herladen
                 self._robot_boost = 0                 # robot mag pas na een nieuwe tik duwen
+                self._krimp_nr = 0                    # krimpsprong: weer op volle hoogte beginnen
                 # Verdwijnblok: laat het weten dat je erop staat (het gaat dan verdwijnen)
                 if hasattr(platform, "aangeraakt"):
                     platform.aangeraakt()
@@ -635,6 +683,17 @@ class Speler:
                 self.snelheid_y = 0
                 if omgedraaid or self.modus in ("bal", "spin"):
                     self.staat_op_grond = True   # je 'ligt' tegen het plafond
+
+        # Net geland (van de lucht op de grond)? Sommige poppetjes doen dan iets speciaals.
+        net_geland = self.staat_op_grond and not self._vorige_grond
+        if self.modus == "tegendraads" and net_geland:
+            self._tegen_flip = not self._tegen_flip     # links en rechts wisselen om
+        if self.modus == "katapult" and self.staat_op_grond:
+            # Meteen weer in precies dezelfde boog wegschieten (omhoog én vooruit)
+            self.snelheid_y = KATA_OMHOOG
+            self.snelheid_x = KATA_VOORUIT
+            self.staat_op_grond = False
+        self._vorige_grond = self.staat_op_grond
 
     def _eigen(self, sleutel):
         """Hulpje voor het zelfgemaakte poppetje: geef een instelling terug (of None)."""
@@ -826,6 +885,24 @@ class Speler:
         if self.modus == "vertraagd":
             self._vert_spring_wacht = VERT_DELAY   # de sprong komt straks pas echt
             return
+        if self.modus == "metronoom":
+            # Springen mag ALLEEN precies op de tel. Vlak vóór of ná de tik telt ook nog.
+            op_de_tel = (self._metro_teller <= METRO_VENSTER
+                         or self._metro_teller >= METRO_INTERVAL - METRO_VENSTER)
+            if op_de_tel:
+                self._doe_sprong()
+            return
+        if self.modus == "katapult":
+            return                                 # katapult springt vanzelf, jij mag niet
+        if self.modus == "krimpsprong":
+            # Elke sprong in de lucht is lager dan de vorige; op de grond weer vol.
+            factor = KRIMP_AF ** self._krimp_nr
+            if factor < KRIMP_MIN:
+                return                             # geen sprong meer tot je weer land
+            self.snelheid_y = ((SPRING_KRACHT + self.sprong_bonus)
+                               * factor * self.zwaartekracht_richting)
+            self._krimp_nr += 1
+            return
         if self.modus == "draaisturing":
             # Springen = wegschieten tegen de huidige (draaiende) zwaartekracht in
             if self.staat_op_grond:
@@ -1016,6 +1093,18 @@ class Speler:
             return
         if self.modus == "plakker":
             self._teken_plakker()
+            return
+        if self.modus == "metronoom":
+            self._teken_metronoom()
+            return
+        if self.modus == "katapult":
+            self._teken_katapult()
+            return
+        if self.modus == "krimpsprong":
+            self._teken_krimpsprong()
+            return
+        if self.modus == "tegendraads":
+            self._teken_tegendraads()
             return
         if self.modus == "eigen":
             self._teken_eigen()
@@ -1537,6 +1626,76 @@ class Speler:
         # Oogjes bovenin
         arcade.draw_circle_filled(x + 9, y + h - 9, 3, OOG_KLEUR)
         arcade.draw_circle_filled(x + w - 9, y + h - 9, 3, OOG_KLEUR)
+
+    def _teken_metronoom(self):
+        """Teken een metronoom: een blokje met een tikkende wijzer. Op de 'tik' licht hij op."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w / 2
+        # Op (of vlak bij) de tik kleurt het blokje fel op — zo zie je wanneer je mag springen
+        op_de_tel = (self._metro_teller <= METRO_VENSTER
+                     or self._metro_teller >= METRO_INTERVAL - METRO_VENSTER)
+        lijf = (255, 235, 120) if op_de_tel else (170, 130, 60)
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, lijf)
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (90, 60, 20), 3)
+        # De wijzer zwaait heen en weer met de maat (links op tik 0, rechts op de helft)
+        deel = self._metro_teller / max(1, METRO_INTERVAL)     # 0.0 .. 1.0
+        zwaai = math.sin(deel * 2 * math.pi) * 0.7             # heen en weer
+        px = cx + math.sin(zwaai) * (w * 0.35)
+        py = y + h - 4
+        arcade.draw_line(cx, y + 6, px, py, (60, 40, 10), 3)
+        arcade.draw_circle_filled(px, py, 3, (200, 40, 40))
+        # Oogjes onderin
+        arcade.draw_circle_filled(cx - 5, y + 9, 2.5, OOG_KLEUR)
+        arcade.draw_circle_filled(cx + 5, y + 9, 2.5, OOG_KLEUR)
+
+    def _teken_katapult(self):
+        """Teken een katapult-steentje met een boog-pijltje (het wordt weggeschoten)."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w / 2
+        cy = y + h / 2
+        # Rond steentje
+        arcade.draw_circle_filled(cx, cy, 11, (140, 120, 100))
+        arcade.draw_circle_outline(cx, cy, 11, (80, 60, 40), 3)
+        # Een boogje omhoog-vooruit (laat de vaste boog zien)
+        arcade.draw_arc_outline(cx, cy - 2, 26, 20, (255, 230, 120), 20, 160, 2)
+        # Pijlpunt rechtsboven op de boog
+        arcade.draw_triangle_filled(cx + 13, cy + 6, cx + 6, cy + 6, cx + 11, cy + 13, (255, 230, 120))
+        # Vastberaden oogjes
+        arcade.draw_circle_filled(cx - 4, cy + 2, 2, OOG_KLEUR)
+        arcade.draw_circle_filled(cx + 4, cy + 2, 2, OOG_KLEUR)
+
+    def _teken_krimpsprong(self):
+        """Teken een blokje met steeds kleinere pijltjes omhoog (elke sprong lager)."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w / 2
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (90, 200, 160))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (30, 110, 90), 3)
+        wit = (255, 255, 255)
+        # Drie pijltjes omhoog die steeds kleiner worden
+        for i, gr in enumerate((7, 5, 3)):
+            ax = x + 8 + i * 9
+            arcade.draw_triangle_filled(ax, y + h - 6, ax - gr / 2, y + h - 6 - gr,
+                                        ax + gr / 2, y + h - 6 - gr, wit)
+        # Oogjes onderin
+        arcade.draw_circle_filled(cx - 5, y + 9, 2.5, OOG_KLEUR)
+        arcade.draw_circle_filled(cx + 5, y + 9, 2.5, OOG_KLEUR)
+
+    def _teken_tegendraads(self):
+        """Teken een blokje met twee tegengestelde pijlen (links/rechts wisselen om)."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w / 2
+        cy = y + h / 2
+        # Als links/rechts nu omgedraaid is, kleurt hij anders zodat je het ziet
+        lijf = (230, 120, 200) if self._tegen_flip else (150, 120, 230)
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, lijf)
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (70, 40, 120), 3)
+        wit = (255, 255, 255)
+        # Pijl naar links en pijl naar rechts (ze wisselen steeds van rol)
+        arcade.draw_triangle_filled(x + 5, cy, x + 12, cy - 5, x + 12, cy + 5, wit)
+        arcade.draw_triangle_filled(x + w - 5, cy, x + w - 12, cy - 5, x + w - 12, cy + 5, wit)
+        # Oogjes bovenin
+        arcade.draw_circle_filled(cx - 5, y + h - 9, 2.5, OOG_KLEUR)
+        arcade.draw_circle_filled(cx + 5, y + h - 9, 2.5, OOG_KLEUR)
 
     def _teken_zweefspringer(self):
         """Teken een licht blokje met twee vleugeltjes (zweeft lang in de lucht)."""

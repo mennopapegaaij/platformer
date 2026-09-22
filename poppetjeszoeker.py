@@ -45,6 +45,10 @@ POPPETJES = [
     ("versneller", "Versneller", "Hoe langer je één kant op loopt, hoe sneller je gaat."),
     ("wind", "Wind", "Een windvlaag duwt je opzij; hij draait op de maat om."),
     ("plakker", "Plakker", "Plakt aan muren en klimt in hopjes omhoog."),
+    ("metronoom", "Metronoom", "Springen mag ALLEEN precies op de tel!"),
+    ("katapult", "Katapult", "Wordt steeds in dezelfde boog weggeschoten; stuur klein bij."),
+    ("krimpsprong", "Krimpsprong", "Elke sprong in de lucht is lager dan de vorige."),
+    ("tegendraads", "Tegendraads", "Elke keer dat je landt draaien links en rechts om!"),
     ("eigen", "Mijn poppetje", "Je zelfgemaakte poppetje uit de poppetjes-maker."),
 ]
 
