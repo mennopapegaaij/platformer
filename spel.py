@@ -901,6 +901,8 @@ class PlatformerSpel(arcade.View):
                      "schaduw": "schaduw", "pingpong": "pingpong",
                      "spook": "spook", "vleermuis": "vleermuis",
                      "zombie": "zombie", "pompoenkop": "pompoenkop",
+                     "voorspeller": "voorspeller", "pendel": "pendel",
+                     "blinde": "blinde", "dubbelflip": "dubbelflip",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -929,7 +931,8 @@ class PlatformerSpel(arcade.View):
                        "zwaargewicht", "versneller", "wind", "plakker",
                        "metronoom", "katapult", "krimpsprong", "tegendraads",
                        "turboflip", "spiegelkatapult", "schaduw", "pingpong",
-                       "spook", "vleermuis", "zombie", "pompoenkop"):
+                       "spook", "vleermuis", "zombie", "pompoenkop",
+                       "voorspeller", "pendel", "blinde", "dubbelflip"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:

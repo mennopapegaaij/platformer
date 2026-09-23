@@ -57,6 +57,10 @@ POPPETJES = [
     ("vleermuis", "Vleermuis", "Fladdert omhoog bij elke tik en wiebelt eng heen en weer."),
     ("zombie", "Zombie", "Sjokt langzaam en zwaar vooruit en springt maar laag."),
     ("pompoenkop", "Pompoenkop", "Laat een vurig spoor achter en gloeit eng."),
+    ("voorspeller", "Voorspeller", "Onstopbaar vooruit, en je sprong komt pas later!"),
+    ("pendel", "Pendel", "Loopt vanzelf en keert op de maat om; jij kunt alleen springen."),
+    ("blinde", "Blinde", "Je bent onzichtbaar en flitst alleen even op de maat."),
+    ("dubbelflip", "Dubbelflip", "Elke sprong: zwaartekracht om én links/rechts wisselen."),
     ("eigen", "Mijn poppetje", "Je zelfgemaakte poppetje uit de poppetjes-maker."),
 ]
 

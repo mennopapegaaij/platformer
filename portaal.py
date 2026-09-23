@@ -59,6 +59,10 @@ PORTAAL_KLEUREN = {
     "vleermuis": ((60, 40, 90), (150, 110, 190)),       # nachtpaars = vleermuis
     "zombie": ((80, 120, 60), (160, 200, 120)),         # zombiegroen = zombie
     "pompoenkop": ((220, 110, 20), (255, 180, 80)),     # pompoen-oranje = pompoenkop
+    "voorspeller": ((70, 110, 200), (170, 200, 250)),   # tijd-blauw = voorspeller
+    "pendel": ((200, 120, 60), (245, 190, 140)),        # slinger-bruin = pendel
+    "blinde": ((40, 40, 50), (120, 120, 140)),          # donker = blinde
+    "dubbelflip": ((150, 60, 120), (230, 150, 210)),    # flip-paars = dubbelflip
     "eigen": ((255, 150, 40), (255, 210, 130)),         # oranje = zelfgemaakt poppetje
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
@@ -335,6 +339,26 @@ def teken_portaal_icoon(soort, cx, cy):
         arcade.draw_lrbt_rectangle_filled(cx - 1, cx + 1, cy + 7, cy + 11, (90, 150, 40))
         arcade.draw_triangle_filled(cx - 6, cy + 3, cx - 1, cy + 3, cx - 3, cy - 2, (220, 110, 20))
         arcade.draw_triangle_filled(cx + 6, cy + 3, cx + 1, cy + 3, cx + 3, cy - 2, (220, 110, 20))
+    elif soort == "voorspeller":
+        # Zandlopertje
+        arcade.draw_triangle_filled(cx - 7, cy + 9, cx + 7, cy + 9, cx, cy, arcade.color.WHITE)
+        arcade.draw_triangle_filled(cx - 7, cy - 9, cx + 7, cy - 9, cx, cy, arcade.color.WHITE)
+    elif soort == "pendel":
+        # Pijl naar links en naar rechts met een lijntje ertussen
+        arcade.draw_line(cx - 7, cy, cx + 7, cy, arcade.color.WHITE, 2)
+        arcade.draw_triangle_filled(cx - 11, cy, cx - 5, cy - 5, cx - 5, cy + 5, arcade.color.WHITE)
+        arcade.draw_triangle_filled(cx + 11, cy, cx + 5, cy - 5, cx + 5, cy + 5, arcade.color.WHITE)
+    elif soort == "blinde":
+        # Een dicht oogje (streepje met wimpers)
+        arcade.draw_arc_outline(cx, cy + 2, 18, 10, arcade.color.WHITE, 180, 360, 2)
+        for dx in (-5, 0, 5):
+            arcade.draw_line(cx + dx, cy - 3, cx + dx, cy - 7, arcade.color.WHITE, 2)
+    elif soort == "dubbelflip":
+        # Vier pijltjes (op, neer, links, rechts)
+        for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+            px, py = cx + dx * 10, cy + dy * 10
+            arcade.draw_triangle_filled(px, py, px - dy * 4 - dx * 5, py - dx * 4 - dy * 5,
+                                        px + dy * 4 - dx * 5, py + dx * 4 - dy * 5, arcade.color.WHITE)
     elif soort == "eigen":
         # Zelfgemaakt poppetje: een sterretje/blokje met een plusje
         arcade.draw_lrbt_rectangle_filled(cx - 7, cx + 7, cy - 7, cy + 7, arcade.color.WHITE)

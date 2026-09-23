@@ -153,6 +153,18 @@ ZOMBIE_ZWAARTE = 1.4      # iets zwaardere val (voelt log)
 # --- Pompoenkop: laat een vurig spoor achter en gloeit eng ---
 POMP_SPOOR = 14           # hoeveel vuur-plekjes er achter je aan zweven
 
+# --- Voorspeller: turbo-snelheid én je sprong komt pas later (je moet vooruit denken) ---
+VOORSPEL_DELAY = 15       # hoeveel stapjes je sprong later komt (15 = een kwart seconde)
+
+# --- Pendel: loopt vanzelf en keert op een vaste maat om; jij kunt alleen springen ---
+PENDEL_INTERVAL = 50      # om de hoeveel stapjes hij van richting wisselt
+
+# --- Blinde: je bent onzichtbaar en flitst alleen even op de maat ---
+BLIND_INTERVAL = 50       # om de hoeveel stapjes je even zichtbaar wordt
+BLIND_ZICHT = 8           # hoelang je dan zichtbaar bent
+
+# --- Dubbelflip: elke sprong draait de zwaartekracht om én wisselt links/rechts ---
+
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
 #   0 = naar beneden, 1 = naar rechts, 2 = naar boven, 3 = naar links
@@ -246,6 +258,10 @@ class Speler:
         self._spook_teller = 0           # spook: tel tot hij weer even onzichtbaar wordt
         self._vleer_fase = 0.0           # vleermuis: waar we in de wiebel zitten
         self._pomp_spoor = []            # pompoenkop: bewaarde plekjes voor het vuur-spoor
+        self._pendel_teller = 0          # pendel: tel tot hij omkeert
+        self._pendel_richting = 1        # pendel: welke kant hij nu op loopt (1/-1)
+        self._blind_teller = 0           # blinde: tel tot je weer even zichtbaar bent
+        self._dubbel_spiegel = False     # dubbelflip: zijn links/rechts nu omgedraaid?
 
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
@@ -298,6 +314,10 @@ class Speler:
         self._spook_teller = 0              # spook: onzichtbaar-teller reset
         self._vleer_fase = 0.0              # vleermuis: wiebel terug naar begin
         self._pomp_spoor = []               # pompoenkop: vuur-spoor leeg
+        self._pendel_teller = 0             # pendel: reset
+        self._pendel_richting = 1
+        self._blind_teller = 0              # blinde: reset
+        self._dubbel_spiegel = False        # dubbelflip: links/rechts weer gewoon
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -357,6 +377,17 @@ class Speler:
         # Spook: tel door zodat hij steeds een moment (bijna) onzichtbaar wordt
         if self.modus == "spook":
             self._spook_teller = (self._spook_teller + 1) % (SPOOK_ONZICHT_NA + SPOOK_ONZICHT_DUUR)
+
+        # Pendel: op een vaste maat van looprichting wisselen
+        if self.modus == "pendel":
+            self._pendel_teller += 1
+            if self._pendel_teller >= PENDEL_INTERVAL:
+                self._pendel_teller = 0
+                self._pendel_richting *= -1
+
+        # Blinde: tel door; alleen aan het begin van elke maat ben je zichtbaar
+        if self.modus == "blinde":
+            self._blind_teller = (self._blind_teller + 1) % BLIND_INTERVAL
 
         # Pompoenkop: bewaar plekjes voor het vurige spoor achter je aan
         if self.modus == "pompoenkop":
@@ -424,7 +455,7 @@ class Speler:
             if self.modus == "eigen" and self._eigen("spiegel"):
                 L, R = R, L
 
-            if (self.modus in ("turbo", "turboflip")
+            if (self.modus in ("turbo", "turboflip", "voorspeller")
                     or (self.modus == "eigen" and self._eigen("turbo"))):
                 # Turbo: je raast altijd op topsnelheid naar rechts en kunt NIET stoppen!
                 # (Turbo-flip doet dit óók, plus de zwaartekracht flipt op de maat.)
@@ -519,6 +550,21 @@ class Speler:
                     self.kijkt_rechts = True
                 else:
                     self.snelheid_x = wiebel
+            elif self.modus == "pendel":
+                # Pendel: loopt vanzelf; de richting wisselt op de maat (jij stuurt niet)
+                self.snelheid_x = snelheid * self._pendel_richting
+                self.kijkt_rechts = self._pendel_richting > 0
+            elif self.modus == "dubbelflip":
+                # Dubbelflip: na elke sprong zijn links en rechts omgedraaid
+                Ld, Rd = (R, L) if self._dubbel_spiegel else (L, R)
+                if Ld:
+                    self.snelheid_x = -snelheid
+                    self.kijkt_rechts = False
+                elif Rd:
+                    self.snelheid_x = snelheid
+                    self.kijkt_rechts = True
+                else:
+                    self.snelheid_x = 0
             elif L:
                 self.snelheid_x = -snelheid
                 self.kijkt_rechts = False   # Speler kijkt naar links
@@ -606,7 +652,7 @@ class Speler:
                 self.zet_grootte(doel, 0)     # frames=0 -> geen automatische terugkeer
 
         # Vertraagd: een gevraagde sprong komt pas ná de vertraging echt
-        if self.modus == "vertraagd" and self._vert_spring_wacht > 0:
+        if self.modus in ("vertraagd", "voorspeller") and self._vert_spring_wacht > 0:
             self._vert_spring_wacht -= 1
             if self._vert_spring_wacht == 0:
                 self._doe_sprong()
@@ -991,6 +1037,19 @@ class Speler:
         if self.modus == "vertraagd":
             self._vert_spring_wacht = VERT_DELAY   # de sprong komt straks pas echt
             return
+        if self.modus == "voorspeller":
+            # Voorspeller: de sprong komt pas straks (alleen als er nog geen sprong wacht)
+            if self._vert_spring_wacht == 0:
+                self._vert_spring_wacht = VOORSPEL_DELAY
+            return
+        if self.modus == "dubbelflip":
+            # Dubbelflip: alleen als je ergens op staat (vloer of plafond):
+            # de zwaartekracht draait om én links/rechts wisselen
+            if self.staat_op_grond:
+                self.zwaartekracht_richting *= -1
+                self._dubbel_spiegel = not self._dubbel_spiegel
+                self.snelheid_y = 0
+            return
         if self.modus == "metronoom":
             # Springen mag ALLEEN precies op de tel. Vlak vóór of ná de tik telt ook nog.
             op_de_tel = (self._metro_teller <= METRO_VENSTER
@@ -1238,6 +1297,18 @@ class Speler:
             return
         if self.modus == "pompoenkop":
             self._teken_pompoenkop()
+            return
+        if self.modus == "voorspeller":
+            self._teken_voorspeller()
+            return
+        if self.modus == "pendel":
+            self._teken_pendel()
+            return
+        if self.modus == "blinde":
+            self._teken_blinde()
+            return
+        if self.modus == "dubbelflip":
+            self._teken_dubbelflip()
             return
         if self.modus == "eigen":
             self._teken_eigen()
@@ -1985,6 +2056,68 @@ class Speler:
         arcade.draw_triangle_filled(cx - 9, cy + 4, cx - 2, cy + 4, cx - 5, cy - 3, geel)
         arcade.draw_triangle_filled(cx + 9, cy + 4, cx + 2, cy + 4, cx + 5, cy - 3, geel)
         arcade.draw_triangle_filled(cx - 8, cy - 6, cx + 8, cy - 6, cx, cy - 12, geel)
+
+    def _teken_voorspeller(self):
+        """Teken een raceblokje met een zandlopertje (je sprong komt later)."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx, cy = x + w / 2, y + h / 2
+        for i, dy in enumerate((h * 0.3, h * 0.6)):
+            arcade.draw_line(x - 12 - i * 3, y + dy, x, y + dy, (255, 200, 80), 2)
+        # Wacht er een sprong? Dan kleurt hij geel (zo zie je dat hij eraan komt)
+        lijf = (240, 200, 60) if self._vert_spring_wacht > 0 else (70, 110, 200)
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, lijf)
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (30, 40, 90), 3)
+        # Zandlopertje (twee driehoekjes punt op punt)
+        wit = (255, 255, 255)
+        arcade.draw_triangle_filled(cx - 6, cy + 9, cx + 6, cy + 9, cx, cy, wit)
+        arcade.draw_triangle_filled(cx - 6, cy - 9, cx + 6, cy - 9, cx, cy, wit)
+        arcade.draw_circle_filled(x + 7, y + h - 7, 2.5, OOG_KLEUR)
+        arcade.draw_circle_filled(x + w - 7, y + h - 7, 2.5, OOG_KLEUR)
+
+    def _teken_pendel(self):
+        """Teken een slinger-blokje met een pijl die de looprichting laat zien."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx, cy = x + w / 2, y + h / 2
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (200, 120, 60))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (110, 60, 20), 3)
+        wit = (255, 255, 255)
+        r = self._pendel_richting
+        # Pijl in de richting waar hij nu heen loopt
+        arcade.draw_line(cx - 8 * r, cy, cx + 4 * r, cy, wit, 3)
+        arcade.draw_triangle_filled(cx + 10 * r, cy, cx + 3 * r, cy - 6, cx + 3 * r, cy + 6, wit)
+        # Hoe lang nog tot hij omkeert: een balkje dat leegloopt
+        deel = 1 - self._pendel_teller / PENDEL_INTERVAL
+        arcade.draw_lrbt_rectangle_filled(x + 3, x + 3 + (w - 6) * deel, y + 3, y + 7, (255, 240, 120))
+        arcade.draw_circle_filled(x + 8, y + h - 8, 2.5, OOG_KLEUR)
+        arcade.draw_circle_filled(x + w - 8, y + h - 8, 2.5, OOG_KLEUR)
+
+    def _teken_blinde(self):
+        """Onzichtbaar! Alleen aan het begin van elke maat flits je even op."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        if self._blind_teller < BLIND_ZICHT:
+            arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (255, 255, 255))
+            arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (120, 120, 140), 3)
+            arcade.draw_circle_filled(x + 9, y + h - 10, 4, OOG_KLEUR)
+            arcade.draw_circle_filled(x + w - 9, y + h - 10, 4, OOG_KLEUR)
+        else:
+            # Heel vaag randje: bijna niet te zien
+            arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (255, 255, 255, 18), 1)
+
+    def _teken_dubbelflip(self):
+        """Teken een blokje met flip-pijlen; de kleur wisselt als links/rechts om zijn."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx, cy = x + w / 2, y + h / 2
+        lijf = (230, 90, 90) if self._dubbel_spiegel else (90, 170, 230)
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, lijf)
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (40, 40, 60), 3)
+        wit = (255, 255, 255)
+        # Pijl omhoog/omlaag (zwaartekracht) en links/rechts (sturen)
+        arcade.draw_triangle_filled(cx, y + h - 3, cx - 4, y + h - 9, cx + 4, y + h - 9, wit)
+        arcade.draw_triangle_filled(cx, y + 3, cx - 4, y + 9, cx + 4, y + 9, wit)
+        arcade.draw_triangle_filled(x + 3, cy, x + 9, cy - 4, x + 9, cy + 4, wit)
+        arcade.draw_triangle_filled(x + w - 3, cy, x + w - 9, cy - 4, x + w - 9, cy + 4, wit)
+        arcade.draw_circle_filled(cx - 4, cy, 2, OOG_KLEUR)
+        arcade.draw_circle_filled(cx + 4, cy, 2, OOG_KLEUR)
 
     def _teken_zweefspringer(self):
         """Teken een licht blokje met twee vleugeltjes (zweeft lang in de lucht)."""
