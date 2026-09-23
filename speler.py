@@ -169,6 +169,11 @@ BLIND_ZICHT = 8           # hoelang je dan zichtbaar bent
 #     + zwaar + schaduw). Geen ritme, geen late sprong en geen toeval! ---
 VIJF_ZWAAR = 1.5          # hoeveel keer zwaarder de zwaartekracht is
 
+# --- Tienkamp: TIEN moeilijke dingen tegelijk! De 5 van vijfkamp, plus:
+#     spiegel (je begint al omgedraaid), groeier, versneller, tegenwind en magneet.
+#     Ook zonder ritme, late sprong of toeval. ---
+TIEN_TEGENWIND = 1.2      # hoe hard er altijd een windje tegen je in blaast (naar links)
+
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
 #   0 = naar beneden, 1 = naar rechts, 2 = naar boven, 3 = naar links
@@ -373,7 +378,7 @@ class Speler:
                 self.zwaartekracht_richting *= -1
 
         # Schaduw: bewaar elke stap je plekje, zodat de schaduw je oude route kan nalopen
-        if self.modus in ("schaduw", "vijfkamp"):
+        if self.modus in ("schaduw", "vijfkamp", "tienkamp"):
             self._schaduw_pad.append((self.x, self.y))
             if len(self._schaduw_pad) > SCHADUW_DELAY:
                 self._schaduw_pad.pop(0)
@@ -518,17 +523,28 @@ class Speler:
                 else:
                     doel = 0
                 self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
-            elif self.modus == "vijfkamp":
-                # Vijfkamp: glad als ijs, én links/rechts zijn misschien omgedraaid
-                Lv, Rv = (R, L) if self._tegen_flip else (L, R)
-                if Lv:
-                    doel = -snelheid
-                    self.kijkt_rechts = False
-                elif Rv:
-                    doel = snelheid
-                    self.kijkt_rechts = True
-                else:
-                    doel = 0
+            elif self.modus in ("vijfkamp", "tienkamp"):
+                # Vijfkamp/tienkamp: glad als ijs, én links/rechts zijn misschien omgedraaid
+                tien = self.modus == "tienkamp"
+                omgedraaid_sturen = self._tegen_flip
+                if tien:
+                    omgedraaid_sturen = not omgedraaid_sturen   # spiegel: begint al omgedraaid
+                Lv, Rv = (R, L) if omgedraaid_sturen else (L, R)
+                kant = -1 if (Lv and not Rv) else (1 if (Rv and not Lv) else 0)
+                extra = 0
+                if tien:
+                    # Versneller: blijf je dezelfde kant op gaan, dan ga je steeds harder
+                    if kant != 0 and kant == self._versnel_richting:
+                        self._versnel = min(self._versnel + VERSNEL_STAP, VERSNEL_MAX)
+                    else:
+                        self._versnel = 0
+                    self._versnel_richting = kant
+                    extra = self._versnel
+                doel = kant * (snelheid + extra)
+                if tien:
+                    doel -= TIEN_TEGENWIND          # tegenwind duwt je steeds naar links
+                if kant != 0:
+                    self.kijkt_rechts = kant > 0
                 self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
             elif self.modus == "tegendraads":
                 # Tegendraads: elke keer dat je landt wisselen links en rechts (zie onderaan).
@@ -591,7 +607,7 @@ class Speler:
                 self.snelheid_x = 0
 
             # Magneet: je wordt naar de dichtstbijzijnde muur naast je toe getrokken
-            if self.modus == "magneet" or (self.modus == "eigen" and self._eigen("magneet")):
+            if self.modus in ("magneet", "tienkamp") or (self.modus == "eigen" and self._eigen("magneet")):
                 mx = self.x + self.breedte / 2
                 dichtst = None
                 beste = 1e9
@@ -627,7 +643,7 @@ class Speler:
 
         # Ninja, magneet én klimmer: stop tegen een muur (i.p.v. erdoor of dood) en onthoud de kant.
         # Zo kunnen ninja en klimmer zich later van de muur afzetten (muursprong).
-        if (self.modus in ("ninja", "magneet", "klimmer", "plakker")
+        if (self.modus in ("ninja", "magneet", "klimmer", "plakker", "tienkamp")
                 or (self.modus == "eigen"
                     and (self._eigen("muur") or self._eigen("magneet") or self._eigen("plakken")))):
             self._muur_kant = 0
@@ -659,7 +675,7 @@ class Speler:
                         self.x = p.x + p.breedte
 
         # Groeier: hoe langer je loopt, hoe groter je wordt (stilstaan = weer krimpen)
-        if self.modus == "groeier" or (self.modus == "eigen" and self._eigen("groeien")):
+        if self.modus in ("groeier", "tienkamp") or (self.modus == "eigen" and self._eigen("groeien")):
             if self.links_ingedrukt or self.rechts_ingedrukt:
                 doel = min(self.grootte_factor + GROEI_STAP, GROEI_MAX)
             else:
@@ -727,8 +743,8 @@ class Speler:
             # Vleermuis: lichte zwaartekracht (zweverig); elke tik geeft een vleugelslag omhoog.
             self.snelheid_y -= ZWAARTEKRACHT * VLEERMUIS_ZWAARTE * self.zwaartekracht_richting
             self.snelheid_y = max(-8, min(8, self.snelheid_y))
-        elif self.modus == "vijfkamp":
-            # Vijfkamp: zwaardere zwaartekracht, je valt snel
+        elif self.modus in ("vijfkamp", "tienkamp"):
+            # Vijfkamp/tienkamp: zwaardere zwaartekracht, je valt snel
             self.snelheid_y -= ZWAARTEKRACHT * VIJF_ZWAAR * self.zwaartekracht_richting
         elif self.modus == "zombie":
             # Zombie: iets zwaardere val, voelt log en zwaar.
@@ -854,7 +870,7 @@ class Speler:
         # Net geland (van de lucht op de grond)? Sommige poppetjes doen dan iets speciaals.
         # (_vorige_grond is None aan het begin: dan telt die eerste landing niet mee)
         net_geland = self.staat_op_grond and self._vorige_grond is False
-        if self.modus in ("tegendraads", "vijfkamp") and net_geland:
+        if self.modus in ("tegendraads", "vijfkamp", "tienkamp") and net_geland:
             self._tegen_flip = not self._tegen_flip     # links en rechts wisselen om
         if self.modus in ("katapult", "spiegelkatapult") and self.staat_op_grond:
             # Meteen weer in precies dezelfde boog wegschieten (omhoog én vooruit)
@@ -1080,7 +1096,7 @@ class Speler:
             return
         if self.modus in ("katapult", "spiegelkatapult", "pingpong"):
             return                                 # deze poppetjes bewegen vanzelf, springen doet niks
-        if self.modus in ("krimpsprong", "vijfkamp"):
+        if self.modus in ("krimpsprong", "vijfkamp", "tienkamp"):
             # Elke sprong in de lucht is lager dan de vorige; op de grond weer vol.
             factor = KRIMP_AF ** self._krimp_nr
             if factor < KRIMP_MIN:
@@ -1306,6 +1322,9 @@ class Speler:
             return
         if self.modus == "vijfkamp":
             self._teken_vijfkamp()
+            return
+        if self.modus == "tienkamp":
+            self._teken_tienkamp()
             return
         if self.modus == "pingpong":
             self._teken_pingpong()
@@ -1928,7 +1947,7 @@ class Speler:
     def schaduw_pos(self):
         """Waar staat de schaduw nu? (de plek waar jij ~SCHADUW_DELAY stapjes geleden was)
         Geeft (x, y) terug, of None als er nog geen schaduw is."""
-        if self.modus not in ("schaduw", "vijfkamp") or len(self._schaduw_pad) < SCHADUW_DELAY:
+        if self.modus not in ("schaduw", "vijfkamp", "tienkamp") or len(self._schaduw_pad) < SCHADUW_DELAY:
             return None
         return self._schaduw_pad[0]
 
@@ -2165,6 +2184,31 @@ class Speler:
             arcade.draw_circle_filled(x + 5 + i * (w - 10) / 4, y + 11, 2.5, kl)
         arcade.draw_circle_filled(x + 9, y + h - 9, 3, OOG_KLEUR)
         arcade.draw_circle_filled(x + w - 9, y + h - 9, 3, OOG_KLEUR)
+
+    def _teken_tienkamp(self):
+        """Teken de schaduw én een blok met tien stipjes (10 in 1)."""
+        pos = self.schaduw_pos()
+        w, h = self.breedte, self.hoogte
+        if pos is not None:
+            sx, sy = pos
+            arcade.draw_lrbt_rectangle_filled(sx, sx + w, sy, sy + h, (40, 40, 60))
+            arcade.draw_lrbt_rectangle_outline(sx, sx + w, sy, sy + h, (110, 90, 150), 2)
+            arcade.draw_circle_filled(sx + w * 0.28, sy + h * 0.7, 3, (210, 90, 210))
+            arcade.draw_circle_filled(sx + w * 0.72, sy + h * 0.7, 3, (210, 90, 210))
+        x, y = self.x, self.y
+        # Goud = links/rechts zijn OMGEDRAAID (zo begin je, door de spiegel),
+        # rood = links/rechts zijn gewoon
+        lijf = (200, 60, 60) if self._tegen_flip else (230, 190, 50)
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, lijf)
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + 6, (50, 40, 30))   # zware onderkant
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (60, 40, 10), 3)
+        # Tien stipjes in twee rijtjes van vijf: één voor elk moeilijk ding
+        for i in range(10):
+            rij, kol = divmod(i, 5)
+            arcade.draw_circle_filled(x + w * (0.15 + kol * 0.175), y + h * (0.28 + rij * 0.16),
+                                      max(1.5, w / 16), (40, 30, 20))
+        arcade.draw_circle_filled(x + w * 0.28, y + h * 0.78, max(2.5, w / 11), OOG_KLEUR)
+        arcade.draw_circle_filled(x + w * 0.72, y + h * 0.78, max(2.5, w / 11), OOG_KLEUR)
 
     def _teken_zweefspringer(self):
         """Teken een licht blokje met twee vleugeltjes (zweeft lang in de lucht)."""

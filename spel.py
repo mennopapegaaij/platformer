@@ -720,7 +720,7 @@ class PlatformerSpel(arcade.View):
             return
 
         # Schaduw-poppetje: raakt de schaduw (je oude ik) je aan, dan ga je af!
-        if self.speler.modus in ("schaduw", "vijfkamp") and not self.speler.is_onkwetsbaar():
+        if self.speler.modus in ("schaduw", "vijfkamp", "tienkamp") and not self.speler.is_onkwetsbaar():
             pos = self.speler.schaduw_pos()
             if (pos is not None
                     and abs(pos[0] - self.speler.x) < self.speler.breedte
@@ -903,7 +903,7 @@ class PlatformerSpel(arcade.View):
                      "zombie": "zombie", "pompoenkop": "pompoenkop",
                      "voorspeller": "voorspeller", "pendel": "pendel",
                      "blinde": "blinde", "dubbelflip": "dubbelflip",
-                     "vijfkamp": "vijfkamp",
+                     "vijfkamp": "vijfkamp", "tienkamp": "tienkamp",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -933,7 +933,7 @@ class PlatformerSpel(arcade.View):
                        "metronoom", "katapult", "krimpsprong", "tegendraads",
                        "turboflip", "spiegelkatapult", "schaduw", "pingpong",
                        "spook", "vleermuis", "zombie", "pompoenkop",
-                       "voorspeller", "pendel", "blinde", "dubbelflip", "vijfkamp"):
+                       "voorspeller", "pendel", "blinde", "dubbelflip", "vijfkamp", "tienkamp"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -1458,7 +1458,7 @@ class PlatformerSpel(arcade.View):
 
     def _raakt_blok_zijkant(self, sp):
         """Botst deze speler tegen de ZIJKANT van een blok? (Geometry Dash-dood.)"""
-        if sp.modus in ("draaibol", "ninja", "magneet", "klimmer", "draaisturing", "plakker"):
+        if sp.modus in ("draaibol", "ninja", "magneet", "klimmer", "draaisturing", "plakker", "tienkamp"):
             return False        # deze modi botsen juist tegen muren (rollen/afzetten/aangetrokken) -> niet dood
         if (sp.modus == "eigen" and getattr(sp, "eigen_instel", None)
                 and (sp.eigen_instel.get("muur") or sp.eigen_instel.get("magneet")
