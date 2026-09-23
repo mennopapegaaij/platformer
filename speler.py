@@ -184,18 +184,29 @@ VIJFTIEN_PLAK = 8         # hoeveel stapjes je na een landing vastplakt (plakvoe
 VIJFTIEN_REM = 0.02       # hoeveel lager je springt per beetje snelheid (snelheidsrem)
 KAMP_GROEI_MAX = 1.5      # hoe groot je in een kamp maximaal wordt (groeier)
 
+# --- Twintigkamp: de 15 van vijftienkamp, plus versneller, tegenwind, magneet,
+#     terugstoot en stuiterlanding. ---
+TWINTIG_VERSNEL_MAX = 1.5   # hoeveel extra snelheid de versneller je maximaal geeft
+TWINTIG_TEGENWIND = 1.2   # hoe hard er altijd een windje tegen je in blaast
+TWINTIG_TERUGSTOOT = 0.8  # hoe hard de sprong vanaf de grond je naar achteren duwt
+TWINTIG_STUITER_MIN = 9   # land je harder dan dit (maar niet té hard), dan stuiter je nog
+TWINTIG_STUITER_DEEL = 0.5  # welk deel van je valsnelheid je terug omhoog stuitert
+
 # Welke moeilijke onderdelen elk 'kamp'-poppetje heeft.
 # Zo kun je makkelijk een nieuw kamp maken: gewoon een lijstje onderdelen!
 VIJF_ONDERDELEN = {"ijs", "tegendraads", "krimp", "zwaar", "schaduw"}
 TIEN_ONDERDELEN = VIJF_ONDERDELEN | {"hard", "doorschiet", "moe", "nacht", "hoofdpijn"}
 VIJFTIEN_ONDERDELEN = TIEN_ONDERDELEN | {"spiegel", "groei", "geenlucht", "plak", "rem"}
+TWINTIG_ONDERDELEN = VIJFTIEN_ONDERDELEN | {"versnel", "tegenwind", "magneet", "terugstoot", "stuiter"}
 KAMP_ONDERDELEN = {
     "vijfkamp": VIJF_ONDERDELEN,
     "tienkamp": TIEN_ONDERDELEN,
     "vijftienkamp": VIJFTIEN_ONDERDELEN,
+    "twintigkamp": TWINTIG_ONDERDELEN,
 }
 # De kleur van elk kamp-poppetje (als links/rechts gewoon zijn)
-KAMP_KLEUR = {"tienkamp": (230, 190, 50), "vijftienkamp": (160, 110, 230)}
+KAMP_KLEUR = {"tienkamp": (230, 190, 50), "vijftienkamp": (160, 110, 230),
+              "twintigkamp": (60, 200, 200)}
 
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
@@ -562,7 +573,18 @@ class Speler:
                 elif self._kamp("geenlucht") and not self.staat_op_grond:
                     pass                            # geen luchtsturing: je houdt je vaart
                 else:
-                    doel = kant * snelheid
+                    extra = 0
+                    if self._kamp("versnel"):
+                        # Versneller: blijf je dezelfde kant op gaan, dan ga je steeds harder
+                        if kant != 0 and kant == self._versnel_richting:
+                            self._versnel = min(self._versnel + VERSNEL_STAP, TWINTIG_VERSNEL_MAX)
+                        else:
+                            self._versnel = 0
+                        self._versnel_richting = kant
+                        extra = self._versnel
+                    doel = kant * (snelheid + extra)
+                    if self._kamp("tegenwind"):
+                        doel -= TWINTIG_TEGENWIND   # tegenwind duwt je steeds naar links
                     if kant != 0:
                         self.kijkt_rechts = kant > 0
                     self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
@@ -627,7 +649,8 @@ class Speler:
                 self.snelheid_x = 0
 
             # Magneet: je wordt naar de dichtstbijzijnde muur naast je toe getrokken
-            if self.modus == "magneet" or (self.modus == "eigen" and self._eigen("magneet")):
+            if (self.modus == "magneet" or self._kamp("magneet")
+                    or (self.modus == "eigen" and self._eigen("magneet"))):
                 mx = self.x + self.breedte / 2
                 dichtst = None
                 beste = 1e9
@@ -663,7 +686,7 @@ class Speler:
 
         # Ninja, magneet én klimmer: stop tegen een muur (i.p.v. erdoor of dood) en onthoud de kant.
         # Zo kunnen ninja en klimmer zich later van de muur afzetten (muursprong).
-        if (self.modus in ("ninja", "magneet", "klimmer", "plakker")
+        if (self.modus in ("ninja", "magneet", "klimmer", "plakker") or self._kamp("magneet")
                 or (self.modus == "eigen"
                     and (self._eigen("muur") or self._eigen("magneet") or self._eigen("plakken")))):
             self._muur_kant = 0
@@ -844,6 +867,11 @@ class Speler:
                     self.snelheid_y = STUITER_KRACHT
                 elif stuiter and not omgedraaid:
                     self.snelheid_y = stuiter
+                elif (self._kamp("stuiter") and not omgedraaid
+                      and self.snelheid_y < -TWINTIG_STUITER_MIN
+                      and not (self._kamp("hard") and self.snelheid_y < -TIEN_HARD)):
+                    # Stuiterlanding: vrij hard neergekomen -> nog een keer omhoog stuiteren
+                    self.snelheid_y = -self.snelheid_y * TWINTIG_STUITER_DEEL
                 else:
                     if (self._kamp("hard") and not omgedraaid
                             and self.snelheid_y < -TIEN_HARD):
@@ -1154,6 +1182,9 @@ class Speler:
                 factor *= max(0.55, 1 - VIJFTIEN_REM * abs(self.snelheid_x))
             self.snelheid_y = ((SPRING_KRACHT + self.sprong_bonus)
                                * factor * self.zwaartekracht_richting)
+            if self._kamp("terugstoot") and self._krimp_nr == 0:
+                # Terugstoot: de sprong vanaf de grond duwt je een stukje naar achteren
+                self.snelheid_x -= TWINTIG_TERUGSTOOT * (1 if self.kijkt_rechts else -1)
             self._krimp_nr += 1
             return
         if self.modus == "draaisturing":
@@ -2260,7 +2291,7 @@ class Speler:
             rij, kol = divmod(i, 5)
             arcade.draw_circle_filled(x + w * (0.15 + kol * 0.175),
                                       y + h * ((0.28 + rij * 0.32 / (rijen - 1)) if rijen > 1 else 0.3),
-                                      max(1.5, w / 16), (40, 30, 20))
+                                      max(1.2, w / 16 * min(1.0, 2.5 / rijen)), (40, 30, 20))
         arcade.draw_circle_filled(x + w * 0.28, y + h * 0.78, max(2.5, w / 11), OOG_KLEUR)
         arcade.draw_circle_filled(x + w * 0.72, y + h * 0.78, max(2.5, w / 11), OOG_KLEUR)
 
