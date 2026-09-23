@@ -679,7 +679,8 @@ class PlatformerSpel(arcade.View):
                 self.speler.links_ingedrukt = False
 
         # In de vasthoud-modi (vliegtuig, golf, robot): geef door of de knop vastgehouden wordt
-        if self.speler.modus in ("vliegtuig", "golf", "robot", "ballon", "raket", "draak", "dronken", "spook"):
+        if (self.speler.modus in ("vliegtuig", "golf", "robot", "ballon", "raket", "draak", "dronken", "spook")
+                or self.speler._kamp("vasthouden")):
             self.speler.vlieg_omhoog = self._vlieg_omhoog
 
         # Laat de speler bewegen en botsingen controleren
@@ -1235,7 +1236,7 @@ class PlatformerSpel(arcade.View):
 
     def _teken_nacht(self, sp):
         """Maak alles donker behalve een rond lichtje om de speler heen."""
-        from speler import TIEN_LICHT
+        from speler import TIEN_LICHT, KAMP_DONKER_LICHT
         cx = sp.x + sp.breedte / 2
         cy = sp.y + sp.hoogte / 2
 
@@ -1253,7 +1254,8 @@ class PlatformerSpel(arcade.View):
                                             (cx + c1 * r_buiten, cy + s1 * r_buiten)], kleur)
 
         # Buiten het lichtje is alles pikdonker (tot ver buiten het scherm)
-        ring(TIEN_LICHT, 3000, (0, 0, 10, 250))
+        licht = KAMP_DONKER_LICHT if sp._kamp("donker") else TIEN_LICHT
+        ring(licht, 3000, (0, 0, 10, 250))
 
     def _update_volgers(self):
         """Laat de 'volg'-voorwerpen de speler volgen: hun x schuift naar de speler toe,
@@ -1585,7 +1587,8 @@ class PlatformerSpel(arcade.View):
         if self.race or self.vlucht:
             sp.rechts_ingedrukt = True          # auto-run modi: vanzelf naar rechts
             sp.links_ingedrukt = False
-        if sp.modus in ("vliegtuig", "golf", "robot", "ballon", "raket", "draak", "dronken", "spook"):
+        if (sp.modus in ("vliegtuig", "golf", "robot", "ballon", "raket", "draak", "dronken", "spook")
+                or sp._kamp("vasthouden")):
             sp.vlieg_omhoog = self._vlieg[i]
         sp.bijwerken(self.level_breedte, self.platforms)
         self._pas_portalen_toe(sp, self._vorige[i])

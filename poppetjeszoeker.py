@@ -63,8 +63,8 @@ POPPETJES = [
     ("dubbelflip", "Dubbelflip", "Elke sprong: zwaartekracht om én links/rechts wisselen."),
     ("vijfkamp", "Vijfkamp", "5 in 1: glad, tegendraads, krimpsprong, zwaar én een schaduw!"),
     ("tienkamp", "Tienkamp", "10 in 1: vijfkamp + harde landing, doorschieter, moe, nacht en hoofdpijn!"),
-    ("vijftienkamp", "Vijftienkamp", "15 in 1: tienkamp + spiegel, groeier, geen luchtsturing, plakvoeten en rem!"),
-    ("twintigkamp", "Twintigkamp", "20 in 1: vijftienkamp + versneller, tegenwind, magneet, terugstoot en stuiteren!"),
+    ("vijftienkamp", "Vijftienkamp", "15 in 1: tienkamp + luchtrem, hoogtevrees, dikkerd, aanloop en eenrichting!"),
+    ("twintigkamp", "Twintigkamp", "20 in 1: vijftienkamp + hete vloer, vasthouden, superglad, snelle schaduw en donkerder!"),
     ("eigen", "Mijn poppetje", "Je zelfgemaakte poppetje uit de poppetjes-maker."),
 ]
 

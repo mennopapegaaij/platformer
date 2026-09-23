@@ -178,26 +178,44 @@ TIEN_MOE = 15             # zoveel stapjes na een landing ben je nog moe...
 TIEN_MOE_SPRONG = 0.5     # ...en spring je maar zo hoog (0.5 = half zo hoog)
 TIEN_LICHT = 110          # hoe groot het lichtje om je heen is (nacht)
 
-# --- Vijftienkamp: de 10 van tienkamp, plus spiegel, groeier, geen luchtsturing,
-#     plakvoeten en snelheidsrem. ---
+# --- Reserve-onderdelen: deze zaten eerst in vijftienkamp/twintigkamp. Ze doen nu
+#     niet mee, maar je kunt ze weer in een lijstje hieronder zetten als je wilt:
+#     spiegel, groei, geenlucht, plak, rem, versnel, tegenwind, magneet, terugstoot, stuiter ---
 VIJFTIEN_PLAK = 8         # hoeveel stapjes je na een landing vastplakt (plakvoeten)
 VIJFTIEN_REM = 0.02       # hoeveel lager je springt per beetje snelheid (snelheidsrem)
 KAMP_GROEI_MAX = 1.5      # hoe groot je in een kamp maximaal wordt (groeier)
 
-# --- Twintigkamp: de 15 van vijftienkamp, plus versneller, tegenwind, magneet,
-#     terugstoot en stuiterlanding. ---
 TWINTIG_VERSNEL_MAX = 1.5   # hoeveel extra snelheid de versneller je maximaal geeft
 TWINTIG_TEGENWIND = 1.2   # hoe hard er altijd een windje tegen je in blaast
 TWINTIG_TERUGSTOOT = 0.8  # hoe hard de sprong vanaf de grond je naar achteren duwt
 TWINTIG_STUITER_MIN = 9   # land je harder dan dit (maar niet té hard), dan stuiter je nog
 TWINTIG_STUITER_DEEL = 0.5  # welk deel van je valsnelheid je terug omhoog stuitert
 
+# --- Vijftienkamp: de 10 van tienkamp, plus luchtrem, hoogtevrees, dikkerd,
+#     aanloop en eenrichting. ---
+KAMP_LUCHTREM = 0.995     # in de lucht hou je elke stap maar dit deel van je vaart over
+KAMP_HOOGTEVREES = 70     # ben je langer dan zoveel stapjes in de lucht, dan ga je af
+KAMP_DIK = 1.3            # zoveel keer zo breed ben je (dikkerd)
+KAMP_AANLOOP = 3.0        # zoveel vaart moet je hebben om vanaf de grond te springen
+
+# --- Twintigkamp: de 15 van vijftienkamp, plus hete vloer, vasthouden, superglad,
+#     snelle schaduw en donkerder. ---
+KAMP_HETE_VLOER = 60      # sta je langer dan zoveel stapjes op de grond, dan ga je af
+KAMP_SUPERGLAD = 0.5      # het ijs is nog zoveel keer zo glad (0.5 = twee keer zo glad)
+# (Reserve: snelval en zware benen maakten twintigkamp onmogelijk, ze doen nu niet mee)
+KAMP_SNELVAL = 2.0        # snelval: na het hoogste punt val je zoveel keer zo snel
+KAMP_ZWARE_BENEN = 0.8    # zware benen: je loopt maar zo snel
+KAMP_SNELLE_SCHADUW = 30  # zoveel stapjes zit de schaduw achter je (gewoon is 45)
+KAMP_DONKER_LICHT = 75    # zo groot is je lichtje als het nog donkerder is
+
 # Welke moeilijke onderdelen elk 'kamp'-poppetje heeft.
 # Zo kun je makkelijk een nieuw kamp maken: gewoon een lijstje onderdelen!
 VIJF_ONDERDELEN = {"ijs", "tegendraads", "krimp", "zwaar", "schaduw"}
 TIEN_ONDERDELEN = VIJF_ONDERDELEN | {"hard", "doorschiet", "moe", "nacht", "hoofdpijn"}
-VIJFTIEN_ONDERDELEN = TIEN_ONDERDELEN | {"spiegel", "groei", "geenlucht", "plak", "rem"}
-TWINTIG_ONDERDELEN = VIJFTIEN_ONDERDELEN | {"versnel", "tegenwind", "magneet", "terugstoot", "stuiter"}
+VIJFTIEN_ONDERDELEN = TIEN_ONDERDELEN | {"luchtrem", "hoogtevrees", "dikkerd", "aanloop",
+                                         "eenrichting"}
+TWINTIG_ONDERDELEN = VIJFTIEN_ONDERDELEN | {"hetevloer", "vasthouden", "superglad",
+                                           "snelleschaduw", "donker"}
 KAMP_ONDERDELEN = {
     "vijfkamp": VIJF_ONDERDELEN,
     "tienkamp": TIEN_ONDERDELEN,
@@ -308,6 +326,8 @@ class Speler:
         self._sinds_landing = 999        # tienkamp: hoeveel stapjes geleden je landde (moe)
         self._au = False                 # tienkamp: te hard geland of hoofd gestoten -> af
         self._plak_teller = 0            # plakvoeten: hoelang je nog vastplakt na een landing
+        self._lucht_tijd = 0             # hoogtevrees: hoelang je al in de lucht bent
+        self._grond_tijd = 0             # hete vloer: hoelang je al op de grond staat
 
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
@@ -367,6 +387,8 @@ class Speler:
         self._sinds_landing = 999           # tienkamp: niet moe
         self._au = False                    # tienkamp: niks aan de hand
         self._plak_teller = 0               # plakvoeten: niet vastgeplakt
+        self._lucht_tijd = 0                # hoogtevrees: reset
+        self._grond_tijd = 0                # hete vloer: reset
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -420,7 +442,7 @@ class Speler:
         # Schaduw: bewaar elke stap je plekje, zodat de schaduw je oude route kan nalopen
         if self.modus == "schaduw" or self._kamp("schaduw"):
             self._schaduw_pad.append((self.x, self.y))
-            if len(self._schaduw_pad) > SCHADUW_DELAY:
+            if len(self._schaduw_pad) > self._schaduw_delay():
                 self._schaduw_pad.pop(0)
 
         # Spook: tel door zodat hij steeds een moment (bijna) onzichtbaar wordt
@@ -461,6 +483,11 @@ class Speler:
             snelheid *= ZOMBIE_TRAAG       # de zombie sjokt langzaam
         if self.modus == "eigen" and self._eigen("snel"):
             snelheid *= 1.6                # zelfgemaakt poppetje met het 'Snel'-kunstje
+
+        # Dikkerd (kamp): je bent breder. Voor alle andere poppetjes blijft de breedte gewoon.
+        breed = int(self.BASIS_BREEDTE * self.grootte_factor * (KAMP_DIK if self._kamp("dikkerd") else 1))
+        if self.breedte != breed:
+            self.breedte = breed
 
         # Horizontale beweging — elke modus doet het net iets anders
         if self.modus == "flits":
@@ -582,12 +609,19 @@ class Speler:
                             self._versnel = 0
                         self._versnel_richting = kant
                         extra = self._versnel
+                    if self._kamp("zwarebenen"):
+                        extra -= snelheid * (1 - KAMP_ZWARE_BENEN)   # zware benen: langzamer
                     doel = kant * (snelheid + extra)
                     if self._kamp("tegenwind"):
                         doel -= TWINTIG_TEGENWIND   # tegenwind duwt je steeds naar links
                     if kant != 0:
                         self.kijkt_rechts = kant > 0
-                    self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
+                    grip = IJS_GRIP * (KAMP_SUPERGLAD if self._kamp("superglad") else 1)
+                    self.snelheid_x += (doel - self.snelheid_x) * grip
+                if self._kamp("luchtrem") and not self.staat_op_grond:
+                    self.snelheid_x *= KAMP_LUCHTREM    # luchtrem: in de lucht verlies je vaart
+                if self._kamp("eenrichting") and self.snelheid_x < 0:
+                    self.snelheid_x = 0                 # eenrichting: nooit achteruit
             elif self.modus == "tegendraads":
                 # Tegendraads: elke keer dat je landt wisselen links en rechts (zie onderaan).
                 Lt, Rt = (R, L) if self._tegen_flip else (L, R)
@@ -791,7 +825,13 @@ class Speler:
             self.snelheid_y = max(-8, min(8, self.snelheid_y))
         elif self._kamp("zwaar"):
             # Kamp-poppetjes: zwaardere zwaartekracht, je valt snel
-            self.snelheid_y -= ZWAARTEKRACHT * VIJF_ZWAAR * self.zwaartekracht_richting
+            zwaar = VIJF_ZWAAR
+            omhoog = self.snelheid_y * self.zwaartekracht_richting > 0
+            if self._kamp("snelval") and not omhoog:
+                zwaar *= KAMP_SNELVAL               # snelval: na het hoogste punt extra snel
+            if self._kamp("vasthouden") and omhoog and not self.vlieg_omhoog:
+                self.snelheid_y = 0                 # vasthouden: knop los -> meteen vallen
+            self.snelheid_y -= ZWAARTEKRACHT * zwaar * self.zwaartekracht_richting
         elif self.modus == "zombie":
             # Zombie: iets zwaardere val, voelt log en zwaar.
             self.snelheid_y -= ZWAARTEKRACHT * ZOMBIE_ZWAARTE * self.zwaartekracht_richting
@@ -929,6 +969,14 @@ class Speler:
         self._sinds_landing += 1                          # tienkamp: tel hoe lang geleden je landde
         if (self.modus == "tegendraads" or self._kamp("tegendraads")) and net_geland:
             self._tegen_flip = not self._tegen_flip     # links en rechts wisselen om
+        if self._kamp("hoogtevrees"):
+            self._lucht_tijd = 0 if self.staat_op_grond else self._lucht_tijd + 1
+            if self._lucht_tijd > KAMP_HOOGTEVREES:
+                self._au = True                          # hoogtevrees: te lang in de lucht -> af
+        if self._kamp("hetevloer"):
+            self._grond_tijd = self._grond_tijd + 1 if self.staat_op_grond else 0
+            if self._grond_tijd > KAMP_HETE_VLOER:
+                self._au = True                          # hete vloer: te lang op de grond -> af
         if net_geland:
             if self._kamp("doorschiet"):
                 # Doorschieter: bij elke landing schiet je een stukje naar voren
@@ -948,6 +996,10 @@ class Speler:
     def _kamp(self, onderdeel):
         """Heeft dit kamp-poppetje (vijfkamp, tienkamp, ...) dit moeilijke onderdeel?"""
         return onderdeel in KAMP_ONDERDELEN.get(self.modus, ())
+
+    def _schaduw_delay(self):
+        """Hoeveel stapjes de schaduw achter je zit (snelle schaduw = dichterbij)."""
+        return KAMP_SNELLE_SCHADUW if self._kamp("snelleschaduw") else SCHADUW_DELAY
 
     def _kamp_omgedraaid(self):
         """Zijn links en rechts nu omgedraaid? (tegendraads-wissel en/of spiegel)"""
@@ -1174,6 +1226,9 @@ class Speler:
             factor = KRIMP_AF ** self._krimp_nr
             if factor < KRIMP_MIN:
                 return                             # geen sprong meer tot je weer land
+            if (self._kamp("aanloop") and self._krimp_nr == 0
+                    and abs(self.snelheid_x) < KAMP_AANLOOP):
+                return                             # aanloop: nog niet genoeg vaart om te springen
             if (self._kamp("moe") and self._krimp_nr == 0
                     and self._sinds_landing < TIEN_MOE):
                 factor *= TIEN_MOE_SPRONG          # moe: net geland -> maar half zo hoog
@@ -2029,7 +2084,7 @@ class Speler:
     def schaduw_pos(self):
         """Waar staat de schaduw nu? (de plek waar jij ~SCHADUW_DELAY stapjes geleden was)
         Geeft (x, y) terug, of None als er nog geen schaduw is."""
-        if not (self.modus == "schaduw" or self._kamp("schaduw")) or len(self._schaduw_pad) < SCHADUW_DELAY:
+        if not (self.modus == "schaduw" or self._kamp("schaduw")) or len(self._schaduw_pad) < self._schaduw_delay():
             return None
         return self._schaduw_pad[0]
 
