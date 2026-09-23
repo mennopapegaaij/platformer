@@ -421,6 +421,10 @@ class PlatformerSpel(arcade.View):
             arcade.draw_text(tekst, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 30,
                              arcade.color.WHITE, 15, bold=True, anchor_x="center")
 
+        # Elementmeester: laat zien welke vorm je nu bent en welke hierna komt
+        if self.speler.modus == "element" and not self.twee:
+            self._teken_element_hud(self.speler)
+
         # Sleutel-teller (alleen tonen als je sleutels hebt)
         if self.speler.sleutels > 0:
             arcade.draw_text("🔑 x %d" % self.speler.sleutels, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 54,
@@ -680,7 +684,7 @@ class PlatformerSpel(arcade.View):
 
         # In de vasthoud-modi (vliegtuig, golf, robot): geef door of de knop vastgehouden wordt
         if (self.speler.modus in ("vliegtuig", "golf", "robot", "ballon", "raket", "draak", "dronken", "spook")
-                or self.speler._kamp("vasthouden")):
+                or self.speler._kamp("vasthouden") or self.speler.modus == "element"):
             self.speler.vlieg_omhoog = self._vlieg_omhoog
 
         # Laat de speler bewegen en botsingen controleren
@@ -723,6 +727,9 @@ class PlatformerSpel(arcade.View):
         if self.speler.is_gevallen() or kloon_raakt:
             self._speler_geraakt()
             return
+
+        # Elementmeester: een aarde-schokgolf blaast monsters in de buurt weg
+        self._element_schokgolf(self.speler)
 
         # Kamp-onderdeel 'spike-magneet': spikes vlakbij trekken je naar zich toe
         if self.speler._kamp("spikemagneet"):
@@ -930,6 +937,7 @@ class PlatformerSpel(arcade.View):
                      "blinde": "blinde", "dubbelflip": "dubbelflip",
                      "vijfkamp": "vijfkamp", "tienkamp": "tienkamp",
                      "vijftienkamp": "vijftienkamp", "twintigkamp": "twintigkamp",
+                     "element": "element",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -960,7 +968,7 @@ class PlatformerSpel(arcade.View):
                        "turboflip", "spiegelkatapult", "schaduw", "pingpong",
                        "spook", "vleermuis", "zombie", "pompoenkop",
                        "voorspeller", "pendel", "blinde", "dubbelflip", "vijfkamp", "tienkamp",
-                       "vijftienkamp", "twintigkamp"):
+                       "vijftienkamp", "twintigkamp", "element"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -1246,6 +1254,27 @@ class PlatformerSpel(arcade.View):
             for n, f in echt.items():
                 setattr(arcade, n, f)
 
+    def _element_schokgolf(self, sp):
+        """Is er net een aarde-schokgolf? Dan gaan monsters in de buurt weg (geen spikes)."""
+        sg = getattr(sp, "_schokgolf", None)
+        if sg is None or sg["klaar"]:
+            return
+        sg["klaar"] = True                         # elke schokgolf werkt maar één keer
+        from speler import ELEM_SCHOK_BEREIK
+        weg = []
+        for v in self.vijanden:
+            if getattr(v, "is_spike", False):
+                continue                           # spikes, draaimotoren en bosses blijven
+            vx = v.x + getattr(v, "breedte", 32) / 2
+            vy = v.y + getattr(v, "hoogte", 32) / 2
+            if abs(vx - sg["x"]) < ELEM_SCHOK_BEREIK and abs(vy - sg["y"]) < 90:
+                weg.append(v)
+        for v in weg:
+            self.vijanden.remove(v)
+            self._voeg_punt_toe()                  # een punt voor elk weggeblazen monster
+        if weg:
+            geluid_manager.speel_vijand_dood()
+
     def _spike_magneet(self, sp):
         """Trek de speler een stukje naar de dichtstbijzijnde spike (als die vlakbij is)."""
         from vijand import Spikes
@@ -1260,6 +1289,17 @@ class PlatformerSpel(arcade.View):
                 beste = afstand
         if beste is not None and beste != 0:
             sp.x += KAMP_SPIKE_MAGNEET if beste > 0 else -KAMP_SPIKE_MAGNEET
+
+    def _teken_element_hud(self, sp):
+        """Een balkje bovenin: je vorm nu (groot) -> de volgende vorm (klein)."""
+        from speler import ELEMENT_NAAM, ELEMENT_KLEUR
+        nu, straks = sp.element(), sp.volgend_element()
+        x = SCHERM_BREEDTE // 2
+        y = SCHERM_HOOGTE - 86           # onder de klok en de sleutel-teller
+        arcade.draw_lrbt_rectangle_filled(x - 130, x + 130, y - 8, y + 20, (0, 0, 0, 140))
+        arcade.draw_circle_filled(x - 110, y + 6, 8, ELEMENT_KLEUR[nu])
+        arcade.draw_text("Nu: " + ELEMENT_NAAM[nu], x - 96, y, ELEMENT_KLEUR[nu], 13, bold=True)
+        arcade.draw_text("-> daarna: " + ELEMENT_NAAM[straks], x + 5, y, (200, 200, 200), 11)
 
     def _teken_nacht(self, sp):
         """Maak alles donker behalve een rond lichtje om de speler heen."""
@@ -1615,7 +1655,7 @@ class PlatformerSpel(arcade.View):
             sp.rechts_ingedrukt = True          # auto-run modi: vanzelf naar rechts
             sp.links_ingedrukt = False
         if (sp.modus in ("vliegtuig", "golf", "robot", "ballon", "raket", "draak", "dronken", "spook")
-                or sp._kamp("vasthouden")):
+                or sp._kamp("vasthouden") or sp.modus == "element"):
             sp.vlieg_omhoog = self._vlieg[i]
         sp.bijwerken(self.level_breedte, self.platforms)
         self._pas_portalen_toe(sp, self._vorige[i])

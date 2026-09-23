@@ -230,6 +230,22 @@ KAMP_ONDERDELEN = {
 KAMP_KLEUR = {"tienkamp": (230, 190, 50), "vijftienkamp": (160, 110, 230),
               "twintigkamp": (60, 200, 200)}
 
+# --- Elementmeester: 4 vormen die in een vaste volgorde wisselen bij elke landing ---
+#     vuur -> water -> lucht -> aarde -> vuur -> ...  (geen toeval, geen ritme!)
+ELEMENT_VOLGORDE = ["vuur", "water", "lucht", "aarde"]
+ELEMENT_NAAM = {"vuur": "Vuur", "water": "Water", "lucht": "Lucht", "aarde": "Aarde"}
+ELEMENT_KLEUR = {"vuur": (255, 110, 30), "water": (60, 150, 255),
+                 "lucht": (200, 235, 255), "aarde": (150, 105, 60)}
+ELEM_VUUR_SNEL = 1.4      # vuur rent zoveel keer zo snel
+ELEM_WATER_GRIP = 0.12    # water is een beetje glad (ijs is 0.06)
+ELEM_LUCHT_ZWAARTE = 0.45 # lucht voelt maar zoveel van de zwaartekracht (zweverig)
+ELEM_LUCHT_SPRONG = 0.8   # lucht springt zachter (anders zweef je het scherm uit)
+ELEM_LUCHT_GLIJ = -1.5    # met de knop ingedrukt val je als lucht nooit sneller dan dit
+ELEM_AARDE_TRAAG = 0.7    # aarde loopt maar zo snel
+ELEM_AARDE_ZWAARTE = 1.4  # aarde is zwaar
+ELEM_SCHOK_BEREIK = 170   # hoe ver de schokgolf van een aarde-stamp monsters wegblaast
+ELEM_FLITS = 20           # hoe lang de flits duurt als je van vorm wisselt
+
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
 #   0 = naar beneden, 1 = naar rechts, 2 = naar boven, 3 = naar links
@@ -332,6 +348,7 @@ class Speler:
         self._plak_teller = 0            # plakvoeten: hoelang je nog vastplakt na een landing
         self._lucht_tijd = 0             # hoogtevrees: hoelang je al in de lucht bent
         self._grond_tijd = 0             # hete vloer: hoelang je al op de grond staat
+        self._element_reset()            # elementmeester: begin als vuur
 
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
@@ -393,6 +410,7 @@ class Speler:
         self._plak_teller = 0               # plakvoeten: niet vastgeplakt
         self._lucht_tijd = 0                # hoogtevrees: reset
         self._grond_tijd = 0                # hete vloer: reset
+        self._element_reset()               # elementmeester: weer vuur
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -463,6 +481,10 @@ class Speler:
         # Blinde: tel door; alleen aan het begin van elke maat ben je zichtbaar
         if self.modus == "blinde":
             self._blind_teller = (self._blind_teller + 1) % BLIND_INTERVAL
+
+        # Elementmeester: deeltjes, flits en schokgolf laten bewegen
+        if self.modus == "element":
+            self._element_stap()
 
         # Pompoenkop: bewaar plekjes voor het vurige spoor achter je aan
         if self.modus == "pompoenkop":
@@ -594,6 +616,23 @@ class Speler:
                 else:
                     doel = 0
                 self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
+            elif self.modus == "element":
+                # Elementmeester: elke vorm loopt anders
+                vorm = self.element()
+                if vorm == "vuur":
+                    loop = snelheid * ELEM_VUUR_SNEL      # vuur: supersnel
+                elif vorm == "aarde":
+                    loop = snelheid * ELEM_AARDE_TRAAG    # aarde: traag en zwaar
+                else:
+                    loop = snelheid
+                kant = -1 if (L and not R) else (1 if (R and not L) else 0)
+                if kant != 0:
+                    self.kijkt_rechts = kant > 0
+                if vorm == "water":
+                    # water: een beetje glad (je glijdt nog wat door)
+                    self.snelheid_x += (kant * loop - self.snelheid_x) * ELEM_WATER_GRIP
+                else:
+                    self.snelheid_x = kant * loop
             elif self._kamp("ijs"):
                 # Kamp-poppetjes: glad als ijs, én links/rechts zijn misschien omgedraaid
                 Lv, Rv = (R, L) if self._kamp_omgedraaid() else (L, R)
@@ -827,6 +866,20 @@ class Speler:
             # Vleermuis: lichte zwaartekracht (zweverig); elke tik geeft een vleugelslag omhoog.
             self.snelheid_y -= ZWAARTEKRACHT * VLEERMUIS_ZWAARTE * self.zwaartekracht_richting
             self.snelheid_y = max(-8, min(8, self.snelheid_y))
+        elif self.modus == "element":
+            vorm = self.element()
+            if vorm == "lucht":
+                # Lucht: zweverig. Knop ingedrukt tijdens het vallen = langzaam glijden
+                self.snelheid_y -= ZWAARTEKRACHT * ELEM_LUCHT_ZWAARTE * richting
+                if self.vlieg_omhoog and self.snelheid_y * richting < ELEM_LUCHT_GLIJ:
+                    self.snelheid_y = ELEM_LUCHT_GLIJ * richting
+            elif vorm == "aarde":
+                if self._stamp_bezig:
+                    self.snelheid_y = -STAMP_KRACHT * richting   # keihard omlaag stampen
+                else:
+                    self.snelheid_y -= ZWAARTEKRACHT * ELEM_AARDE_ZWAARTE * richting
+            else:
+                self.snelheid_y -= ZWAARTEKRACHT * richting
         elif self._kamp("zwaar"):
             # Kamp-poppetjes: zwaardere zwaartekracht, je valt snel
             zwaar = VIJF_ZWAAR
@@ -981,6 +1034,8 @@ class Speler:
             self._grond_tijd = self._grond_tijd + 1 if self.staat_op_grond else 0
             if self._grond_tijd > KAMP_HETE_VLOER:
                 self._au = True                          # hete vloer: te lang op de grond -> af
+        if self.modus == "element" and net_geland:
+            self._element_geland()
         if net_geland:
             if self._kamp("doorschiet"):
                 # Doorschieter: bij elke landing schiet je een stukje naar voren
@@ -1202,6 +1257,9 @@ class Speler:
         - Dobbelsteen: de spronghoogte is elke keer willekeurig."""
         if self.modus == "vertraagd":
             self._vert_spring_wacht = VERT_DELAY   # de sprong komt straks pas echt
+            return
+        if self.modus == "element":
+            self._element_spring()
             return
         if self.modus == "voorspeller":
             # Voorspeller: de sprong komt pas straks (alleen als er nog geen sprong wacht)
@@ -1481,6 +1539,9 @@ class Speler:
             return
         if self.modus == "pompoenkop":
             self._teken_pompoenkop()
+            return
+        if self.modus == "element":
+            self._teken_element()
             return
         if self.modus == "voorspeller":
             self._teken_voorspeller()
@@ -2353,6 +2414,186 @@ class Speler:
                                       max(1.2, w / 16 * min(1.0, 2.5 / rijen)), (40, 30, 20))
         arcade.draw_circle_filled(x + w * 0.28, y + h * 0.78, max(2.5, w / 11), OOG_KLEUR)
         arcade.draw_circle_filled(x + w * 0.72, y + h * 0.78, max(2.5, w / 11), OOG_KLEUR)
+
+    # ================= ELEMENTMEESTER =================
+    def _element_reset(self):
+        """Zet de elementmeester terug naar het begin (vuur, geen deeltjes)."""
+        self._element_nr = 0             # welke vorm: 0=vuur 1=water 2=lucht 3=aarde
+        self._element_flits = 0          # flits-teller als je net van vorm wisselt
+        self._elem_deeltjes = []         # vonkjes/belletjes/wolkjes/stofjes
+        self._elem_t = 0                 # tikt door voor de bewegende tekeningen
+        self._water_extra = True         # water: mag je nog een keer in de lucht springen?
+        self._stamp_bezig = False        # aarde: ben je aan het stampen?
+        self._schokgolf = None           # aarde: de schokgolf na een stamp (of None)
+
+    def element(self):
+        """Welke vorm is de elementmeester nu? ('vuur', 'water', 'lucht' of 'aarde')"""
+        return ELEMENT_VOLGORDE[self._element_nr]
+
+    def volgend_element(self):
+        """Welke vorm komt hierna?"""
+        return ELEMENT_VOLGORDE[(self._element_nr + 1) % len(ELEMENT_VOLGORDE)]
+
+    def _deeltje(self, x, y, vx, vy, leven, kleur, grootte):
+        """Voeg een deeltje toe (een vonkje, belletje, wolkje of stofje)."""
+        self._elem_deeltjes.append([x, y, vx, vy, leven, leven, kleur, grootte])
+
+    def _element_stap(self):
+        """Elke stap: deeltjes laten bewegen, nieuwe maken en tellers aftellen."""
+        self._elem_t += 1
+        if self._element_flits > 0:
+            self._element_flits -= 1
+        # Bestaande deeltjes bewegen en ouder maken
+        for d in self._elem_deeltjes:
+            d[0] += d[2]
+            d[1] += d[3]
+            d[4] -= 1
+        self._elem_deeltjes = [d for d in self._elem_deeltjes if d[4] > 0]
+        # Schokgolf groter laten worden
+        if self._schokgolf is not None:
+            self._schokgolf["t"] += 1
+            if self._schokgolf["t"] > 25:
+                self._schokgolf = None
+        # Nieuwe deeltjes, passend bij de vorm (steeds op een vast ritme van
+        # het tellertje, dus niet willekeurig)
+        cx = self.x + self.breedte / 2
+        cy = self.y + self.hoogte / 2
+        t = self._elem_t
+        vorm = self.element()
+        if vorm == "vuur" and abs(self.snelheid_x) > 0.5 and t % 2 == 0:
+            # Vonkjes die achter je omhoog dwarrelen
+            achter = -1 if self.snelheid_x > 0 else 1
+            self._deeltje(cx + achter * self.breedte / 2, self.y + 6 + (t * 7) % 16,
+                          achter * 0.8, 1.2, 18, (255, 160 + (t * 13) % 90, 30), 3)
+        elif vorm == "water" and t % 6 == 0:
+            # Belletjes die langzaam opstijgen
+            self._deeltje(cx - 8 + (t * 5) % 16, self.y + self.hoogte, 0, 0.9, 30, (170, 220, 255), 2.5)
+        elif vorm == "lucht" and t % 4 == 0:
+            # Wolkjes die om je heen draaien
+            h = t * 0.35
+            self._deeltje(cx + math.cos(h) * 22, cy + math.sin(h) * 22,
+                          -math.sin(h) * 0.6, math.cos(h) * 0.6, 20, (235, 245, 255), 3)
+        elif vorm == "aarde" and self._stamp_bezig:
+            # Stofstreep achter een stamp
+            self._deeltje(cx, self.y + self.hoogte, 0, 1.5, 12, (170, 130, 80), 3)
+
+    def _element_spring(self):
+        """Springen: elke vorm springt anders."""
+        vorm = self.element()
+        kracht = (SPRING_KRACHT + self.sprong_bonus) * self.zwaartekracht_richting
+        if self.staat_op_grond:
+            if vorm == "lucht":
+                self.snelheid_y = kracht * ELEM_LUCHT_SPRONG   # lucht: zweverige sprong
+            elif vorm == "aarde":
+                self.snelheid_y = kracht * 0.8        # aarde is zwaar: lage sprong
+            else:
+                self.snelheid_y = kracht
+            return
+        # In de lucht:
+        if vorm == "water" and self._water_extra:
+            self.snelheid_y = kracht * 0.9            # water: nog één keer springen
+            self._water_extra = False
+            cx = self.x + self.breedte / 2
+            for i in range(8):                        # plons! een kringetje druppels
+                h = math.radians(i * 45)
+                self._deeltje(cx, self.y, math.cos(h) * 2, math.sin(h) * 2, 16, (120, 190, 255), 3)
+        elif vorm == "aarde" and not self._stamp_bezig:
+            self._stamp_bezig = True                  # aarde: STAMP keihard omlaag!
+
+    def _element_geland(self):
+        """Net geland: eerst het effect van deze vorm, dan wissel je naar de volgende."""
+        cx = self.x + self.breedte / 2
+        if self.element() == "aarde" and self._stamp_bezig:
+            # BOEM! Een schokgolf die monsters in de buurt wegblaast
+            self._schokgolf = {"x": cx, "y": self.y, "t": 0, "klaar": False}
+            for i in range(14):
+                h = math.radians(i * 180 / 13)
+                self._deeltje(cx, self.y + 2, math.cos(h) * 4, math.sin(h) * 3, 22, (160, 120, 70), 4)
+        self._stamp_bezig = False
+        self._water_extra = True
+        # Wissel naar de volgende vorm, met een flits en een wolkje deeltjes
+        self._element_nr = (self._element_nr + 1) % len(ELEMENT_VOLGORDE)
+        self._element_flits = ELEM_FLITS
+        kleur = ELEMENT_KLEUR[self.element()]
+        cy = self.y + self.hoogte / 2
+        for i in range(12):
+            h = math.radians(i * 30)
+            self._deeltje(cx, cy, math.cos(h) * 3, math.sin(h) * 3, 18, kleur, 3)
+
+    def _teken_element(self):
+        """Teken de elementmeester: deeltjes, schokgolf, de vorm zelf en de flits."""
+        # Deeltjes (ze worden kleiner en doorzichtiger naarmate ze ouder worden)
+        for x, y, vx, vy, leven, max_leven, kleur, grootte in self._elem_deeltjes:
+            deel = leven / max_leven
+            arcade.draw_circle_filled(x, y, max(1, grootte * deel),
+                                      (kleur[0], kleur[1], kleur[2], int(60 + 195 * deel)))
+        # Schokgolf: een ring die groter wordt
+        if self._schokgolf is not None:
+            sg = self._schokgolf
+            r = 10 + sg["t"] * (ELEM_SCHOK_BEREIK / 25)
+            a = max(0, 255 - sg["t"] * 10)
+            arcade.draw_ellipse_outline(sg["x"], sg["y"] + 4, r * 2, r * 0.7, (190, 140, 80, a), 4)
+        vorm = self.element()
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx, cy = x + w / 2, y + h / 2
+        t = self._elem_t
+        if vorm == "vuur":
+            # Oranje blok met een flakkerende vlammenkroon
+            arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (230, 80, 30))
+            arcade.draw_lrbt_rectangle_filled(x + 3, x + w - 3, y + 3, y + h * 0.5, (255, 170, 40))
+            for i in range(4):
+                fx = x + w * (i + 0.5) / 4
+                hoog = 9 + ((t + i * 5) % 8)             # vlammetjes gaan op en neer
+                arcade.draw_triangle_filled(fx - 5, y + h, fx + 5, y + h, fx, y + h + hoog,
+                                            (255, 200 - i * 20, 40))
+            arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (140, 30, 10), 2)
+            oog = (60, 10, 0)
+        elif vorm == "water":
+            # Een druppel: rond lijf met een punt bovenop, en een glimmetje
+            arcade.draw_circle_filled(cx, y + h * 0.42, w * 0.5, (60, 150, 255))
+            arcade.draw_triangle_filled(cx - w * 0.42, y + h * 0.6, cx + w * 0.42, y + h * 0.6,
+                                        cx, y + h + 6, (60, 150, 255))
+            arcade.draw_circle_filled(cx - w * 0.2, y + h * 0.55, 4, (210, 235, 255))
+            if self._water_extra and not self.staat_op_grond:
+                # Klein belletje bovenop = je extra sprong is nog over
+                arcade.draw_circle_outline(cx, y + h + 12, 4, (200, 230, 255), 2)
+            oog = (10, 40, 90)
+        elif vorm == "lucht":
+            # Een wolkje van rondjes met draaiende windstreepjes eromheen
+            wit = (230, 240, 255)
+            for dx, dy, r in ((-8, 0, 10), (8, 0, 10), (0, 7, 11), (0, -4, 10)):
+                arcade.draw_circle_filled(cx + dx, cy + dy, r, wit)
+            for i in range(3):
+                h0 = t * 0.12 + i * 2.1
+                arcade.draw_arc_outline(cx, cy, 44, 44, (170, 210, 240),
+                                        math.degrees(h0), math.degrees(h0) + 50, 2)
+            if self.vlieg_omhoog and self.snelheid_y < 0 and not self.staat_op_grond:
+                # Aan het glijden: twee vleugeltjes
+                arcade.draw_triangle_filled(cx - 10, cy, cx - 26, cy + 8, cx - 22, cy - 2, wit)
+                arcade.draw_triangle_filled(cx + 10, cy, cx + 26, cy + 8, cx + 22, cy - 2, wit)
+            oog = (60, 90, 130)
+        else:
+            # Aarde: een hoekige rots met barstjes
+            rots = [(x, y), (x + w, y), (x + w, y + h * 0.75), (x + w * 0.75, y + h),
+                    (x + w * 0.2, y + h), (x, y + h * 0.7)]
+            arcade.draw_polygon_filled(rots, (150, 105, 60))
+            arcade.draw_polygon_outline(rots, (80, 55, 30), 2)
+            arcade.draw_line(x + w * 0.3, y + h * 0.2, x + w * 0.45, y + h * 0.45, (90, 60, 35), 2)
+            arcade.draw_line(x + w * 0.45, y + h * 0.45, x + w * 0.4, y + h * 0.7, (90, 60, 35), 2)
+            arcade.draw_line(x + w * 0.7, y + h * 0.15, x + w * 0.8, y + h * 0.4, (90, 60, 35), 2)
+            if self._stamp_bezig:
+                # Aan het stampen: dikke pijl omlaag onder de rots
+                arcade.draw_triangle_filled(cx - 8, y - 2, cx + 8, y - 2, cx, y - 14, (255, 230, 120))
+            oog = (40, 25, 10)
+        # Oogjes (kijken de kant op waar je heen gaat)
+        kijk = 2 if self.kijkt_rechts else -2
+        arcade.draw_circle_filled(cx - 6 + kijk, cy + 5, 3, oog)
+        arcade.draw_circle_filled(cx + 6 + kijk, cy + 5, 3, oog)
+        # Flits: een witte ring die uitdijt als je net van vorm gewisseld bent
+        if self._element_flits > 0:
+            deel = self._element_flits / ELEM_FLITS
+            r = w * 0.6 + (1 - deel) * 30
+            arcade.draw_circle_outline(cx, cy, r, (255, 255, 255, int(255 * deel)), 3)
 
     def _teken_zweefspringer(self):
         """Teken een licht blokje met twee vleugeltjes (zweeft lang in de lucht)."""

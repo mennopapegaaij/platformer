@@ -65,6 +65,7 @@ POPPETJES = [
     ("tienkamp", "Tienkamp", "10 in 1: ondersteboven, glad, tegendraads, krimp, zwaar, harde landing, doorschieter, moe, nacht, hoofdpijn!"),
     ("vijftienkamp", "Vijftienkamp", "15 in 1: tienkamp + luchtrem, hoogtevrees, dikkerd, aanloop en eenrichting!"),
     ("twintigkamp", "Twintigkamp", "20 in 1: vijftienkamp + hete vloer, vasthouden, superglad, spike-magneet en donkerder!"),
+    ("element", "Elementmeester", "Wisselt bij elke landing: vuur (snel), water (2x springen), lucht (glijden), aarde (stampen!)."),
     ("eigen", "Mijn poppetje", "Je zelfgemaakte poppetje uit de poppetjes-maker."),
 ]
 
