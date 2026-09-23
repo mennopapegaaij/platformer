@@ -1458,7 +1458,7 @@ class PlatformerSpel(arcade.View):
 
     def _raakt_blok_zijkant(self, sp):
         """Botst deze speler tegen de ZIJKANT van een blok? (Geometry Dash-dood.)"""
-        if sp.modus in ("draaibol", "ninja", "magneet", "klimmer", "draaisturing", "plakker", "tienkamp"):
+        if sp.modus in ("draaibol", "ninja", "magneet", "klimmer", "draaisturing", "plakker"):
             return False        # deze modi botsen juist tegen muren (rollen/afzetten/aangetrokken) -> niet dood
         if (sp.modus == "eigen" and getattr(sp, "eigen_instel", None)
                 and (sp.eigen_instel.get("muur") or sp.eigen_instel.get("magneet")

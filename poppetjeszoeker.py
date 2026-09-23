@@ -62,7 +62,7 @@ POPPETJES = [
     ("blinde", "Blinde", "Je bent onzichtbaar en flitst alleen even op de maat."),
     ("dubbelflip", "Dubbelflip", "Elke sprong: zwaartekracht om én links/rechts wisselen."),
     ("vijfkamp", "Vijfkamp", "5 in 1: glad, tegendraads, krimpsprong, zwaar én een schaduw!"),
-    ("tienkamp", "Tienkamp", "10 in 1: vijfkamp + spiegel, groeier, versneller, tegenwind en magneet!"),
+    ("tienkamp", "Tienkamp", "10 in 1: vijfkamp + geen luchtsturing, terugstoot, plakvoeten, stuiteren en rem!"),
     ("eigen", "Mijn poppetje", "Je zelfgemaakte poppetje uit de poppetjes-maker."),
 ]
 

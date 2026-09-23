@@ -170,9 +170,13 @@ BLIND_ZICHT = 8           # hoelang je dan zichtbaar bent
 VIJF_ZWAAR = 1.5          # hoeveel keer zwaarder de zwaartekracht is
 
 # --- Tienkamp: TIEN moeilijke dingen tegelijk! De 5 van vijfkamp, plus:
-#     spiegel (je begint al omgedraaid), groeier, versneller, tegenwind en magneet.
+#     geen luchtsturing, terugstoot, plakvoeten, stuiterlanding en snelheidsrem.
 #     Ook zonder ritme, late sprong of toeval. ---
-TIEN_TEGENWIND = 1.2      # hoe hard er altijd een windje tegen je in blaast (naar links)
+TIEN_TERUGSTOOT = 0.8     # hoe hard de sprong vanaf de grond je naar achteren duwt
+TIEN_PLAK = 12            # hoeveel stapjes je na een landing vastplakt
+TIEN_STUITER_MIN = 9      # val je harder dan dit, dan stuiter je nog een keer
+TIEN_STUITER_DEEL = 0.5   # welk deel van je valsnelheid je terug omhoog stuitert
+TIEN_REM = 0.03           # hoeveel lager je springt per beetje snelheid
 
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
@@ -271,6 +275,7 @@ class Speler:
         self._pendel_richting = 1        # pendel: welke kant hij nu op loopt (1/-1)
         self._blind_teller = 0           # blinde: tel tot je weer even zichtbaar bent
         self._dubbel_spiegel = False     # dubbelflip: zijn links/rechts nu omgedraaid?
+        self._plak_teller = 0            # tienkamp: hoelang je nog vastplakt na een landing
 
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
@@ -327,6 +332,7 @@ class Speler:
         self._pendel_richting = 1
         self._blind_teller = 0              # blinde: reset
         self._dubbel_spiegel = False        # dubbelflip: links/rechts weer gewoon
+        self._plak_teller = 0               # tienkamp: niet meer vastgeplakt
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -526,26 +532,19 @@ class Speler:
             elif self.modus in ("vijfkamp", "tienkamp"):
                 # Vijfkamp/tienkamp: glad als ijs, én links/rechts zijn misschien omgedraaid
                 tien = self.modus == "tienkamp"
-                omgedraaid_sturen = self._tegen_flip
-                if tien:
-                    omgedraaid_sturen = not omgedraaid_sturen   # spiegel: begint al omgedraaid
-                Lv, Rv = (R, L) if omgedraaid_sturen else (L, R)
+                Lv, Rv = (R, L) if self._tegen_flip else (L, R)
                 kant = -1 if (Lv and not Rv) else (1 if (Rv and not Lv) else 0)
-                extra = 0
-                if tien:
-                    # Versneller: blijf je dezelfde kant op gaan, dan ga je steeds harder
-                    if kant != 0 and kant == self._versnel_richting:
-                        self._versnel = min(self._versnel + VERSNEL_STAP, VERSNEL_MAX)
-                    else:
-                        self._versnel = 0
-                    self._versnel_richting = kant
-                    extra = self._versnel
-                doel = kant * (snelheid + extra)
-                if tien:
-                    doel -= TIEN_TEGENWIND          # tegenwind duwt je steeds naar links
-                if kant != 0:
-                    self.kijkt_rechts = kant > 0
-                self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
+                if tien and self._plak_teller > 0:
+                    # Plakvoeten: net geland -> je plakt nog even vast
+                    self._plak_teller -= 1
+                    self.snelheid_x = 0
+                elif tien and not self.staat_op_grond:
+                    pass                            # geen luchtsturing: je houdt je vaart
+                else:
+                    doel = kant * snelheid
+                    if kant != 0:
+                        self.kijkt_rechts = kant > 0
+                    self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
             elif self.modus == "tegendraads":
                 # Tegendraads: elke keer dat je landt wisselen links en rechts (zie onderaan).
                 Lt, Rt = (R, L) if self._tegen_flip else (L, R)
@@ -607,7 +606,7 @@ class Speler:
                 self.snelheid_x = 0
 
             # Magneet: je wordt naar de dichtstbijzijnde muur naast je toe getrokken
-            if self.modus in ("magneet", "tienkamp") or (self.modus == "eigen" and self._eigen("magneet")):
+            if self.modus == "magneet" or (self.modus == "eigen" and self._eigen("magneet")):
                 mx = self.x + self.breedte / 2
                 dichtst = None
                 beste = 1e9
@@ -643,7 +642,7 @@ class Speler:
 
         # Ninja, magneet én klimmer: stop tegen een muur (i.p.v. erdoor of dood) en onthoud de kant.
         # Zo kunnen ninja en klimmer zich later van de muur afzetten (muursprong).
-        if (self.modus in ("ninja", "magneet", "klimmer", "plakker", "tienkamp")
+        if (self.modus in ("ninja", "magneet", "klimmer", "plakker")
                 or (self.modus == "eigen"
                     and (self._eigen("muur") or self._eigen("magneet") or self._eigen("plakken")))):
             self._muur_kant = 0
@@ -675,7 +674,7 @@ class Speler:
                         self.x = p.x + p.breedte
 
         # Groeier: hoe langer je loopt, hoe groter je wordt (stilstaan = weer krimpen)
-        if self.modus in ("groeier", "tienkamp") or (self.modus == "eigen" and self._eigen("groeien")):
+        if self.modus == "groeier" or (self.modus == "eigen" and self._eigen("groeien")):
             if self.links_ingedrukt or self.rechts_ingedrukt:
                 doel = min(self.grootte_factor + GROEI_STAP, GROEI_MAX)
             else:
@@ -821,6 +820,10 @@ class Speler:
                     self.snelheid_y = STUITER_KRACHT
                 elif stuiter and not omgedraaid:
                     self.snelheid_y = stuiter
+                elif (self.modus == "tienkamp" and not omgedraaid
+                      and self.snelheid_y < -TIEN_STUITER_MIN):
+                    # Stuiterlanding: hard neergekomen -> nog een keer omhoog stuiteren
+                    self.snelheid_y = -self.snelheid_y * TIEN_STUITER_DEEL
                 else:
                     self.snelheid_y = 0
                     if not omgedraaid:
@@ -872,6 +875,8 @@ class Speler:
         net_geland = self.staat_op_grond and self._vorige_grond is False
         if self.modus in ("tegendraads", "vijfkamp", "tienkamp") and net_geland:
             self._tegen_flip = not self._tegen_flip     # links en rechts wisselen om
+            if self.modus == "tienkamp":
+                self._plak_teller = TIEN_PLAK            # plakvoeten: even vast na landen
         if self.modus in ("katapult", "spiegelkatapult") and self.staat_op_grond:
             # Meteen weer in precies dezelfde boog wegschieten (omhoog én vooruit)
             self.snelheid_y = KATA_OMHOOG
@@ -1101,8 +1106,14 @@ class Speler:
             factor = KRIMP_AF ** self._krimp_nr
             if factor < KRIMP_MIN:
                 return                             # geen sprong meer tot je weer land
+            if self.modus == "tienkamp":
+                # Snelheidsrem: hoe harder je gaat, hoe lager je springt
+                factor *= max(0.55, 1 - TIEN_REM * abs(self.snelheid_x))
             self.snelheid_y = ((SPRING_KRACHT + self.sprong_bonus)
                                * factor * self.zwaartekracht_richting)
+            if self.modus == "tienkamp" and self._krimp_nr == 0:
+                # Terugstoot: de sprong vanaf de grond duwt je een stukje naar achteren
+                self.snelheid_x -= TIEN_TERUGSTOOT * (1 if self.kijkt_rechts else -1)
             self._krimp_nr += 1
             return
         if self.modus == "draaisturing":
@@ -2196,8 +2207,7 @@ class Speler:
             arcade.draw_circle_filled(sx + w * 0.28, sy + h * 0.7, 3, (210, 90, 210))
             arcade.draw_circle_filled(sx + w * 0.72, sy + h * 0.7, 3, (210, 90, 210))
         x, y = self.x, self.y
-        # Goud = links/rechts zijn OMGEDRAAID (zo begin je, door de spiegel),
-        # rood = links/rechts zijn gewoon
+        # Goud = links/rechts zijn gewoon, rood = links/rechts zijn omgedraaid
         lijf = (200, 60, 60) if self._tegen_flip else (230, 190, 50)
         arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, lijf)
         arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + 6, (50, 40, 30))   # zware onderkant
