@@ -170,13 +170,13 @@ BLIND_ZICHT = 8           # hoelang je dan zichtbaar bent
 VIJF_ZWAAR = 1.5          # hoeveel keer zwaarder de zwaartekracht is
 
 # --- Tienkamp: TIEN moeilijke dingen tegelijk! De 5 van vijfkamp, plus:
-#     geen luchtsturing, terugstoot, plakvoeten, stuiterlanding en snelheidsrem.
+#     harde landing = af, doorschieter, moe, nacht en hoofdpijn.
 #     Ook zonder ritme, late sprong of toeval. ---
-TIEN_TERUGSTOOT = 0.8     # hoe hard de sprong vanaf de grond je naar achteren duwt
-TIEN_PLAK = 12            # hoeveel stapjes je na een landing vastplakt
-TIEN_STUITER_MIN = 9      # val je harder dan dit, dan stuiter je nog een keer
-TIEN_STUITER_DEEL = 0.5   # welk deel van je valsnelheid je terug omhoog stuitert
-TIEN_REM = 0.03           # hoeveel lager je springt per beetje snelheid
+TIEN_HARD = 14            # val je harder neer dan dit, dan ga je af (harde landing)
+TIEN_DOORSCHIET = 2.5     # hoe hard je bij elke landing naar voren schiet
+TIEN_MOE = 15             # zoveel stapjes na een landing ben je nog moe...
+TIEN_MOE_SPRONG = 0.5     # ...en spring je maar zo hoog (0.5 = half zo hoog)
+TIEN_LICHT = 110          # hoe groot het lichtje om je heen is (nacht)
 
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
@@ -275,7 +275,8 @@ class Speler:
         self._pendel_richting = 1        # pendel: welke kant hij nu op loopt (1/-1)
         self._blind_teller = 0           # blinde: tel tot je weer even zichtbaar bent
         self._dubbel_spiegel = False     # dubbelflip: zijn links/rechts nu omgedraaid?
-        self._plak_teller = 0            # tienkamp: hoelang je nog vastplakt na een landing
+        self._sinds_landing = 999        # tienkamp: hoeveel stapjes geleden je landde (moe)
+        self._au = False                 # tienkamp: te hard geland of hoofd gestoten -> af
 
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
@@ -332,7 +333,8 @@ class Speler:
         self._pendel_richting = 1
         self._blind_teller = 0              # blinde: reset
         self._dubbel_spiegel = False        # dubbelflip: links/rechts weer gewoon
-        self._plak_teller = 0               # tienkamp: niet meer vastgeplakt
+        self._sinds_landing = 999           # tienkamp: niet moe
+        self._au = False                    # tienkamp: niks aan de hand
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -531,20 +533,12 @@ class Speler:
                 self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
             elif self.modus in ("vijfkamp", "tienkamp"):
                 # Vijfkamp/tienkamp: glad als ijs, én links/rechts zijn misschien omgedraaid
-                tien = self.modus == "tienkamp"
                 Lv, Rv = (R, L) if self._tegen_flip else (L, R)
                 kant = -1 if (Lv and not Rv) else (1 if (Rv and not Lv) else 0)
-                if tien and self._plak_teller > 0:
-                    # Plakvoeten: net geland -> je plakt nog even vast
-                    self._plak_teller -= 1
-                    self.snelheid_x = 0
-                elif tien and not self.staat_op_grond:
-                    pass                            # geen luchtsturing: je houdt je vaart
-                else:
-                    doel = kant * snelheid
-                    if kant != 0:
-                        self.kijkt_rechts = kant > 0
-                    self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
+                doel = kant * snelheid
+                if kant != 0:
+                    self.kijkt_rechts = kant > 0
+                self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
             elif self.modus == "tegendraads":
                 # Tegendraads: elke keer dat je landt wisselen links en rechts (zie onderaan).
                 Lt, Rt = (R, L) if self._tegen_flip else (L, R)
@@ -820,11 +814,10 @@ class Speler:
                     self.snelheid_y = STUITER_KRACHT
                 elif stuiter and not omgedraaid:
                     self.snelheid_y = stuiter
-                elif (self.modus == "tienkamp" and not omgedraaid
-                      and self.snelheid_y < -TIEN_STUITER_MIN):
-                    # Stuiterlanding: hard neergekomen -> nog een keer omhoog stuiteren
-                    self.snelheid_y = -self.snelheid_y * TIEN_STUITER_DEEL
                 else:
+                    if (self.modus == "tienkamp" and not omgedraaid
+                            and self.snelheid_y < -TIEN_HARD):
+                        self._au = True           # harde landing: te hard neergekomen -> af
                     self.snelheid_y = 0
                     if not omgedraaid:
                         self.staat_op_grond = True
@@ -836,6 +829,8 @@ class Speler:
                     # Ping-pong: raak je het plafond, dan flipt de zwaartekracht en kaats je omlaag
                     self.zwaartekracht_richting = 1
                 else:
+                    if self.modus == "tienkamp" and not omgedraaid:
+                        self._au = True           # hoofdpijn: hoofd gestoten -> af
                     self.snelheid_y = 0
                     # Met omgekeerde zwaartekracht 'sta' je ONDER een platform
                     if omgedraaid:
@@ -873,10 +868,13 @@ class Speler:
         # Net geland (van de lucht op de grond)? Sommige poppetjes doen dan iets speciaals.
         # (_vorige_grond is None aan het begin: dan telt die eerste landing niet mee)
         net_geland = self.staat_op_grond and self._vorige_grond is False
+        self._sinds_landing += 1                          # tienkamp: tel hoe lang geleden je landde
         if self.modus in ("tegendraads", "vijfkamp", "tienkamp") and net_geland:
             self._tegen_flip = not self._tegen_flip     # links en rechts wisselen om
             if self.modus == "tienkamp":
-                self._plak_teller = TIEN_PLAK            # plakvoeten: even vast na landen
+                # Doorschieter: bij elke landing schiet je een stukje naar voren
+                self.snelheid_x += TIEN_DOORSCHIET * (1 if self.kijkt_rechts else -1)
+                self._sinds_landing = 0                  # moe: net geland
         if self.modus in ("katapult", "spiegelkatapult") and self.staat_op_grond:
             # Meteen weer in precies dezelfde boog wegschieten (omhoog én vooruit)
             self.snelheid_y = KATA_OMHOOG
@@ -1106,14 +1104,11 @@ class Speler:
             factor = KRIMP_AF ** self._krimp_nr
             if factor < KRIMP_MIN:
                 return                             # geen sprong meer tot je weer land
-            if self.modus == "tienkamp":
-                # Snelheidsrem: hoe harder je gaat, hoe lager je springt
-                factor *= max(0.55, 1 - TIEN_REM * abs(self.snelheid_x))
+            if (self.modus == "tienkamp" and self._krimp_nr == 0
+                    and self._sinds_landing < TIEN_MOE):
+                factor *= TIEN_MOE_SPRONG          # moe: net geland -> maar half zo hoog
             self.snelheid_y = ((SPRING_KRACHT + self.sprong_bonus)
                                * factor * self.zwaartekracht_richting)
-            if self.modus == "tienkamp" and self._krimp_nr == 0:
-                # Terugstoot: de sprong vanaf de grond duwt je een stukje naar achteren
-                self.snelheid_x -= TIEN_TERUGSTOOT * (1 if self.kijkt_rechts else -1)
             self._krimp_nr += 1
             return
         if self.modus == "draaisturing":

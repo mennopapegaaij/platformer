@@ -388,6 +388,10 @@ class PlatformerSpel(arcade.View):
             self.speler.teken()
             self._teken_kloon(self.speler)
 
+            # Tienkamp: het is nacht! Alleen rond jezelf is een lichtje.
+            if self.speler.modus == "tienkamp" and not self.twee:
+                self._teken_nacht(self.speler)
+
         # --- Teken de berichten buiten de camera (altijd midden op het scherm) ---
 
         # Levelnaam altijd bovenin (arena krijgt een korte naam + pijltjes in het midden)
@@ -718,6 +722,13 @@ class PlatformerSpel(arcade.View):
         if self.speler.is_gevallen() or kloon_raakt:
             self._speler_geraakt()
             return
+
+        # Tienkamp: te hard geland of je hoofd gestoten? Dan ga je af!
+        if getattr(self.speler, "_au", False):
+            self.speler._au = False
+            if not self.speler.is_onkwetsbaar():
+                self._speler_geraakt()
+                return
 
         # Schaduw-poppetje: raakt de schaduw (je oude ik) je aan, dan ga je af!
         if self.speler.modus in ("schaduw", "vijfkamp", "tienkamp") and not self.speler.is_onkwetsbaar():
@@ -1218,6 +1229,28 @@ class PlatformerSpel(arcade.View):
             # Altijd terugzetten, ook als er iets misgaat tijdens het tekenen
             for n, f in echt.items():
                 setattr(arcade, n, f)
+
+    def _teken_nacht(self, sp):
+        """Maak alles donker behalve een rond lichtje om de speler heen."""
+        from speler import TIEN_LICHT
+        cx = sp.x + sp.breedte / 2
+        cy = sp.y + sp.hoogte / 2
+
+        def ring(r_binnen, r_buiten, kleur):
+            # Een ring van 48 stukjes (vierhoekjes) tussen twee cirkels
+            punten = []
+            for i in range(49):
+                h = 2 * math.pi * i / 48
+                punten.append((math.cos(h), math.sin(h)))
+            for i in range(48):
+                (c1, s1), (c2, s2) = punten[i], punten[i + 1]
+                arcade.draw_polygon_filled([(cx + c1 * r_binnen, cy + s1 * r_binnen),
+                                            (cx + c2 * r_binnen, cy + s2 * r_binnen),
+                                            (cx + c2 * r_buiten, cy + s2 * r_buiten),
+                                            (cx + c1 * r_buiten, cy + s1 * r_buiten)], kleur)
+
+        # Buiten het lichtje is alles pikdonker (tot ver buiten het scherm)
+        ring(TIEN_LICHT, 3000, (0, 0, 10, 250))
 
     def _update_volgers(self):
         """Laat de 'volg'-voorwerpen de speler volgen: hun x schuift naar de speler toe,
