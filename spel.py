@@ -394,7 +394,7 @@ class PlatformerSpel(arcade.View):
         if self.frameperfect:
             naam_tekst = "🎯 Frame Perfect — spring precies op tijd!"
         elif self.testruimte:
-            naam_tekst = "🧪 Testruimte — N = ander poppetje (nu: %s)" % self.speler.modus
+            naam_tekst = "🧪 Testruimte — N = volgende, P = kiezen (nu: %s)" % self.speler.modus
         elif self.eigen:
             naam_tekst = "🔨 Jouw eigen level"
         elif self.vlucht:
@@ -1001,10 +1001,18 @@ class PlatformerSpel(arcade.View):
                     self._zet_vorm(sp, nieuwe_modus, 1)
                     geluid_manager.speel_powerup()   # 🎵 vorm-wissel geluidje
 
+    def _test_kies(self, modus):
+        """Testruimte: je koos een poppetje in de zoeker -> terug naar de testruimte ermee."""
+        if modus in self._test_modi:
+            self._test_index = self._test_modi.index(modus)
+        self.start_modus = modus          # ook na doodgaan blijf je dit poppetje
+        self.window.show_view(self)       # terug naar de testruimte (begint netjes opnieuw)
+
     def _test_volgende(self, stap):
         """Testruimte: wissel naar het volgende (of vorige) poppetje en maak alles schoon."""
         self._test_index = (self._test_index + stap) % len(self._test_modi)
         modus = self._test_modi[self._test_index]
+        self.start_modus = modus          # ook na doodgaan blijf je dit poppetje
         sp = self.speler
         self._zet_vorm(sp, modus, 1)
         # Extra dingen netjes terugzetten zodat elk poppetje fris begint
@@ -1883,6 +1891,10 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.N and self.testruimte:
             # In de testruimte: wissel naar het volgende poppetje
             self._test_volgende(1)
+        elif toets == arcade.key.P and self.testruimte:
+            # In de testruimte: open de poppetjes-zoeker en kies er zelf één
+            from poppetjeszoeker import PoppetjeZoeker
+            self.window.show_view(PoppetjeZoeker(self, kies_functie=self._test_kies))
         elif toets == arcade.key.KEY_2 and self.arena:
             # Geheime sprong-toets: spring meteen naar level 250 (om te proberen!)
             self.huidig_level = 250
