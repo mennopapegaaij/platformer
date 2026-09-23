@@ -389,7 +389,7 @@ class PlatformerSpel(arcade.View):
             self._teken_kloon(self.speler)
 
             # Tienkamp: het is nacht! Alleen rond jezelf is een lichtje.
-            if self.speler.modus == "tienkamp" and not self.twee:
+            if self.speler._kamp("nacht") and not self.twee:
                 self._teken_nacht(self.speler)
 
         # --- Teken de berichten buiten de camera (altijd midden op het scherm) ---
@@ -731,7 +731,8 @@ class PlatformerSpel(arcade.View):
                 return
 
         # Schaduw-poppetje: raakt de schaduw (je oude ik) je aan, dan ga je af!
-        if self.speler.modus in ("schaduw", "vijfkamp", "tienkamp") and not self.speler.is_onkwetsbaar():
+        if ((self.speler.modus == "schaduw" or self.speler._kamp("schaduw"))
+                and not self.speler.is_onkwetsbaar()):
             pos = self.speler.schaduw_pos()
             if (pos is not None
                     and abs(pos[0] - self.speler.x) < self.speler.breedte
@@ -915,6 +916,7 @@ class PlatformerSpel(arcade.View):
                      "voorspeller": "voorspeller", "pendel": "pendel",
                      "blinde": "blinde", "dubbelflip": "dubbelflip",
                      "vijfkamp": "vijfkamp", "tienkamp": "tienkamp",
+                     "vijftienkamp": "vijftienkamp",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -944,7 +946,8 @@ class PlatformerSpel(arcade.View):
                        "metronoom", "katapult", "krimpsprong", "tegendraads",
                        "turboflip", "spiegelkatapult", "schaduw", "pingpong",
                        "spook", "vleermuis", "zombie", "pompoenkop",
-                       "voorspeller", "pendel", "blinde", "dubbelflip", "vijfkamp", "tienkamp"):
+                       "voorspeller", "pendel", "blinde", "dubbelflip", "vijfkamp", "tienkamp",
+                       "vijftienkamp"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:

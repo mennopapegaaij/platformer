@@ -178,6 +178,25 @@ TIEN_MOE = 15             # zoveel stapjes na een landing ben je nog moe...
 TIEN_MOE_SPRONG = 0.5     # ...en spring je maar zo hoog (0.5 = half zo hoog)
 TIEN_LICHT = 110          # hoe groot het lichtje om je heen is (nacht)
 
+# --- Vijftienkamp: de 10 van tienkamp, plus spiegel, groeier, geen luchtsturing,
+#     plakvoeten en snelheidsrem. ---
+VIJFTIEN_PLAK = 8         # hoeveel stapjes je na een landing vastplakt (plakvoeten)
+VIJFTIEN_REM = 0.02       # hoeveel lager je springt per beetje snelheid (snelheidsrem)
+KAMP_GROEI_MAX = 1.5      # hoe groot je in een kamp maximaal wordt (groeier)
+
+# Welke moeilijke onderdelen elk 'kamp'-poppetje heeft.
+# Zo kun je makkelijk een nieuw kamp maken: gewoon een lijstje onderdelen!
+VIJF_ONDERDELEN = {"ijs", "tegendraads", "krimp", "zwaar", "schaduw"}
+TIEN_ONDERDELEN = VIJF_ONDERDELEN | {"hard", "doorschiet", "moe", "nacht", "hoofdpijn"}
+VIJFTIEN_ONDERDELEN = TIEN_ONDERDELEN | {"spiegel", "groei", "geenlucht", "plak", "rem"}
+KAMP_ONDERDELEN = {
+    "vijfkamp": VIJF_ONDERDELEN,
+    "tienkamp": TIEN_ONDERDELEN,
+    "vijftienkamp": VIJFTIEN_ONDERDELEN,
+}
+# De kleur van elk kamp-poppetje (als links/rechts gewoon zijn)
+KAMP_KLEUR = {"tienkamp": (230, 190, 50), "vijftienkamp": (160, 110, 230)}
+
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
 #   0 = naar beneden, 1 = naar rechts, 2 = naar boven, 3 = naar links
@@ -277,6 +296,7 @@ class Speler:
         self._dubbel_spiegel = False     # dubbelflip: zijn links/rechts nu omgedraaid?
         self._sinds_landing = 999        # tienkamp: hoeveel stapjes geleden je landde (moe)
         self._au = False                 # tienkamp: te hard geland of hoofd gestoten -> af
+        self._plak_teller = 0            # plakvoeten: hoelang je nog vastplakt na een landing
 
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
@@ -335,6 +355,7 @@ class Speler:
         self._dubbel_spiegel = False        # dubbelflip: links/rechts weer gewoon
         self._sinds_landing = 999           # tienkamp: niet moe
         self._au = False                    # tienkamp: niks aan de hand
+        self._plak_teller = 0               # plakvoeten: niet vastgeplakt
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -386,7 +407,7 @@ class Speler:
                 self.zwaartekracht_richting *= -1
 
         # Schaduw: bewaar elke stap je plekje, zodat de schaduw je oude route kan nalopen
-        if self.modus in ("schaduw", "vijfkamp", "tienkamp"):
+        if self.modus == "schaduw" or self._kamp("schaduw"):
             self._schaduw_pad.append((self.x, self.y))
             if len(self._schaduw_pad) > SCHADUW_DELAY:
                 self._schaduw_pad.pop(0)
@@ -531,14 +552,20 @@ class Speler:
                 else:
                     doel = 0
                 self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
-            elif self.modus in ("vijfkamp", "tienkamp"):
-                # Vijfkamp/tienkamp: glad als ijs, én links/rechts zijn misschien omgedraaid
-                Lv, Rv = (R, L) if self._tegen_flip else (L, R)
+            elif self._kamp("ijs"):
+                # Kamp-poppetjes: glad als ijs, én links/rechts zijn misschien omgedraaid
+                Lv, Rv = (R, L) if self._kamp_omgedraaid() else (L, R)
                 kant = -1 if (Lv and not Rv) else (1 if (Rv and not Lv) else 0)
-                doel = kant * snelheid
-                if kant != 0:
-                    self.kijkt_rechts = kant > 0
-                self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
+                if self._kamp("plak") and self._plak_teller > 0:
+                    self._plak_teller -= 1          # plakvoeten: je plakt nog even vast
+                    self.snelheid_x = 0
+                elif self._kamp("geenlucht") and not self.staat_op_grond:
+                    pass                            # geen luchtsturing: je houdt je vaart
+                else:
+                    doel = kant * snelheid
+                    if kant != 0:
+                        self.kijkt_rechts = kant > 0
+                    self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
             elif self.modus == "tegendraads":
                 # Tegendraads: elke keer dat je landt wisselen links en rechts (zie onderaan).
                 Lt, Rt = (R, L) if self._tegen_flip else (L, R)
@@ -668,9 +695,12 @@ class Speler:
                         self.x = p.x + p.breedte
 
         # Groeier: hoe langer je loopt, hoe groter je wordt (stilstaan = weer krimpen)
-        if self.modus == "groeier" or (self.modus == "eigen" and self._eigen("groeien")):
+        if (self.modus == "groeier" or self._kamp("groei")
+                or (self.modus == "eigen" and self._eigen("groeien"))):
+            # In een kamp word je minder groot (anders kom je nooit over de spikes)
+            max_groot = KAMP_GROEI_MAX if self._kamp("groei") else GROEI_MAX
             if self.links_ingedrukt or self.rechts_ingedrukt:
-                doel = min(self.grootte_factor + GROEI_STAP, GROEI_MAX)
+                doel = min(self.grootte_factor + GROEI_STAP, max_groot)
             else:
                 doel = max(self.grootte_factor - GROEI_STAP, 1.0)
             if abs(doel - self.grootte_factor) > 0.0001:
@@ -736,8 +766,8 @@ class Speler:
             # Vleermuis: lichte zwaartekracht (zweverig); elke tik geeft een vleugelslag omhoog.
             self.snelheid_y -= ZWAARTEKRACHT * VLEERMUIS_ZWAARTE * self.zwaartekracht_richting
             self.snelheid_y = max(-8, min(8, self.snelheid_y))
-        elif self.modus in ("vijfkamp", "tienkamp"):
-            # Vijfkamp/tienkamp: zwaardere zwaartekracht, je valt snel
+        elif self._kamp("zwaar"):
+            # Kamp-poppetjes: zwaardere zwaartekracht, je valt snel
             self.snelheid_y -= ZWAARTEKRACHT * VIJF_ZWAAR * self.zwaartekracht_richting
         elif self.modus == "zombie":
             # Zombie: iets zwaardere val, voelt log en zwaar.
@@ -815,7 +845,7 @@ class Speler:
                 elif stuiter and not omgedraaid:
                     self.snelheid_y = stuiter
                 else:
-                    if (self.modus == "tienkamp" and not omgedraaid
+                    if (self._kamp("hard") and not omgedraaid
                             and self.snelheid_y < -TIEN_HARD):
                         self._au = True           # harde landing: te hard neergekomen -> af
                     self.snelheid_y = 0
@@ -829,7 +859,7 @@ class Speler:
                     # Ping-pong: raak je het plafond, dan flipt de zwaartekracht en kaats je omlaag
                     self.zwaartekracht_richting = 1
                 else:
-                    if self.modus == "tienkamp" and not omgedraaid:
+                    if self._kamp("hoofdpijn") and not omgedraaid:
                         self._au = True           # hoofdpijn: hoofd gestoten -> af
                     self.snelheid_y = 0
                     # Met omgekeerde zwaartekracht 'sta' je ONDER een platform
@@ -869,12 +899,16 @@ class Speler:
         # (_vorige_grond is None aan het begin: dan telt die eerste landing niet mee)
         net_geland = self.staat_op_grond and self._vorige_grond is False
         self._sinds_landing += 1                          # tienkamp: tel hoe lang geleden je landde
-        if self.modus in ("tegendraads", "vijfkamp", "tienkamp") and net_geland:
+        if (self.modus == "tegendraads" or self._kamp("tegendraads")) and net_geland:
             self._tegen_flip = not self._tegen_flip     # links en rechts wisselen om
-            if self.modus == "tienkamp":
+        if net_geland:
+            if self._kamp("doorschiet"):
                 # Doorschieter: bij elke landing schiet je een stukje naar voren
                 self.snelheid_x += TIEN_DOORSCHIET * (1 if self.kijkt_rechts else -1)
+            if self._kamp("moe"):
                 self._sinds_landing = 0                  # moe: net geland
+            if self._kamp("plak"):
+                self._plak_teller = VIJFTIEN_PLAK        # plakvoeten: even vast na landen
         if self.modus in ("katapult", "spiegelkatapult") and self.staat_op_grond:
             # Meteen weer in precies dezelfde boog wegschieten (omhoog én vooruit)
             self.snelheid_y = KATA_OMHOOG
@@ -882,6 +916,14 @@ class Speler:
             self.staat_op_grond = False
         if self._vorige_grond is not None or self.staat_op_grond:
             self._vorige_grond = self.staat_op_grond   # (blijft None tot je voor het eerst staat)
+
+    def _kamp(self, onderdeel):
+        """Heeft dit kamp-poppetje (vijfkamp, tienkamp, ...) dit moeilijke onderdeel?"""
+        return onderdeel in KAMP_ONDERDELEN.get(self.modus, ())
+
+    def _kamp_omgedraaid(self):
+        """Zijn links en rechts nu omgedraaid? (tegendraads-wissel en/of spiegel)"""
+        return self._tegen_flip != self._kamp("spiegel")
 
     def _eigen(self, sleutel):
         """Hulpje voor het zelfgemaakte poppetje: geef een instelling terug (of None)."""
@@ -1099,14 +1141,17 @@ class Speler:
             return
         if self.modus in ("katapult", "spiegelkatapult", "pingpong"):
             return                                 # deze poppetjes bewegen vanzelf, springen doet niks
-        if self.modus in ("krimpsprong", "vijfkamp", "tienkamp"):
+        if self.modus == "krimpsprong" or self._kamp("krimp"):
             # Elke sprong in de lucht is lager dan de vorige; op de grond weer vol.
             factor = KRIMP_AF ** self._krimp_nr
             if factor < KRIMP_MIN:
                 return                             # geen sprong meer tot je weer land
-            if (self.modus == "tienkamp" and self._krimp_nr == 0
+            if (self._kamp("moe") and self._krimp_nr == 0
                     and self._sinds_landing < TIEN_MOE):
                 factor *= TIEN_MOE_SPRONG          # moe: net geland -> maar half zo hoog
+            if self._kamp("rem"):
+                # Snelheidsrem: hoe harder je gaat, hoe lager je springt
+                factor *= max(0.55, 1 - VIJFTIEN_REM * abs(self.snelheid_x))
             self.snelheid_y = ((SPRING_KRACHT + self.sprong_bonus)
                                * factor * self.zwaartekracht_richting)
             self._krimp_nr += 1
@@ -1329,8 +1374,8 @@ class Speler:
         if self.modus == "vijfkamp":
             self._teken_vijfkamp()
             return
-        if self.modus == "tienkamp":
-            self._teken_tienkamp()
+        if self.modus in KAMP_ONDERDELEN:
+            self._teken_kamp()                  # tienkamp, vijftienkamp, ...
             return
         if self.modus == "pingpong":
             self._teken_pingpong()
@@ -1953,7 +1998,7 @@ class Speler:
     def schaduw_pos(self):
         """Waar staat de schaduw nu? (de plek waar jij ~SCHADUW_DELAY stapjes geleden was)
         Geeft (x, y) terug, of None als er nog geen schaduw is."""
-        if self.modus not in ("schaduw", "vijfkamp", "tienkamp") or len(self._schaduw_pad) < SCHADUW_DELAY:
+        if not (self.modus == "schaduw" or self._kamp("schaduw")) or len(self._schaduw_pad) < SCHADUW_DELAY:
             return None
         return self._schaduw_pad[0]
 
@@ -2191,8 +2236,8 @@ class Speler:
         arcade.draw_circle_filled(x + 9, y + h - 9, 3, OOG_KLEUR)
         arcade.draw_circle_filled(x + w - 9, y + h - 9, 3, OOG_KLEUR)
 
-    def _teken_tienkamp(self):
-        """Teken de schaduw én een blok met tien stipjes (10 in 1)."""
+    def _teken_kamp(self):
+        """Teken de schaduw én een blok met een stipje voor elk moeilijk onderdeel."""
         pos = self.schaduw_pos()
         w, h = self.breedte, self.hoogte
         if pos is not None:
@@ -2202,15 +2247,19 @@ class Speler:
             arcade.draw_circle_filled(sx + w * 0.28, sy + h * 0.7, 3, (210, 90, 210))
             arcade.draw_circle_filled(sx + w * 0.72, sy + h * 0.7, 3, (210, 90, 210))
         x, y = self.x, self.y
-        # Goud = links/rechts zijn gewoon, rood = links/rechts zijn omgedraaid
-        lijf = (200, 60, 60) if self._tegen_flip else (230, 190, 50)
+        # Eigen kleur = links/rechts zijn gewoon, rood = links/rechts zijn omgedraaid
+        gewoon = KAMP_KLEUR.get(self.modus, (230, 190, 50))
+        lijf = (200, 60, 60) if self._kamp_omgedraaid() else gewoon
         arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, lijf)
         arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + 6, (50, 40, 30))   # zware onderkant
         arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (60, 40, 10), 3)
-        # Tien stipjes in twee rijtjes van vijf: één voor elk moeilijk ding
-        for i in range(10):
+        # Een stipje voor elk moeilijk ding, in rijtjes van vijf
+        aantal = len(KAMP_ONDERDELEN[self.modus])
+        rijen = (aantal + 4) // 5
+        for i in range(aantal):
             rij, kol = divmod(i, 5)
-            arcade.draw_circle_filled(x + w * (0.15 + kol * 0.175), y + h * (0.28 + rij * 0.16),
+            arcade.draw_circle_filled(x + w * (0.15 + kol * 0.175),
+                                      y + h * ((0.28 + rij * 0.32 / (rijen - 1)) if rijen > 1 else 0.3),
                                       max(1.5, w / 16), (40, 30, 20))
         arcade.draw_circle_filled(x + w * 0.28, y + h * 0.78, max(2.5, w / 11), OOG_KLEUR)
         arcade.draw_circle_filled(x + w * 0.72, y + h * 0.78, max(2.5, w / 11), OOG_KLEUR)
