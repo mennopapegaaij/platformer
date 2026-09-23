@@ -61,6 +61,7 @@ POPPETJES = [
     ("pendel", "Pendel", "Loopt vanzelf en keert op de maat om; jij kunt alleen springen."),
     ("blinde", "Blinde", "Je bent onzichtbaar en flitst alleen even op de maat."),
     ("dubbelflip", "Dubbelflip", "Elke sprong: zwaartekracht om én links/rechts wisselen."),
+    ("vijfkamp", "Vijfkamp", "5 in 1: glad, tegendraads, krimpsprong, zwaar én een schaduw!"),
     ("eigen", "Mijn poppetje", "Je zelfgemaakte poppetje uit de poppetjes-maker."),
 ]
 

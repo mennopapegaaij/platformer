@@ -720,7 +720,7 @@ class PlatformerSpel(arcade.View):
             return
 
         # Schaduw-poppetje: raakt de schaduw (je oude ik) je aan, dan ga je af!
-        if self.speler.modus == "schaduw" and not self.speler.is_onkwetsbaar():
+        if self.speler.modus in ("schaduw", "vijfkamp") and not self.speler.is_onkwetsbaar():
             pos = self.speler.schaduw_pos()
             if (pos is not None
                     and abs(pos[0] - self.speler.x) < self.speler.breedte
@@ -903,6 +903,7 @@ class PlatformerSpel(arcade.View):
                      "zombie": "zombie", "pompoenkop": "pompoenkop",
                      "voorspeller": "voorspeller", "pendel": "pendel",
                      "blinde": "blinde", "dubbelflip": "dubbelflip",
+                     "vijfkamp": "vijfkamp",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -932,7 +933,7 @@ class PlatformerSpel(arcade.View):
                        "metronoom", "katapult", "krimpsprong", "tegendraads",
                        "turboflip", "spiegelkatapult", "schaduw", "pingpong",
                        "spook", "vleermuis", "zombie", "pompoenkop",
-                       "voorspeller", "pendel", "blinde", "dubbelflip"):
+                       "voorspeller", "pendel", "blinde", "dubbelflip", "vijfkamp"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:

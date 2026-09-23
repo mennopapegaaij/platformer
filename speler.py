@@ -165,6 +165,10 @@ BLIND_ZICHT = 8           # hoelang je dan zichtbaar bent
 
 # --- Dubbelflip: elke sprong draait de zwaartekracht om én wisselt links/rechts ---
 
+# --- Vijfkamp: vijf moeilijke dingen tegelijk (ijs + tegendraads + krimpsprong
+#     + zwaar + schaduw). Geen ritme, geen late sprong en geen toeval! ---
+VIJF_ZWAAR = 1.5          # hoeveel keer zwaarder de zwaartekracht is
+
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
 #   0 = naar beneden, 1 = naar rechts, 2 = naar boven, 3 = naar links
@@ -253,7 +257,7 @@ class Speler:
         self._metro_teller = 0           # metronoom: tel tot de volgende 'tik'
         self._krimp_nr = 0               # krimpsprong: hoeveelste sprong sinds je laatst stond
         self._tegen_flip = False         # tegendraads: zijn links/rechts nu omgedraaid?
-        self._vorige_grond = False       # onthoud of je vorige stap op de grond stond
+        self._vorige_grond = None        # vorige stap op de grond? (None = net begonnen)
         self._schaduw_pad = []           # schaduw: bewaarde plekjes (x, y) van je route
         self._spook_teller = 0           # spook: tel tot hij weer even onzichtbaar wordt
         self._vleer_fase = 0.0           # vleermuis: waar we in de wiebel zitten
@@ -309,7 +313,7 @@ class Speler:
         self._metro_teller = 0              # metronoom: teller terug naar begin
         self._krimp_nr = 0                  # krimpsprong: teller reset
         self._tegen_flip = False            # tegendraads: links/rechts weer gewoon
-        self._vorige_grond = False          # grond-onthoud reset
+        self._vorige_grond = None           # net begonnen: de eerste landing telt niet
         self._schaduw_pad = []              # schaduw: route-geheugen leeg
         self._spook_teller = 0              # spook: onzichtbaar-teller reset
         self._vleer_fase = 0.0              # vleermuis: wiebel terug naar begin
@@ -369,7 +373,7 @@ class Speler:
                 self.zwaartekracht_richting *= -1
 
         # Schaduw: bewaar elke stap je plekje, zodat de schaduw je oude route kan nalopen
-        if self.modus == "schaduw":
+        if self.modus in ("schaduw", "vijfkamp"):
             self._schaduw_pad.append((self.x, self.y))
             if len(self._schaduw_pad) > SCHADUW_DELAY:
                 self._schaduw_pad.pop(0)
@@ -509,6 +513,18 @@ class Speler:
                     doel = -snelheid
                     self.kijkt_rechts = False
                 elif R:
+                    doel = snelheid
+                    self.kijkt_rechts = True
+                else:
+                    doel = 0
+                self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
+            elif self.modus == "vijfkamp":
+                # Vijfkamp: glad als ijs, én links/rechts zijn misschien omgedraaid
+                Lv, Rv = (R, L) if self._tegen_flip else (L, R)
+                if Lv:
+                    doel = -snelheid
+                    self.kijkt_rechts = False
+                elif Rv:
                     doel = snelheid
                     self.kijkt_rechts = True
                 else:
@@ -711,6 +727,9 @@ class Speler:
             # Vleermuis: lichte zwaartekracht (zweverig); elke tik geeft een vleugelslag omhoog.
             self.snelheid_y -= ZWAARTEKRACHT * VLEERMUIS_ZWAARTE * self.zwaartekracht_richting
             self.snelheid_y = max(-8, min(8, self.snelheid_y))
+        elif self.modus == "vijfkamp":
+            # Vijfkamp: zwaardere zwaartekracht, je valt snel
+            self.snelheid_y -= ZWAARTEKRACHT * VIJF_ZWAAR * self.zwaartekracht_richting
         elif self.modus == "zombie":
             # Zombie: iets zwaardere val, voelt log en zwaar.
             self.snelheid_y -= ZWAARTEKRACHT * ZOMBIE_ZWAARTE * self.zwaartekracht_richting
@@ -833,15 +852,17 @@ class Speler:
                         self.staat_op_grond = True   # je 'ligt' tegen het plafond
 
         # Net geland (van de lucht op de grond)? Sommige poppetjes doen dan iets speciaals.
-        net_geland = self.staat_op_grond and not self._vorige_grond
-        if self.modus == "tegendraads" and net_geland:
+        # (_vorige_grond is None aan het begin: dan telt die eerste landing niet mee)
+        net_geland = self.staat_op_grond and self._vorige_grond is False
+        if self.modus in ("tegendraads", "vijfkamp") and net_geland:
             self._tegen_flip = not self._tegen_flip     # links en rechts wisselen om
         if self.modus in ("katapult", "spiegelkatapult") and self.staat_op_grond:
             # Meteen weer in precies dezelfde boog wegschieten (omhoog én vooruit)
             self.snelheid_y = KATA_OMHOOG
             self.snelheid_x = KATA_VOORUIT
             self.staat_op_grond = False
-        self._vorige_grond = self.staat_op_grond
+        if self._vorige_grond is not None or self.staat_op_grond:
+            self._vorige_grond = self.staat_op_grond   # (blijft None tot je voor het eerst staat)
 
     def _eigen(self, sleutel):
         """Hulpje voor het zelfgemaakte poppetje: geef een instelling terug (of None)."""
@@ -1059,7 +1080,7 @@ class Speler:
             return
         if self.modus in ("katapult", "spiegelkatapult", "pingpong"):
             return                                 # deze poppetjes bewegen vanzelf, springen doet niks
-        if self.modus == "krimpsprong":
+        if self.modus in ("krimpsprong", "vijfkamp"):
             # Elke sprong in de lucht is lager dan de vorige; op de grond weer vol.
             factor = KRIMP_AF ** self._krimp_nr
             if factor < KRIMP_MIN:
@@ -1282,6 +1303,9 @@ class Speler:
             return
         if self.modus == "schaduw":
             self._teken_schaduw()
+            return
+        if self.modus == "vijfkamp":
+            self._teken_vijfkamp()
             return
         if self.modus == "pingpong":
             self._teken_pingpong()
@@ -1904,7 +1928,7 @@ class Speler:
     def schaduw_pos(self):
         """Waar staat de schaduw nu? (de plek waar jij ~SCHADUW_DELAY stapjes geleden was)
         Geeft (x, y) terug, of None als er nog geen schaduw is."""
-        if self.modus != "schaduw" or len(self._schaduw_pad) < SCHADUW_DELAY:
+        if self.modus not in ("schaduw", "vijfkamp") or len(self._schaduw_pad) < SCHADUW_DELAY:
             return None
         return self._schaduw_pad[0]
 
@@ -2118,6 +2142,29 @@ class Speler:
         arcade.draw_triangle_filled(x + w - 3, cy, x + w - 9, cy - 4, x + w - 9, cy + 4, wit)
         arcade.draw_circle_filled(cx - 4, cy, 2, OOG_KLEUR)
         arcade.draw_circle_filled(cx + 4, cy, 2, OOG_KLEUR)
+
+    def _teken_vijfkamp(self):
+        """Teken de schaduw én een zwaar ijsblok met vijf gekleurde stipjes (5 in 1)."""
+        pos = self.schaduw_pos()
+        if pos is not None:
+            sx, sy = pos
+            w, h = self.breedte, self.hoogte
+            arcade.draw_lrbt_rectangle_filled(sx, sx + w, sy, sy + h, (40, 40, 60))
+            arcade.draw_lrbt_rectangle_outline(sx, sx + w, sy, sy + h, (110, 90, 150), 2)
+            arcade.draw_circle_filled(sx + 9, sy + h - 10, 3, (210, 90, 210))
+            arcade.draw_circle_filled(sx + w - 9, sy + h - 10, 3, (210, 90, 210))
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        # IJsblauw, of roze als links/rechts nu omgedraaid zijn
+        lijf = (240, 150, 200) if self._tegen_flip else (160, 215, 245)
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, lijf)
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + 6, (70, 70, 90))   # zware onderkant
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (40, 60, 90), 3)
+        # Vijf stipjes: één voor elk moeilijk ding
+        for i, kl in enumerate([(120, 200, 255), (200, 100, 230), (90, 200, 160),
+                                (90, 90, 110), (60, 50, 90)]):
+            arcade.draw_circle_filled(x + 5 + i * (w - 10) / 4, y + 11, 2.5, kl)
+        arcade.draw_circle_filled(x + 9, y + h - 9, 3, OOG_KLEUR)
+        arcade.draw_circle_filled(x + w - 9, y + h - 9, 3, OOG_KLEUR)
 
     def _teken_zweefspringer(self):
         """Teken een licht blokje met twee vleugeltjes (zweeft lang in de lucht)."""

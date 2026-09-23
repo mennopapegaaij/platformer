@@ -63,6 +63,7 @@ PORTAAL_KLEUREN = {
     "pendel": ((200, 120, 60), (245, 190, 140)),        # slinger-bruin = pendel
     "blinde": ((40, 40, 50), (120, 120, 140)),          # donker = blinde
     "dubbelflip": ((150, 60, 120), (230, 150, 210)),    # flip-paars = dubbelflip
+    "vijfkamp": ((200, 170, 40), (255, 230, 120)),      # goud = vijfkamp (5 in 1)
     "eigen": ((255, 150, 40), (255, 210, 130)),         # oranje = zelfgemaakt poppetje
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
@@ -359,6 +360,9 @@ def teken_portaal_icoon(soort, cx, cy):
             px, py = cx + dx * 10, cy + dy * 10
             arcade.draw_triangle_filled(px, py, px - dy * 4 - dx * 5, py - dx * 4 - dy * 5,
                                         px + dy * 4 - dx * 5, py + dx * 4 - dy * 5, arcade.color.WHITE)
+    elif soort == "vijfkamp":
+        # Een grote 5
+        arcade.draw_text("5", cx, cy - 8, arcade.color.WHITE, 16, bold=True, anchor_x="center")
     elif soort == "eigen":
         # Zelfgemaakt poppetje: een sterretje/blokje met een plusje
         arcade.draw_lrbt_rectangle_filled(cx - 7, cx + 7, cy - 7, cy + 7, arcade.color.WHITE)
