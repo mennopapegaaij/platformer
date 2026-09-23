@@ -207,15 +207,19 @@ KAMP_SNELVAL = 2.0        # snelval: na het hoogste punt val je zoveel keer zo s
 KAMP_ZWARE_BENEN = 0.8    # zware benen: je loopt maar zo snel
 KAMP_SNELLE_SCHADUW = 30  # zoveel stapjes zit de schaduw achter je (gewoon is 45)
 KAMP_DONKER_LICHT = 75    # zo groot is je lichtje als het nog donkerder is
+KAMP_SPIKE_MAGNEET = 0.6  # hoe hard spikes vlakbij je naar zich toe trekken (per stapje)
+KAMP_SPIKE_BEREIK = 150   # hoe dichtbij een spike moet zijn om je te trekken
 
 # Welke moeilijke onderdelen elk 'kamp'-poppetje heeft.
 # Zo kun je makkelijk een nieuw kamp maken: gewoon een lijstje onderdelen!
 VIJF_ONDERDELEN = {"ijs", "tegendraads", "krimp", "zwaar", "schaduw"}
-TIEN_ONDERDELEN = VIJF_ONDERDELEN | {"hard", "doorschiet", "moe", "nacht", "hoofdpijn"}
+# Tienkamp en hoger: GEEN schaduw meer, maar alles staat ondersteboven!
+TIEN_ONDERDELEN = (VIJF_ONDERDELEN - {"schaduw"}) | {"ondersteboven", "hard", "doorschiet",
+                                                    "moe", "nacht", "hoofdpijn"}
 VIJFTIEN_ONDERDELEN = TIEN_ONDERDELEN | {"luchtrem", "hoogtevrees", "dikkerd", "aanloop",
                                          "eenrichting"}
 TWINTIG_ONDERDELEN = VIJFTIEN_ONDERDELEN | {"hetevloer", "vasthouden", "superglad",
-                                           "snelleschaduw", "donker"}
+                                           "spikemagneet", "donker"}
 KAMP_ONDERDELEN = {
     "vijfkamp": VIJF_ONDERDELEN,
     "tienkamp": TIEN_ONDERDELEN,

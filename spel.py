@@ -724,6 +724,10 @@ class PlatformerSpel(arcade.View):
             self._speler_geraakt()
             return
 
+        # Kamp-onderdeel 'spike-magneet': spikes vlakbij trekken je naar zich toe
+        if self.speler._kamp("spikemagneet"):
+            self._spike_magneet(self.speler)
+
         # Tienkamp: te hard geland of je hoofd gestoten? Dan ga je af!
         if getattr(self.speler, "_au", False):
             self.speler._au = False
@@ -745,6 +749,14 @@ class PlatformerSpel(arcade.View):
         cam_x = self.speler.x + self.speler.breedte / 2
         cam_x = max(SCHERM_BREEDTE / 2, min(cam_x, self.level_breedte - SCHERM_BREEDTE / 2))
         self.camera.position = cam_x, self._camera_y(self.speler)
+        # Kamp-onderdeel 'ondersteboven': het hele beeld staat op z'n kop!
+        if self.speler._kamp("ondersteboven"):
+            self.camera.angle = 180
+            # Op z'n kop staat de grond bovenin; zet de camera zo dat je het
+            # poppetje goed ziet (een stukje boven het midden van het scherm)
+            self.camera.position = cam_x, self.speler.y + self.speler.hoogte / 2 + 50
+        else:
+            self.camera.angle = 0
 
         # --- Power-ups bijwerken en oppakken ---
         for powerup in self.powerups:
@@ -1233,6 +1245,21 @@ class PlatformerSpel(arcade.View):
             # Altijd terugzetten, ook als er iets misgaat tijdens het tekenen
             for n, f in echt.items():
                 setattr(arcade, n, f)
+
+    def _spike_magneet(self, sp):
+        """Trek de speler een stukje naar de dichtstbijzijnde spike (als die vlakbij is)."""
+        from vijand import Spikes
+        from speler import KAMP_SPIKE_MAGNEET, KAMP_SPIKE_BEREIK
+        mid = sp.x + sp.breedte / 2
+        beste = None
+        for v in self.vijanden:
+            if not isinstance(v, Spikes) or getattr(v, "doorheen", False):
+                continue
+            afstand = (v.x + v.breedte / 2) - mid
+            if abs(afstand) < KAMP_SPIKE_BEREIK and (beste is None or abs(afstand) < abs(beste)):
+                beste = afstand
+        if beste is not None and beste != 0:
+            sp.x += KAMP_SPIKE_MAGNEET if beste > 0 else -KAMP_SPIKE_MAGNEET
 
     def _teken_nacht(self, sp):
         """Maak alles donker behalve een rond lichtje om de speler heen."""
