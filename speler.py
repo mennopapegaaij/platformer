@@ -4,6 +4,7 @@
 import arcade
 import math
 import random
+import elementkoning as ek   # de Elementenkoning (25 vormen) staat in een eigen bestand
 from instellingen import (SPELER_SNELHEID, SPRING_KRACHT, ZWAARTEKRACHT,
                            SPELER_KLEUR, OOG_KLEUR)
 
@@ -349,6 +350,7 @@ class Speler:
         self._lucht_tijd = 0             # hoogtevrees: hoelang je al in de lucht bent
         self._grond_tijd = 0             # hete vloer: hoelang je al op de grond staat
         self._element_reset()            # elementmeester: begin als vuur
+        ek.reset(self)                   # elementenkoning: begin bij element 1
 
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
@@ -411,6 +413,7 @@ class Speler:
         self._lucht_tijd = 0                # hoogtevrees: reset
         self._grond_tijd = 0                # hete vloer: reset
         self._element_reset()               # elementmeester: weer vuur
+        ek.reset(self)                      # elementenkoning: weer bij element 1
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -485,6 +488,8 @@ class Speler:
         # Elementmeester: deeltjes, flits en schokgolf laten bewegen
         if self.modus == "element":
             self._element_stap()
+        if self.modus == "elementkoning":
+            ek.stap(self, platforms)        # elementenkoning: deeltjes en tellers
 
         # Pompoenkop: bewaar plekjes voor het vurige spoor achter je aan
         if self.modus == "pompoenkop":
@@ -616,6 +621,8 @@ class Speler:
                 else:
                     doel = 0
                 self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
+            elif self.modus == "elementkoning":
+                ek.loop(self, L, R, snelheid)   # elk van de 25 elementen loopt anders
             elif self.modus == "element":
                 # Elementmeester: elke vorm loopt anders
                 vorm = self.element()
@@ -866,6 +873,8 @@ class Speler:
             # Vleermuis: lichte zwaartekracht (zweverig); elke tik geeft een vleugelslag omhoog.
             self.snelheid_y -= ZWAARTEKRACHT * VLEERMUIS_ZWAARTE * self.zwaartekracht_richting
             self.snelheid_y = max(-8, min(8, self.snelheid_y))
+        elif self.modus == "elementkoning":
+            ek.zwaartekracht(self, richting)    # elk van de 25 elementen valt anders
         elif self.modus == "element":
             vorm = self.element()
             if vorm == "lucht":
@@ -964,6 +973,9 @@ class Speler:
                     self.snelheid_y = STUITER_KRACHT
                 elif stuiter and not omgedraaid:
                     self.snelheid_y = stuiter
+                elif (self.modus == "elementkoning" and not omgedraaid
+                      and ek.stuiter_bij_landen(self)):
+                    pass                          # kristal: stuiteren in plaats van landen
                 elif (self._kamp("stuiter") and not omgedraaid
                       and self.snelheid_y < -TWINTIG_STUITER_MIN
                       and not (self._kamp("hard") and self.snelheid_y < -TIEN_HARD)):
@@ -1036,6 +1048,8 @@ class Speler:
                 self._au = True                          # hete vloer: te lang op de grond -> af
         if self.modus == "element" and net_geland:
             self._element_geland()
+        if self.modus == "elementkoning" and net_geland:
+            ek.geland(self)                              # elementenkoning: volgende element
         if net_geland:
             if self._kamp("doorschiet"):
                 # Doorschieter: bij elke landing schiet je een stukje naar voren
@@ -1260,6 +1274,9 @@ class Speler:
             return
         if self.modus == "element":
             self._element_spring()
+            return
+        if self.modus == "elementkoning":
+            ek.spring(self)
             return
         if self.modus == "voorspeller":
             # Voorspeller: de sprong komt pas straks (alleen als er nog geen sprong wacht)
@@ -1542,6 +1559,9 @@ class Speler:
             return
         if self.modus == "element":
             self._teken_element()
+            return
+        if self.modus == "elementkoning":
+            ek.teken(self)
             return
         if self.modus == "voorspeller":
             self._teken_voorspeller()

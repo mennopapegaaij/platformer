@@ -5,6 +5,7 @@
 import arcade
 import copy   # om bij een herstart verse kopieën van je eigen level te maken
 import math   # voor het vuurwerk bij winst
+import elementkoning as ek
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
@@ -424,6 +425,8 @@ class PlatformerSpel(arcade.View):
         # Elementmeester: laat zien welke vorm je nu bent en welke hierna komt
         if self.speler.modus == "element" and not self.twee:
             self._teken_element_hud(self.speler)
+        if self.speler.modus == "elementkoning" and not self.twee:
+            ek.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
 
         # Sleutel-teller (alleen tonen als je sleutels hebt)
         if self.speler.sleutels > 0:
@@ -684,7 +687,8 @@ class PlatformerSpel(arcade.View):
 
         # In de vasthoud-modi (vliegtuig, golf, robot): geef door of de knop vastgehouden wordt
         if (self.speler.modus in ("vliegtuig", "golf", "robot", "ballon", "raket", "draak", "dronken", "spook")
-                or self.speler._kamp("vasthouden") or self.speler.modus == "element"):
+                or self.speler._kamp("vasthouden")
+                or self.speler.modus in ("element", "elementkoning")):
             self.speler.vlieg_omhoog = self._vlieg_omhoog
 
         # Laat de speler bewegen en botsingen controleren
@@ -812,7 +816,10 @@ class PlatformerSpel(arcade.View):
             elif (not self.speler.is_onkwetsbaar() and
                   vijand.raakt_speler(self.speler.x, self.speler.y,
                                       self.speler.breedte, self.speler.hoogte)):
-                self._speler_geraakt()
+                if self._elementkoning_raakt(vijand):
+                    vijanden_weg.append(vijand)   # lava smolt de spike / gif versloeg het monster
+                else:
+                    self._speler_geraakt()
 
         # Verwijder de dode vijanden uit de lijst
         for vijand in vijanden_weg:
@@ -937,7 +944,7 @@ class PlatformerSpel(arcade.View):
                      "blinde": "blinde", "dubbelflip": "dubbelflip",
                      "vijfkamp": "vijfkamp", "tienkamp": "tienkamp",
                      "vijftienkamp": "vijftienkamp", "twintigkamp": "twintigkamp",
-                     "element": "element",
+                     "element": "element", "elementkoning": "elementkoning",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -968,7 +975,8 @@ class PlatformerSpel(arcade.View):
                        "turboflip", "spiegelkatapult", "schaduw", "pingpong",
                        "spook", "vleermuis", "zombie", "pompoenkop",
                        "voorspeller", "pendel", "blinde", "dubbelflip", "vijfkamp", "tienkamp",
-                       "vijftienkamp", "twintigkamp", "element"):
+                       "vijftienkamp", "twintigkamp", "element",
+                       "elementkoning"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -1274,6 +1282,21 @@ class PlatformerSpel(arcade.View):
             self._voeg_punt_toe()                  # een punt voor elk weggeblazen monster
         if weg:
             geluid_manager.speel_vijand_dood()
+
+    def _elementkoning_raakt(self, vijand):
+        """Elementenkoning: als lava smelten spikes, en met gif gaan monsters dood."""
+        sp = self.speler
+        if sp.modus != "elementkoning":
+            return False
+        from vijand import Spikes
+        e = ek.element(sp)
+        if e["smelt"] and isinstance(vijand, Spikes):
+            return True
+        if e["gif"] and not getattr(vijand, "is_spike", False):
+            self._voeg_punt_toe()
+            geluid_manager.speel_vijand_dood()
+            return True
+        return False
 
     def _spike_magneet(self, sp):
         """Trek de speler een stukje naar de dichtstbijzijnde spike (als die vlakbij is)."""
@@ -1655,7 +1678,8 @@ class PlatformerSpel(arcade.View):
             sp.rechts_ingedrukt = True          # auto-run modi: vanzelf naar rechts
             sp.links_ingedrukt = False
         if (sp.modus in ("vliegtuig", "golf", "robot", "ballon", "raket", "draak", "dronken", "spook")
-                or sp._kamp("vasthouden") or sp.modus == "element"):
+                or sp._kamp("vasthouden")
+                or sp.modus in ("element", "elementkoning")):
             sp.vlieg_omhoog = self._vlieg[i]
         sp.bijwerken(self.level_breedte, self.platforms)
         self._pas_portalen_toe(sp, self._vorige[i])
@@ -1878,6 +1902,12 @@ class PlatformerSpel(arcade.View):
 
     def _speler_geraakt(self):
         """Verwerk dat de speler geraakt wordt: leven aftrekken of game over."""
+        # Elementenkoning als metaal: het schild houdt één klap tegen
+        if self.speler.modus == "elementkoning" and getattr(self.speler, "_ek_schild", False):
+            self.speler._ek_schild = False
+            self.speler.onkwetsbaar_timer = 45       # even knipperen, dan weer gewoon
+            geluid_manager.speel_geraakt()
+            return
         # Zelfgemaakt poppetje met het 'Schild'-kunstje kan niet geraakt worden
         if (self.speler.modus == "eigen" and getattr(self.speler, "eigen_instel", None)
                 and self.speler.eigen_instel.get("schild")):

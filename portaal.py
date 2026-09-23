@@ -68,6 +68,7 @@ PORTAAL_KLEUREN = {
     "vijftienkamp": ((60, 30, 90), (160, 110, 230)),    # donkerpaars = vijftienkamp (15 in 1)
     "twintigkamp": ((20, 90, 90), (60, 200, 200)),      # turkoois = twintigkamp (20 in 1)
     "element": ((120, 60, 160), (230, 180, 255)),       # paars = elementmeester
+    "elementkoning": ((200, 150, 20), (255, 225, 90)),  # goud = elementenkoning
     "eigen": ((255, 150, 40), (255, 210, 130)),         # oranje = zelfgemaakt poppetje
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
@@ -381,6 +382,12 @@ def teken_portaal_icoon(soort, cx, cy):
         for (dx, dy), kl in zip(((-5, 5), (5, 5), (-5, -5), (5, -5)),
                                 ((255, 110, 30), (60, 150, 255), (220, 240, 255), (150, 105, 60))):
             arcade.draw_circle_filled(cx + dx, cy + dy, 5, kl)
+    elif soort == "elementkoning":
+        # Een kroontje met gekleurde bolletjes eronder
+        arcade.draw_polygon_filled([(cx - 9, cy), (cx + 9, cy), (cx + 9, cy + 7), (cx + 5, cy + 3),
+                                    (cx, cy + 9), (cx - 5, cy + 3), (cx - 9, cy + 7)], (255, 210, 40))
+        for i, kl in enumerate(((255, 110, 30), (60, 150, 255), (80, 200, 80), (190, 110, 240))):
+            arcade.draw_circle_filled(cx - 9 + i * 6, cy - 5, 3, kl)
     elif soort == "eigen":
         # Zelfgemaakt poppetje: een sterretje/blokje met een plusje
         arcade.draw_lrbt_rectangle_filled(cx - 7, cx + 7, cy - 7, cy + 7, arcade.color.WHITE)
