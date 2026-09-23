@@ -23,6 +23,7 @@ STANDAARD = {
     "actie": None,      # wat een druk in de lucht doet: stamp/dash/teleport/omkeer
     "vasthoud": None,   # wat knop-vasthouden doet: glij (langzaam vallen) / zweef (jetpack)
     "stuiter": 0,       # stuiteren bij landen (0 = niet, 0.7 = flink)
+    "spikestuiter": False,  # val je op een spike, dan stuiter je weg (en je blijft dit element)
     "ver": 0,           # extra vaart naar voren bij elke sprong
     "valzacht": None,   # je valt nooit sneller dan dit (bv. -1.2 = heel langzaam)
     "smelt": False,     # spikes die je raakt smelten weg (en doen geen pijn)
@@ -55,16 +56,16 @@ _LIJST = [
      dict(sprong=1.3, vorm="blad", deeltje="blaadje")),
     ("Metaal",    (150, 155, 170), (220, 225, 235), "schild tegen 1 klap",
      dict(snel=0.9, zwaar=1.6, schild=True, vorm="blok")),
-    ("Zand",      (225, 195, 120), (190, 150, 80),  "verre sprong",
-     dict(grip=0.2, ver=4, vorm="hoop", deeltje="korrel")),
+    ("Zand",      (225, 195, 120), (190, 150, 80),  "verste sprong van allemaal",
+     dict(grip=0.2, ver=7, sprong=1.1, vorm="hoop", deeltje="korrel")),
     ("Licht",     (255, 250, 190), (255, 255, 255), "teleporteren in de lucht",
      dict(actie="teleport", vorm="ster", deeltje="glitter")),
     ("Schaduw",   (45, 40, 65),    (110, 90, 150),  "piepklein",
      dict(grootte=0.6, snel=1.1, vorm="bol")),
     ("Rook",      (140, 140, 150), (200, 200, 210), "jetpack (knop vasthouden)",
      dict(zwaar=0.7, vasthoud="zweef", vorm="wolk", deeltje="wolkje")),
-    ("Kristal",   (190, 110, 240), (240, 200, 255), "stuitert bij landen",
-     dict(stuiter=0.7, vorm="kristal", deeltje="glitter")),
+    ("Kristal",   (190, 110, 240), (240, 200, 255), "stuiter op spikes (van boven)!",
+     dict(spikestuiter=True, vorm="kristal", deeltje="glitter")),
     ("Sneeuw",    (245, 250, 255), (190, 215, 240), "groot + zacht vallen",
      dict(grootte=1.4, valzacht=-3, vorm="bol", deeltje="sneeuw")),
     ("Stoom",     (220, 225, 230), (255, 255, 255), "heel licht",
@@ -104,6 +105,7 @@ TELEPORT_AFSTAND = 90     # zo ver teleporteer je naar voren
 GLIJ_SNELHEID = -1.5      # met glijden val je nooit sneller dan dit
 ZWEEF_BRANDSTOF = 50      # zoveel stapjes kan de jetpack duwen per sprong
 SCHOK_BEREIK = 170        # hoe ver een schokgolf monsters wegblaast
+SPIKE_STUITER = 11        # zo hard stuiter je als kristal omhoog van een spike
 FLITS = 20                # hoe lang de flits duurt bij het wisselen
 
 # De regenboog-kleuren (voor de regenboog-vorm)
@@ -207,6 +209,8 @@ def loop(sp, L, R, snelheid):
         sp._ek_dash -= 1
         sp.snelheid_x = DASH_SNELHEID * (1 if sp.kijkt_rechts else -1)
         return
+    if e["ver"] and not sp.staat_op_grond:
+        return                                    # verre sprong: in de lucht hou je je vaart
     doel = kant * snelheid * e["snel"]
     if e["grip"] is None:
         sp.snelheid_x = doel
@@ -242,6 +246,20 @@ def stuiter_bij_landen(sp):
         sp.snelheid_y = -sp.snelheid_y * e["stuiter"]
         return True
     return False
+
+
+def spike_stuiter(sp):
+    """Kristal valt op een spike: stuiter omhoog. Geeft True als dat gebeurde."""
+    e = element(sp)
+    if not e["spikestuiter"] or sp.snelheid_y * sp.zwaartekracht_richting > -1:
+        return False                              # alleen als je van boven op de spike valt
+    sp.snelheid_y = SPIKE_STUITER * sp.zwaartekracht_richting
+    sp._ek_actie_klaar = True
+    cx = sp.x + sp.breedte / 2
+    for i in range(10):                           # rinkel! glinsterende scherfjes
+        h = math.radians(i * 18)
+        _deeltje(sp, cx, sp.y, math.cos(h) * 3, math.sin(h) * 3, 18, e["kleur2"], 3)
+    return True
 
 
 def spring(sp):

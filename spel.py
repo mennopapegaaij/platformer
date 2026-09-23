@@ -816,9 +816,10 @@ class PlatformerSpel(arcade.View):
             elif (not self.speler.is_onkwetsbaar() and
                   vijand.raakt_speler(self.speler.x, self.speler.y,
                                       self.speler.breedte, self.speler.hoogte)):
-                if self._elementkoning_raakt(vijand):
+                gevolg = self._elementkoning_raakt(vijand)
+                if gevolg == "weg":
                     vijanden_weg.append(vijand)   # lava smolt de spike / gif versloeg het monster
-                else:
+                elif gevolg != "veilig":          # (veilig = kristal stuitert op de spike)
                     self._speler_geraakt()
 
         # Verwijder de dode vijanden uit de lijst
@@ -1284,19 +1285,23 @@ class PlatformerSpel(arcade.View):
             geluid_manager.speel_vijand_dood()
 
     def _elementkoning_raakt(self, vijand):
-        """Elementenkoning: als lava smelten spikes, en met gif gaan monsters dood."""
+        """Elementenkoning: lava smelt spikes, gif verslaat monsters, kristal stuitert
+        op spikes. Geeft "weg" (vijand weg), "veilig" (niks aan de hand) of None."""
         sp = self.speler
         if sp.modus != "elementkoning":
-            return False
+            return None
         from vijand import Spikes
         e = ek.element(sp)
         if e["smelt"] and isinstance(vijand, Spikes):
-            return True
+            return "weg"
+        if isinstance(vijand, Spikes) and ek.spike_stuiter(sp):
+            geluid_manager.speel_sprong()
+            return "veilig"
         if e["gif"] and not getattr(vijand, "is_spike", False):
             self._voeg_punt_toe()
             geluid_manager.speel_vijand_dood()
-            return True
-        return False
+            return "weg"
+        return None
 
     def _spike_magneet(self, sp):
         """Trek de speler een stukje naar de dichtstbijzijnde spike (als die vlakbij is)."""
