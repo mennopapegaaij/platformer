@@ -11,6 +11,7 @@ import drakentemmer as dt
 import mierenkolonie as mk
 import evolutie as evo
 import schilder as sv
+import chemicus as ch
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
@@ -452,6 +453,8 @@ class PlatformerSpel(arcade.View):
             mk.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "schilder" and not self.twee:
             sv.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 92)
+        if self.speler.modus == "chemicus" and not self.twee:
+            ch.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 96)
         if self.speler.modus == "evolutie" and not self.twee:
             evo.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
             if self.speler._evo_kiezen and not self.dood:
@@ -1014,7 +1017,7 @@ class PlatformerSpel(arcade.View):
                      "element": "element", "elementkoning": "elementkoning",
                      "bouwmeester": "bouwmeester", "portaalschieter": "portaalschieter",
                      "drakentemmer": "drakentemmer", "mierenkolonie": "mierenkolonie",
-                     "evolutie": "evolutie", "schilder": "schilder",
+                     "evolutie": "evolutie", "schilder": "schilder", "chemicus": "chemicus",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -1047,7 +1050,7 @@ class PlatformerSpel(arcade.View):
                        "voorspeller", "pendel", "blinde", "dubbelflip", "vijfkamp", "tienkamp",
                        "vijftienkamp", "twintigkamp", "element",
                        "elementkoning", "bouwmeester", "portaalschieter", "drakentemmer",
-                       "mierenkolonie", "evolutie", "schilder"):
+                       "mierenkolonie", "evolutie", "schilder", "chemicus"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -2080,6 +2083,11 @@ class PlatformerSpel(arcade.View):
 
     def _speler_geraakt(self):
         """Verwerk dat de speler geraakt wordt: leven aftrekken of game over."""
+        # Chemicus met schilddrank: het schild houdt de klap tegen (niet in een kuil)
+        if (self.speler.modus == "chemicus" and not self.speler.is_gevallen()
+                and ch.bescherm(self.speler)):
+            geluid_manager.speel_geraakt()
+            return
         # Evolutie met pantser: het pantser houdt de klap tegen (niet in een kuil)
         if (self.speler.modus == "evolutie" and not self.speler.is_gevallen()
                 and evo.bescherm(self.speler)):
@@ -2151,6 +2159,18 @@ class PlatformerSpel(arcade.View):
                 else:
                     self._verlaat_arena()            # terug naar de kaart
             return
+        # Chemicus: drankjes 1-6 in de ketel, Backspace = ketel leeg
+        if self.speler.modus == "chemicus":
+            drank = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3,
+                     arcade.key.KEY_4: 4, arcade.key.KEY_5: 5, arcade.key.KEY_6: 6,
+                     arcade.key.NUM_1: 1, arcade.key.NUM_2: 2, arcade.key.NUM_3: 3,
+                     arcade.key.NUM_4: 4, arcade.key.NUM_5: 5, arcade.key.NUM_6: 6}.get(toets)
+            if drank:
+                ch.voeg_toe(self.speler, drank)
+                return
+            if toets == arcade.key.BACKSPACE:
+                ch.leeg(self.speler)
+                return
         # Schilder: kies een verfkleur met 1 t/m 8
         if self.speler.modus == "schilder":
             kleur = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3, arcade.key.KEY_4: 4,
@@ -2240,6 +2260,10 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.DOWN and self.speler.modus == "bouwmeester":
             # Bouwmeester: zet een blokje neer
             self._bouw_blokje(self.speler)
+        elif toets == arcade.key.DOWN and self.speler.modus == "chemicus":
+            # Chemicus: drink je brouwsel op
+            if not (self.dood or self.gewonnen or self.game_over) and ch.drink(self.speler):
+                geluid_manager.speel_powerup()
         elif toets == arcade.key.DOWN and self.speler.modus == "schilder":
             # Schilder: spuit een verfvlek op de grond onder je
             if (not (self.dood or self.gewonnen or self.game_over)

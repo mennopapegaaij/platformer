@@ -73,6 +73,7 @@ POPPETJES = [
     ("mierenkolonie", "Mierenkolonie", "4 mieren lopen achter je aan (je levens!). Omlaag: toren of brug van mieren."),
     ("evolutie", "Evolutie", "Verzamel DNA en kies zelf mutaties (1/2/3): vleugels, stekels, pantser... bouw je eigen wezen!"),
     ("schilder", "Schilder", "Spuit verf (omlaag), 8 kleuren (1-8): trampoline, snel, spikes weg, glad, teleport, lanceer, wolk, modder."),
+    ("chemicus", "Chemicus", "Meng 6 drankjes (1-6) in je ketel en drink op (omlaag). 209 recepten om te ontdekken!"),
     ("eigen", "Mijn poppetje", "Je zelfgemaakte poppetje uit de poppetjes-maker."),
 ]
 
