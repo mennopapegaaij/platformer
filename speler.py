@@ -7,6 +7,7 @@ import random
 import elementkoning as ek   # de Elementenkoning (25 vormen) staat in een eigen bestand
 import portaalschieter as ps  # de Portaalschieter staat ook in een eigen bestand
 import drakentemmer as dt     # en de Drakentemmer ook
+import mierenkolonie as mk    # en de Mierenkolonie ook
 from instellingen import (SPELER_SNELHEID, SPRING_KRACHT, ZWAARTEKRACHT,
                            SPELER_KLEUR, OOG_KLEUR)
 
@@ -359,6 +360,7 @@ class Speler:
         ek.reset(self)                   # elementenkoning: begin bij element 1
         ps.reset(self)                   # portaalschieter: nog geen portalen
         dt.reset(self)                   # drakentemmer: begin als ei
+        mk.reset(self)                   # mierenkolonie: 4 mieren achter je aan
         self._bouw_over = BOUW_MAX       # bouwmeester: hoeveel blokjes je nog hebt
         self._bouw_terug = False         # bouwmeester: moeten je blokjes terugkomen?
         self._gelande_platform = None    # op welk platform je het laatst landde
@@ -427,6 +429,7 @@ class Speler:
         ek.reset(self)                      # elementenkoning: weer bij element 1
         ps.reset(self)                      # portaalschieter: portalen weg
         dt.reset(self)                      # drakentemmer: weer een ei
+        mk.reset(self)                      # mierenkolonie: weer 4 mieren
         self._bouw_over = BOUW_MAX          # bouwmeester: alle blokjes weer terug
         self._bouw_terug = False
         self._gelande_platform = None
@@ -1108,6 +1111,10 @@ class Speler:
             ps.stap(self, platforms)                     # portaal-kogel vliegen + teleporteren
         if self.modus == "drakentemmer":
             dt.stap(self, platforms)                     # groeien, energie, vuurballen
+        if self.modus == "mierenkolonie":
+            mk.stap(self)                                # de mieren volgen je pad
+            if net_geland and not getattr(self._gelande_platform, "is_mierwerk", False):
+                mk.op_echte_grond(self)                  # echte grond: mieren terug in het rijtje
         if net_geland:
             if self._kamp("doorschiet"):
                 # Doorschieter: bij elke landing schiet je een stukje naar voren
@@ -1632,6 +1639,9 @@ class Speler:
             return
         if self.modus == "drakentemmer":
             dt.teken(self)
+            return
+        if self.modus == "mierenkolonie":
+            mk.teken(self)
             return
         if self.modus == "voorspeller":
             self._teken_voorspeller()

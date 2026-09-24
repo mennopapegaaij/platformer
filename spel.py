@@ -8,6 +8,7 @@ import math   # voor het vuurwerk bij winst
 import elementkoning as ek
 import portaalschieter as ps
 import drakentemmer as dt
+import mierenkolonie as mk
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
@@ -442,6 +443,8 @@ class PlatformerSpel(arcade.View):
             ps.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "drakentemmer" and not self.twee:
             dt.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 96)
+        if self.speler.modus == "mierenkolonie" and not self.twee:
+            mk.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
 
         # Sleutel-teller (alleen tonen als je sleutels hebt)
         if self.speler.sleutels > 0:
@@ -752,6 +755,13 @@ class PlatformerSpel(arcade.View):
             self.speler._bouw_terug = False
             self.platforms = [p for p in self.platforms if not getattr(p, "is_bouwblok", False)]
 
+        # Mierenkolonie: toren/brug in het level zetten, en raken de volg-mieren iets?
+        if self.speler.modus == "mierenkolonie" or any(
+                getattr(p, "is_mierwerk", False) for p in self.platforms):
+            self._mier_sync(self.speler)
+        if self.speler.modus == "mierenkolonie":
+            self._mieren_geraakt(self.speler)
+
         # Drakentemmer: vuurballen en de vuurstorm verslaan monsters (en de storm smelt spikes)
         if self.speler.modus == "drakentemmer":
             self._draak_vuur(self.speler)
@@ -834,6 +844,8 @@ class PlatformerSpel(arcade.View):
                     vijanden_weg.append(vijand)
                     self._voeg_punt_toe()       # 🏆 Punt voor stompen!
                 self.speler.snelheid_y = SPRING_KRACHT / 2
+                if self.speler.modus == "mierenkolonie":
+                    mk.mier_erbij(self.speler)    # monster opgegeten: een nieuwe mier!
                 geluid_manager.speel_vijand_dood()  # 🎵 Boing!
 
             # Raakt de vijand de speler? Alleen gevaarlijk als de speler NIET onkwetsbaar is!
@@ -971,7 +983,7 @@ class PlatformerSpel(arcade.View):
                      "vijftienkamp": "vijftienkamp", "twintigkamp": "twintigkamp",
                      "element": "element", "elementkoning": "elementkoning",
                      "bouwmeester": "bouwmeester", "portaalschieter": "portaalschieter",
-                     "drakentemmer": "drakentemmer",
+                     "drakentemmer": "drakentemmer", "mierenkolonie": "mierenkolonie",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -1003,7 +1015,8 @@ class PlatformerSpel(arcade.View):
                        "spook", "vleermuis", "zombie", "pompoenkop",
                        "voorspeller", "pendel", "blinde", "dubbelflip", "vijfkamp", "tienkamp",
                        "vijftienkamp", "twintigkamp", "element",
-                       "elementkoning", "bouwmeester", "portaalschieter", "drakentemmer"):
+                       "elementkoning", "bouwmeester", "portaalschieter", "drakentemmer",
+                       "mierenkolonie"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -1309,6 +1322,28 @@ class PlatformerSpel(arcade.View):
             self._voeg_punt_toe()                  # een punt voor elk weggeblazen monster
         if weg:
             geluid_manager.speel_vijand_dood()
+
+    def _mier_sync(self, sp):
+        """Zorg dat alleen de toren/brug van nu in het level staat."""
+        werk = getattr(sp, "_mk_werk", None) if sp.modus == "mierenkolonie" else None
+        self.platforms = [p for p in self.platforms
+                          if not getattr(p, "is_mierwerk", False) or p is werk]
+        if werk is not None and werk not in self.platforms:
+            self.platforms.append(werk)
+
+    def _mieren_geraakt(self, sp):
+        """Raakt een volg-mier een spike of monster? Dan ben je die mier kwijt.
+        (Net na een opoffering ben jij even onkwetsbaar, en je mieren dan ook: anders
+        lopen ze allemaal achter elkaar dezelfde spike in.)"""
+        if sp.onkwetsbaar_timer > 0:
+            return
+        for i, pos in enumerate(mk.mier_posities(sp)):
+            mx, my, mb, mh = mk.mier_rechthoek(pos)
+            for vijand in self.vijanden:
+                if vijand.raakt_speler(mx, my, mb, mh):
+                    mk.mier_kwijt(sp, i)
+                    geluid_manager.speel_geraakt()
+                    return                       # maar één mier per stapje
 
     def _draak_vuur(self, sp):
         """Vuurballen raken monsters; de vuurstorm verslaat alles in de buurt."""
@@ -2004,6 +2039,11 @@ class PlatformerSpel(arcade.View):
 
     def _speler_geraakt(self):
         """Verwerk dat de speler geraakt wordt: leven aftrekken of game over."""
+        # Mierenkolonie: de achterste mier offert zich op (maar niet als je in een kuil valt)
+        if (self.speler.modus == "mierenkolonie" and not self.speler.is_gevallen()
+                and mk.bescherm(self.speler)):
+            geluid_manager.speel_geraakt()
+            return
         # Elementenkoning als metaal: het schild houdt één klap tegen
         if self.speler.modus == "elementkoning" and getattr(self.speler, "_ek_schild", False):
             self.speler._ek_schild = False
@@ -2133,6 +2173,12 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.DOWN and self.speler.modus == "bouwmeester":
             # Bouwmeester: zet een blokje neer
             self._bouw_blokje(self.speler)
+        elif toets == arcade.key.DOWN and self.speler.modus == "mierenkolonie":
+            # Mierenkolonie: toren (op de grond) of brug (in de lucht), of weer loslaten
+            if not (self.dood or self.gewonnen or self.game_over):
+                mk.bouw(self.speler)
+                self._mier_sync(self.speler)
+                geluid_manager.speel_sprong()
         elif toets == arcade.key.DOWN and self.speler.modus == "drakentemmer":
             # Drakentemmer: vuurbal spuwen (of vuurstorm als de superbalk vol is)
             if not (self.dood or self.gewonnen or self.game_over) and dt.vuur(self.speler):

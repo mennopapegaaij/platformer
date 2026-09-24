@@ -72,6 +72,7 @@ PORTAAL_KLEUREN = {
     "bouwmeester": ((200, 120, 30), (255, 200, 90)),    # oranje = bouwmeester
     "portaalschieter": ((60, 150, 255), (255, 150, 40)),  # blauw + oranje = portaalschieter
     "drakentemmer": ((50, 130, 60), (150, 220, 120)),   # drakengroen = drakentemmer
+    "mierenkolonie": ((150, 45, 35), (230, 130, 110)),  # mierenrood = mierenkolonie
     "eigen": ((255, 150, 40), (255, 210, 130)),         # oranje = zelfgemaakt poppetje
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
@@ -407,6 +408,11 @@ def teken_portaal_icoon(soort, cx, cy):
         arcade.draw_line(cx - 4, cy + 2, cx, cy - 2, (90, 80, 60), 2)
         arcade.draw_line(cx, cy - 2, cx + 3, cy + 3, (90, 80, 60), 2)
         arcade.draw_circle_filled(cx - 2, cy - 5, 2, (120, 190, 110))
+    elif soort == "mierenkolonie":
+        # Drie mierenlijfjes op een rijtje
+        for i in range(3):
+            arcade.draw_circle_filled(cx - 7 + i * 7, cy, 3 if i != 1 else 2, (230, 130, 110))
+        arcade.draw_line(cx + 7, cy + 2, cx + 10, cy + 7, (230, 130, 110), 1)
     elif soort == "eigen":
         # Zelfgemaakt poppetje: een sterretje/blokje met een plusje
         arcade.draw_lrbt_rectangle_filled(cx - 7, cx + 7, cy - 7, cy + 7, arcade.color.WHITE)

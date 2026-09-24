@@ -70,6 +70,7 @@ POPPETJES = [
     ("bouwmeester", "Bouwmeester", "Pijltje omlaag = blokje bouwen (3 stuks). Terug als je op echte grond landt."),
     ("portaalschieter", "Portaalschieter", "Pijltje omlaag: blauw portaal neerzetten, nog eens: oranje wegschieten. Loop erdoor!"),
     ("drakentemmer", "Drakentemmer", "Je draak groeit: ei, baby, jonge draak, grote draak. Fladderen, vuur spuwen (omlaag), vliegen!"),
+    ("mierenkolonie", "Mierenkolonie", "4 mieren lopen achter je aan (je levens!). Omlaag: toren of brug van mieren."),
     ("eigen", "Mijn poppetje", "Je zelfgemaakte poppetje uit de poppetjes-maker."),
 ]
 
