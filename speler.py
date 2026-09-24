@@ -9,6 +9,7 @@ import portaalschieter as ps  # de Portaalschieter staat ook in een eigen bestan
 import drakentemmer as dt     # en de Drakentemmer ook
 import mierenkolonie as mk    # en de Mierenkolonie ook
 import evolutie as evo        # en de Evolutie ook
+import schilder as sv         # en de Schilder ook
 from instellingen import (SPELER_SNELHEID, SPRING_KRACHT, ZWAARTEKRACHT,
                            SPELER_KLEUR, OOG_KLEUR)
 
@@ -363,6 +364,7 @@ class Speler:
         dt.reset(self)                   # drakentemmer: begin als ei
         mk.reset(self)                   # mierenkolonie: 4 mieren achter je aan
         evo.reset(self)                  # evolutie: begin als simpel blobje
+        sv.reset(self)                   # schilder: volle verfpotjes
         self._bouw_over = BOUW_MAX       # bouwmeester: hoeveel blokjes je nog hebt
         self._bouw_terug = False         # bouwmeester: moeten je blokjes terugkomen?
         self._gelande_platform = None    # op welk platform je het laatst landde
@@ -433,6 +435,7 @@ class Speler:
         dt.reset(self)                      # drakentemmer: weer een ei
         mk.reset(self)                      # mierenkolonie: weer 4 mieren
         evo.reset(self)                     # evolutie: weer een blobje
+        sv.reset(self)                      # schilder: alle verf weg, potjes vol
         self._bouw_over = BOUW_MAX          # bouwmeester: alle blokjes weer terug
         self._bouw_terug = False
         self._gelande_platform = None
@@ -645,6 +648,8 @@ class Speler:
                 self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
             elif self.modus == "elementkoning":
                 ek.loop(self, L, R, snelheid)   # elk van de 25 elementen loopt anders
+            elif self.modus == "schilder":
+                sv.loop(self, L, R, snelheid)             # rode verf = snel, gele verf = glad
             elif self.modus == "evolutie":
                 loop = evo.loop_snelheid(self, snelheid)  # snelle poten = sneller
                 if L and not R:
@@ -1044,6 +1049,9 @@ class Speler:
                 elif (self.modus == "elementkoning" and not omgedraaid
                       and ek.stuiter_bij_landen(self)):
                     pass                          # kristal: stuiteren in plaats van landen
+                elif (self.modus == "schilder" and not omgedraaid
+                      and sv.trampoline(self, platform)):
+                    pass                          # blauwe verf: trampoline!
                 elif (self._kamp("stuiter") and not omgedraaid
                       and self.snelheid_y < -TWINTIG_STUITER_MIN
                       and not (self._kamp("hard") and self.snelheid_y < -TIEN_HARD)):
@@ -1126,6 +1134,8 @@ class Speler:
             ps.stap(self, platforms)                     # portaal-kogel vliegen + teleporteren
         if self.modus == "drakentemmer":
             dt.stap(self, platforms)                     # groeien, energie, vuurballen
+        if self.modus == "schilder":
+            sv.stap(self)                                # verf bijvullen, spettertjes
         if self.modus == "evolutie":
             evo.stap(self, platforms)                    # DNA verzamelen, deeltjes
             if net_geland:
@@ -1667,6 +1677,9 @@ class Speler:
             return
         if self.modus == "evolutie":
             evo.teken(self)
+            return
+        if self.modus == "schilder":
+            sv.teken(self)
             return
         if self.modus == "voorspeller":
             self._teken_voorspeller()

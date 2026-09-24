@@ -10,6 +10,7 @@ import portaalschieter as ps
 import drakentemmer as dt
 import mierenkolonie as mk
 import evolutie as evo
+import schilder as sv
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
@@ -266,6 +267,9 @@ class PlatformerSpel(arcade.View):
         for sp in self.spelers:
             sp._muur_blokken = muur_blokken
         self.vijanden = vijanden
+        for v in vijanden:
+            if getattr(v, "geverfd", False):
+                v.geverfd = False                    # opnieuw beginnen: groene verf is er weer af
         self.powerups = powerups
         self.vlag_x = vlag_x
         self.vlag_y = vlag_y
@@ -446,6 +450,8 @@ class PlatformerSpel(arcade.View):
             dt.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 96)
         if self.speler.modus == "mierenkolonie" and not self.twee:
             mk.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
+        if self.speler.modus == "schilder" and not self.twee:
+            sv.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 92)
         if self.speler.modus == "evolutie" and not self.twee:
             evo.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
             if self.speler._evo_kiezen and not self.dood:
@@ -863,7 +869,10 @@ class PlatformerSpel(arcade.View):
             elif (not self.speler.is_onkwetsbaar() and
                   vijand.raakt_speler(self.speler.x, self.speler.y,
                                       self.speler.breedte, self.speler.hoogte)):
-                gevolg = self._elementkoning_raakt(vijand)
+                if getattr(vijand, "geverfd", False):
+                    gevolg = "veilig"             # groen geverfde spike: onschadelijk
+                else:
+                    gevolg = self._elementkoning_raakt(vijand)
                 if gevolg == "weg":
                     vijanden_weg.append(vijand)   # lava smolt de spike / gif versloeg het monster
                 elif gevolg != "veilig":          # (veilig = kristal stuitert op de spike)
@@ -995,7 +1004,7 @@ class PlatformerSpel(arcade.View):
                      "element": "element", "elementkoning": "elementkoning",
                      "bouwmeester": "bouwmeester", "portaalschieter": "portaalschieter",
                      "drakentemmer": "drakentemmer", "mierenkolonie": "mierenkolonie",
-                     "evolutie": "evolutie",
+                     "evolutie": "evolutie", "schilder": "schilder",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -1028,7 +1037,7 @@ class PlatformerSpel(arcade.View):
                        "voorspeller", "pendel", "blinde", "dubbelflip", "vijfkamp", "tienkamp",
                        "vijftienkamp", "twintigkamp", "element",
                        "elementkoning", "bouwmeester", "portaalschieter", "drakentemmer",
-                       "mierenkolonie", "evolutie"):
+                       "mierenkolonie", "evolutie", "schilder"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -2132,6 +2141,14 @@ class PlatformerSpel(arcade.View):
                 else:
                     self._verlaat_arena()            # terug naar de kaart
             return
+        # Schilder: kies een verfkleur met 1, 2, 3 of 4
+        if self.speler.modus == "schilder":
+            kleur = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3, arcade.key.KEY_4: 4,
+                     arcade.key.NUM_1: 1, arcade.key.NUM_2: 2, arcade.key.NUM_3: 3,
+                     arcade.key.NUM_4: 4}.get(toets)
+            if kleur:
+                sv.kies_kleur(self.speler, kleur)
+                return
         # Evolutie: kies een mutatie met 1, 2 of 3 (het spel staat dan even stil)
         if self.speler.modus == "evolutie" and self.speler._evo_kiezen:
             keuze = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3,
@@ -2211,6 +2228,11 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.DOWN and self.speler.modus == "bouwmeester":
             # Bouwmeester: zet een blokje neer
             self._bouw_blokje(self.speler)
+        elif toets == arcade.key.DOWN and self.speler.modus == "schilder":
+            # Schilder: spuit een verfvlek op de grond onder je
+            if (not (self.dood or self.gewonnen or self.game_over)
+                    and sv.spuit(self.speler, self.platforms, self.vijanden)):
+                geluid_manager.speel_sprong()
         elif toets == arcade.key.DOWN and self.speler.modus == "evolutie":
             # Evolutie met stamppoten: stampen in de lucht
             if not (self.dood or self.gewonnen or self.game_over) and evo.omlaag(self.speler):
