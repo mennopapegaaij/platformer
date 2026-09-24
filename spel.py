@@ -770,6 +770,14 @@ class PlatformerSpel(arcade.View):
             self.speler._bouw_terug = False
             self.platforms = [p for p in self.platforms if not getattr(p, "is_bouwblok", False)]
 
+        # Schilder: witte wolkjes in het level zetten (en opgeloste weghalen)
+        if self.speler.modus == "schilder" or any(getattr(p, "is_wolk", False) for p in self.platforms):
+            wolken = self.speler._sv_wolken if self.speler.modus == "schilder" else []
+            self.platforms = [p for p in self.platforms if not getattr(p, "is_wolk", False) or p in wolken]
+            for w in wolken:
+                if w not in self.platforms:
+                    self.platforms.append(w)
+
         # Mierenkolonie: toren/brug in het level zetten, en raken de volg-mieren iets?
         if self.speler.modus == "mierenkolonie" or any(
                 getattr(p, "is_mierwerk", False) for p in self.platforms):
@@ -833,7 +841,9 @@ class PlatformerSpel(arcade.View):
         nieuwe_vijanden = []   # monsters die de arena-baas oproept
         speler_cx = self.speler.x + self.speler.breedte / 2
         for vijand in self.vijanden:
-            vijand.bijwerken(speler_cx)
+            if not (self.speler.modus == "schilder" and not getattr(vijand, "is_spike", False)
+                    and sv.in_modder(self.speler, vijand)):
+                vijand.bijwerken(speler_cx)          # (in bruine modder zit een monster vast)
 
             # De arena-baas kan kleine monsters oproepen
             if getattr(vijand, 'nieuwe_monsters', None):
@@ -2141,11 +2151,13 @@ class PlatformerSpel(arcade.View):
                 else:
                     self._verlaat_arena()            # terug naar de kaart
             return
-        # Schilder: kies een verfkleur met 1, 2, 3 of 4
+        # Schilder: kies een verfkleur met 1 t/m 8
         if self.speler.modus == "schilder":
             kleur = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3, arcade.key.KEY_4: 4,
-                     arcade.key.NUM_1: 1, arcade.key.NUM_2: 2, arcade.key.NUM_3: 3,
-                     arcade.key.NUM_4: 4}.get(toets)
+                     arcade.key.KEY_5: 5, arcade.key.KEY_6: 6, arcade.key.KEY_7: 7, arcade.key.KEY_8: 8,
+                     arcade.key.NUM_1: 1, arcade.key.NUM_2: 2, arcade.key.NUM_3: 3, arcade.key.NUM_4: 4,
+                     arcade.key.NUM_5: 5, arcade.key.NUM_6: 6, arcade.key.NUM_7: 7,
+                     arcade.key.NUM_8: 8}.get(toets)
             if kleur:
                 sv.kies_kleur(self.speler, kleur)
                 return

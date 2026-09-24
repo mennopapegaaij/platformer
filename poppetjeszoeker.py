@@ -72,7 +72,7 @@ POPPETJES = [
     ("drakentemmer", "Drakentemmer", "Je draak groeit: ei, baby, jonge draak, grote draak. Fladderen, vuur spuwen (omlaag), vliegen!"),
     ("mierenkolonie", "Mierenkolonie", "4 mieren lopen achter je aan (je levens!). Omlaag: toren of brug van mieren."),
     ("evolutie", "Evolutie", "Verzamel DNA en kies zelf mutaties (1/2/3): vleugels, stekels, pantser... bouw je eigen wezen!"),
-    ("schilder", "Schilder", "Spuit verf (omlaag), kies kleur met 1-4: blauw = trampoline, rood = snel, groen = spikes weg, geel = glad."),
+    ("schilder", "Schilder", "Spuit verf (omlaag), 8 kleuren (1-8): trampoline, snel, spikes weg, glad, teleport, lanceer, wolk, modder."),
     ("eigen", "Mijn poppetje", "Je zelfgemaakte poppetje uit de poppetjes-maker."),
 ]
 
