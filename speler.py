@@ -8,6 +8,7 @@ import elementkoning as ek   # de Elementenkoning (25 vormen) staat in een eigen
 import portaalschieter as ps  # de Portaalschieter staat ook in een eigen bestand
 import drakentemmer as dt     # en de Drakentemmer ook
 import mierenkolonie as mk    # en de Mierenkolonie ook
+import evolutie as evo        # en de Evolutie ook
 from instellingen import (SPELER_SNELHEID, SPRING_KRACHT, ZWAARTEKRACHT,
                            SPELER_KLEUR, OOG_KLEUR)
 
@@ -361,6 +362,7 @@ class Speler:
         ps.reset(self)                   # portaalschieter: nog geen portalen
         dt.reset(self)                   # drakentemmer: begin als ei
         mk.reset(self)                   # mierenkolonie: 4 mieren achter je aan
+        evo.reset(self)                  # evolutie: begin als simpel blobje
         self._bouw_over = BOUW_MAX       # bouwmeester: hoeveel blokjes je nog hebt
         self._bouw_terug = False         # bouwmeester: moeten je blokjes terugkomen?
         self._gelande_platform = None    # op welk platform je het laatst landde
@@ -430,6 +432,7 @@ class Speler:
         ps.reset(self)                      # portaalschieter: portalen weg
         dt.reset(self)                      # drakentemmer: weer een ei
         mk.reset(self)                      # mierenkolonie: weer 4 mieren
+        evo.reset(self)                     # evolutie: weer een blobje
         self._bouw_over = BOUW_MAX          # bouwmeester: alle blokjes weer terug
         self._bouw_terug = False
         self._gelande_platform = None
@@ -642,6 +645,16 @@ class Speler:
                 self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
             elif self.modus == "elementkoning":
                 ek.loop(self, L, R, snelheid)   # elk van de 25 elementen loopt anders
+            elif self.modus == "evolutie":
+                loop = evo.loop_snelheid(self, snelheid)  # snelle poten = sneller
+                if L and not R:
+                    self.snelheid_x = -loop
+                    self.kijkt_rechts = False
+                elif R and not L:
+                    self.snelheid_x = loop
+                    self.kijkt_rechts = True
+                else:
+                    self.snelheid_x = 0
             elif self.modus == "drakentemmer":
                 loop = dt.loop_snelheid(self, snelheid)   # grotere draak = sneller
                 if L and not R:
@@ -927,6 +940,8 @@ class Speler:
             ek.zwaartekracht(self, richting)    # elk van de 25 elementen valt anders
         elif self.modus == "drakentemmer":
             dt.zwaartekracht(self, richting)    # vallen, of vliegen als grote draak
+        elif self.modus == "evolutie":
+            evo.zwaartekracht(self, richting)   # vallen, stampen of glijden
         elif self.modus == "element":
             vorm = self.element()
             if vorm == "lucht":
@@ -1111,6 +1126,10 @@ class Speler:
             ps.stap(self, platforms)                     # portaal-kogel vliegen + teleporteren
         if self.modus == "drakentemmer":
             dt.stap(self, platforms)                     # groeien, energie, vuurballen
+        if self.modus == "evolutie":
+            evo.stap(self, platforms)                    # DNA verzamelen, deeltjes
+            if net_geland:
+                evo.geland(self)                         # na een stamp: schokgolf
         if self.modus == "mierenkolonie":
             mk.stap(self)                                # de mieren volgen je pad
             if net_geland and not getattr(self._gelande_platform, "is_mierwerk", False):
@@ -1345,6 +1364,9 @@ class Speler:
             return
         if self.modus == "drakentemmer":
             dt.spring(self)
+            return
+        if self.modus == "evolutie":
+            evo.spring(self)
             return
         if self.modus == "voorspeller":
             # Voorspeller: de sprong komt pas straks (alleen als er nog geen sprong wacht)
@@ -1642,6 +1664,9 @@ class Speler:
             return
         if self.modus == "mierenkolonie":
             mk.teken(self)
+            return
+        if self.modus == "evolutie":
+            evo.teken(self)
             return
         if self.modus == "voorspeller":
             self._teken_voorspeller()

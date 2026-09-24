@@ -9,6 +9,7 @@ import elementkoning as ek
 import portaalschieter as ps
 import drakentemmer as dt
 import mierenkolonie as mk
+import evolutie as evo
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
@@ -445,6 +446,10 @@ class PlatformerSpel(arcade.View):
             dt.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 96)
         if self.speler.modus == "mierenkolonie" and not self.twee:
             mk.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
+        if self.speler.modus == "evolutie" and not self.twee:
+            evo.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
+            if self.speler._evo_kiezen and not self.dood:
+                evo.teken_keuze(self.speler)
 
         # Sleutel-teller (alleen tonen als je sleutels hebt)
         if self.speler.sleutels > 0:
@@ -687,6 +692,10 @@ class PlatformerSpel(arcade.View):
         if self.dood:
             return
 
+        # Evolutie: tijdens het kiezen van een mutatie staat het spel even stil
+        if self.speler.modus == "evolutie" and self.speler._evo_kiezen and not self.twee:
+            return
+
         # De klok loopt terwijl je speelt (niet als je dood of klaar bent)
         if self._tijd_id:
             self._speel_tijd += delta_time
@@ -706,7 +715,7 @@ class PlatformerSpel(arcade.View):
         # In de vasthoud-modi (vliegtuig, golf, robot): geef door of de knop vastgehouden wordt
         if (self.speler.modus in ("vliegtuig", "golf", "robot", "ballon", "raket", "draak", "dronken", "spook")
                 or self.speler._kamp("vasthouden")
-                or self.speler.modus in ("element", "elementkoning", "drakentemmer")):
+                or self.speler.modus in ("element", "elementkoning", "drakentemmer", "evolutie")):
             self.speler.vlieg_omhoog = self._vlieg_omhoog
 
         # Laat de speler bewegen en botsingen controleren
@@ -846,6 +855,8 @@ class PlatformerSpel(arcade.View):
                 self.speler.snelheid_y = SPRING_KRACHT / 2
                 if self.speler.modus == "mierenkolonie":
                     mk.mier_erbij(self.speler)    # monster opgegeten: een nieuwe mier!
+                if self.speler.modus == "evolutie":
+                    evo.dna_erbij(self.speler, evo.DNA_PER_MONSTER)   # monster = DNA
                 geluid_manager.speel_vijand_dood()  # 🎵 Boing!
 
             # Raakt de vijand de speler? Alleen gevaarlijk als de speler NIET onkwetsbaar is!
@@ -984,6 +995,7 @@ class PlatformerSpel(arcade.View):
                      "element": "element", "elementkoning": "elementkoning",
                      "bouwmeester": "bouwmeester", "portaalschieter": "portaalschieter",
                      "drakentemmer": "drakentemmer", "mierenkolonie": "mierenkolonie",
+                     "evolutie": "evolutie",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -1016,7 +1028,7 @@ class PlatformerSpel(arcade.View):
                        "voorspeller", "pendel", "blinde", "dubbelflip", "vijfkamp", "tienkamp",
                        "vijftienkamp", "twintigkamp", "element",
                        "elementkoning", "bouwmeester", "portaalschieter", "drakentemmer",
-                       "mierenkolonie"):
+                       "mierenkolonie", "evolutie"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -1320,6 +1332,8 @@ class PlatformerSpel(arcade.View):
         for v in weg:
             self.vijanden.remove(v)
             self._voeg_punt_toe()                  # een punt voor elk weggeblazen monster
+            if sp.modus == "evolutie":
+                evo.dna_erbij(sp, evo.DNA_PER_MONSTER)
         if weg:
             geluid_manager.speel_vijand_dood()
 
@@ -1393,6 +1407,14 @@ class PlatformerSpel(arcade.View):
         """Elementenkoning: lava smelt spikes, gif verslaat monsters, kristal stuitert
         op spikes. Geeft "weg" (vijand weg), "veilig" (niks aan de hand) of None."""
         sp = self.speler
+        if sp.modus == "evolutie":
+            # Evolutie met stekels: monsters die je raken gaan dood (spikes niet)
+            if evo.heeft(sp, "stekels") and not getattr(vijand, "is_spike", False):
+                self._voeg_punt_toe()
+                evo.dna_erbij(sp, evo.DNA_PER_MONSTER)
+                geluid_manager.speel_vijand_dood()
+                return "weg"
+            return None
         if sp.modus != "elementkoning":
             return None
         from vijand import Spikes
@@ -1816,7 +1838,7 @@ class PlatformerSpel(arcade.View):
             sp.links_ingedrukt = False
         if (sp.modus in ("vliegtuig", "golf", "robot", "ballon", "raket", "draak", "dronken", "spook")
                 or sp._kamp("vasthouden")
-                or sp.modus in ("element", "elementkoning", "drakentemmer")):
+                or sp.modus in ("element", "elementkoning", "drakentemmer", "evolutie")):
             sp.vlieg_omhoog = self._vlieg[i]
         sp.bijwerken(self.level_breedte, self.platforms)
         self._pas_portalen_toe(sp, self._vorige[i])
@@ -2039,6 +2061,11 @@ class PlatformerSpel(arcade.View):
 
     def _speler_geraakt(self):
         """Verwerk dat de speler geraakt wordt: leven aftrekken of game over."""
+        # Evolutie met pantser: het pantser houdt de klap tegen (niet in een kuil)
+        if (self.speler.modus == "evolutie" and not self.speler.is_gevallen()
+                and evo.bescherm(self.speler)):
+            geluid_manager.speel_geraakt()
+            return
         # Mierenkolonie: de achterste mier offert zich op (maar niet als je in een kuil valt)
         if (self.speler.modus == "mierenkolonie" and not self.speler.is_gevallen()
                 and mk.bescherm(self.speler)):
@@ -2104,6 +2131,17 @@ class PlatformerSpel(arcade.View):
                     self._naar_bouwer()              # terug naar de bouwmodus
                 else:
                     self._verlaat_arena()            # terug naar de kaart
+            return
+        # Evolutie: kies een mutatie met 1, 2 of 3 (het spel staat dan even stil)
+        if self.speler.modus == "evolutie" and self.speler._evo_kiezen:
+            keuze = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3,
+                     arcade.key.NUM_1: 1, arcade.key.NUM_2: 2, arcade.key.NUM_3: 3}.get(toets)
+            if keuze and evo.kies(self.speler, keuze):
+                geluid_manager.speel_powerup()
+            if toets == arcade.key.LEFT:
+                self.speler.links_ingedrukt = True     # (loslaten/indrukken blijft kloppen)
+            elif toets == arcade.key.RIGHT:
+                self.speler.rechts_ingedrukt = True
             return
         if toets == arcade.key.LEFT:
             self.speler.links_ingedrukt = True
@@ -2173,6 +2211,10 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.DOWN and self.speler.modus == "bouwmeester":
             # Bouwmeester: zet een blokje neer
             self._bouw_blokje(self.speler)
+        elif toets == arcade.key.DOWN and self.speler.modus == "evolutie":
+            # Evolutie met stamppoten: stampen in de lucht
+            if not (self.dood or self.gewonnen or self.game_over) and evo.omlaag(self.speler):
+                geluid_manager.speel_sprong()
         elif toets == arcade.key.DOWN and self.speler.modus == "mierenkolonie":
             # Mierenkolonie: toren (op de grond) of brug (in de lucht), of weer loslaten
             if not (self.dood or self.gewonnen or self.game_over):

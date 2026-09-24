@@ -104,7 +104,7 @@ PORTAAL_SOORTEN = ["vlucht", "blok", "ufo", "bal", "golf", "robot", "spin", "hel
                    "metronoom", "katapult", "krimpsprong", "tegendraads",
                    "turboflip", "spiegelkatapult", "schaduw", "pingpong",
                    "spook", "vleermuis", "zombie", "pompoenkop",
-                   "voorspeller", "pendel", "blinde", "dubbelflip", "vijfkamp", "tienkamp", "vijftienkamp", "twintigkamp", "element", "elementkoning", "bouwmeester", "portaalschieter", "drakentemmer", "mierenkolonie",
+                   "voorspeller", "pendel", "blinde", "dubbelflip", "vijfkamp", "tienkamp", "vijftienkamp", "twintigkamp", "element", "elementkoning", "bouwmeester", "portaalschieter", "drakentemmer", "mierenkolonie", "evolutie",
                    "eigen", "dubbel", "enkel"]
 PORTAAL_NAAM = {"vlucht": "Vlieg", "blok": "Blok", "ufo": "UFO", "bal": "Bal",
                 "golf": "Golf", "robot": "Robot", "spin": "Spin", "heli": "Heli",
@@ -121,7 +121,7 @@ PORTAAL_NAAM = {"vlucht": "Vlieg", "blok": "Blok", "ufo": "UFO", "bal": "Bal",
                 "schaduw": "Schaduw", "pingpong": "PingPong",
                 "spook": "Spook", "vleermuis": "Vleermuis", "zombie": "Zombie",
                 "pompoenkop": "Pompoen", "voorspeller": "Voorspel", "pendel": "Pendel",
-                "blinde": "Blind", "dubbelflip": "DubbFlip", "vijfkamp": "Vijfkamp", "tienkamp": "Tienkamp", "vijftienkamp": "15kamp", "twintigkamp": "20kamp", "element": "Element", "elementkoning": "Koning", "bouwmeester": "Bouwer", "portaalschieter": "PortSchiet", "drakentemmer": "Draak", "mierenkolonie": "Mieren", "eigen": "Mijn",
+                "blinde": "Blind", "dubbelflip": "DubbFlip", "vijfkamp": "Vijfkamp", "tienkamp": "Tienkamp", "vijftienkamp": "15kamp", "twintigkamp": "20kamp", "element": "Element", "elementkoning": "Koning", "bouwmeester": "Bouwer", "portaalschieter": "PortSchiet", "drakentemmer": "Draak", "mierenkolonie": "Mieren", "evolutie": "DNA", "eigen": "Mijn",
                 "dubbel": "Dubbel", "enkel": "Enkel"}
 
 # De snelheid-portalen waar je met de Snel-knop doorheen klikt

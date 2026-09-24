@@ -73,6 +73,7 @@ PORTAAL_KLEUREN = {
     "portaalschieter": ((60, 150, 255), (255, 150, 40)),  # blauw + oranje = portaalschieter
     "drakentemmer": ((50, 130, 60), (150, 220, 120)),   # drakengroen = drakentemmer
     "mierenkolonie": ((150, 45, 35), (230, 130, 110)),  # mierenrood = mierenkolonie
+    "evolutie": ((40, 150, 90), (140, 255, 180)),       # DNA-groen = evolutie
     "eigen": ((255, 150, 40), (255, 210, 130)),         # oranje = zelfgemaakt poppetje
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
@@ -413,6 +414,14 @@ def teken_portaal_icoon(soort, cx, cy):
         for i in range(3):
             arcade.draw_circle_filled(cx - 7 + i * 7, cy, 3 if i != 1 else 2, (230, 130, 110))
         arcade.draw_line(cx + 7, cy + 2, cx + 10, cy + 7, (230, 130, 110), 1)
+    elif soort == "evolutie":
+        # Een DNA-spiraaltje: twee golvende lijnen met sporten ertussen
+        for i in range(6):
+            yy = cy - 10 + i * 4
+            a = math.sin(i * 1.1) * 6
+            arcade.draw_line(cx - a, yy, cx + a, yy, (255, 255, 255), 1)
+            arcade.draw_circle_filled(cx - a, yy, 1.8, (140, 255, 180))
+            arcade.draw_circle_filled(cx + a, yy, 1.8, (255, 180, 220))
     elif soort == "eigen":
         # Zelfgemaakt poppetje: een sterretje/blokje met een plusje
         arcade.draw_lrbt_rectangle_filled(cx - 7, cx + 7, cy - 7, cy + 7, arcade.color.WHITE)
