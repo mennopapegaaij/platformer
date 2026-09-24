@@ -69,6 +69,7 @@ POPPETJES = [
     ("elementkoning", "Elementenkoning", "25 elementen! Bij elke landing de volgende, elk met een eigen kracht."),
     ("bouwmeester", "Bouwmeester", "Pijltje omlaag = blokje bouwen (3 stuks). Terug als je op echte grond landt."),
     ("portaalschieter", "Portaalschieter", "Pijltje omlaag: blauw portaal neerzetten, nog eens: oranje wegschieten. Loop erdoor!"),
+    ("drakentemmer", "Drakentemmer", "Je draak groeit: ei, baby, jonge draak, grote draak. Fladderen, vuur spuwen (omlaag), vliegen!"),
     ("eigen", "Mijn poppetje", "Je zelfgemaakte poppetje uit de poppetjes-maker."),
 ]
 

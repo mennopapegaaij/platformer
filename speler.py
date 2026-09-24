@@ -6,6 +6,7 @@ import math
 import random
 import elementkoning as ek   # de Elementenkoning (25 vormen) staat in een eigen bestand
 import portaalschieter as ps  # de Portaalschieter staat ook in een eigen bestand
+import drakentemmer as dt     # en de Drakentemmer ook
 from instellingen import (SPELER_SNELHEID, SPRING_KRACHT, ZWAARTEKRACHT,
                            SPELER_KLEUR, OOG_KLEUR)
 
@@ -357,6 +358,7 @@ class Speler:
         self._element_reset()            # elementmeester: begin als vuur
         ek.reset(self)                   # elementenkoning: begin bij element 1
         ps.reset(self)                   # portaalschieter: nog geen portalen
+        dt.reset(self)                   # drakentemmer: begin als ei
         self._bouw_over = BOUW_MAX       # bouwmeester: hoeveel blokjes je nog hebt
         self._bouw_terug = False         # bouwmeester: moeten je blokjes terugkomen?
         self._gelande_platform = None    # op welk platform je het laatst landde
@@ -424,6 +426,7 @@ class Speler:
         self._element_reset()               # elementmeester: weer vuur
         ek.reset(self)                      # elementenkoning: weer bij element 1
         ps.reset(self)                      # portaalschieter: portalen weg
+        dt.reset(self)                      # drakentemmer: weer een ei
         self._bouw_over = BOUW_MAX          # bouwmeester: alle blokjes weer terug
         self._bouw_terug = False
         self._gelande_platform = None
@@ -636,6 +639,16 @@ class Speler:
                 self.snelheid_x += (doel - self.snelheid_x) * IJS_GRIP
             elif self.modus == "elementkoning":
                 ek.loop(self, L, R, snelheid)   # elk van de 25 elementen loopt anders
+            elif self.modus == "drakentemmer":
+                loop = dt.loop_snelheid(self, snelheid)   # grotere draak = sneller
+                if L and not R:
+                    self.snelheid_x = -loop
+                    self.kijkt_rechts = False
+                elif R and not L:
+                    self.snelheid_x = loop
+                    self.kijkt_rechts = True
+                else:
+                    self.snelheid_x = 0
             elif self.modus == "element":
                 # Elementmeester: elke vorm loopt anders
                 vorm = self.element()
@@ -909,6 +922,8 @@ class Speler:
             self.snelheid_y = max(-8, min(8, self.snelheid_y))
         elif self.modus == "elementkoning":
             ek.zwaartekracht(self, richting)    # elk van de 25 elementen valt anders
+        elif self.modus == "drakentemmer":
+            dt.zwaartekracht(self, richting)    # vallen, of vliegen als grote draak
         elif self.modus == "element":
             vorm = self.element()
             if vorm == "lucht":
@@ -1091,6 +1106,8 @@ class Speler:
             ek.geland(self)                              # elementenkoning: volgende element
         if self.modus == "portaalschieter":
             ps.stap(self, platforms)                     # portaal-kogel vliegen + teleporteren
+        if self.modus == "drakentemmer":
+            dt.stap(self, platforms)                     # groeien, energie, vuurballen
         if net_geland:
             if self._kamp("doorschiet"):
                 # Doorschieter: bij elke landing schiet je een stukje naar voren
@@ -1318,6 +1335,9 @@ class Speler:
             return
         if self.modus == "elementkoning":
             ek.spring(self)
+            return
+        if self.modus == "drakentemmer":
+            dt.spring(self)
             return
         if self.modus == "voorspeller":
             # Voorspeller: de sprong komt pas straks (alleen als er nog geen sprong wacht)
@@ -1609,6 +1629,9 @@ class Speler:
             return
         if self.modus == "portaalschieter":
             ps.teken(self)
+            return
+        if self.modus == "drakentemmer":
+            dt.teken(self)
             return
         if self.modus == "voorspeller":
             self._teken_voorspeller()

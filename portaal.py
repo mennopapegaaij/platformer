@@ -71,6 +71,7 @@ PORTAAL_KLEUREN = {
     "elementkoning": ((200, 150, 20), (255, 225, 90)),  # goud = elementenkoning
     "bouwmeester": ((200, 120, 30), (255, 200, 90)),    # oranje = bouwmeester
     "portaalschieter": ((60, 150, 255), (255, 150, 40)),  # blauw + oranje = portaalschieter
+    "drakentemmer": ((50, 130, 60), (150, 220, 120)),   # drakengroen = drakentemmer
     "eigen": ((255, 150, 40), (255, 210, 130)),         # oranje = zelfgemaakt poppetje
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
@@ -400,6 +401,12 @@ def teken_portaal_icoon(soort, cx, cy):
         # Een blauw en een oranje portaaltje naast elkaar
         arcade.draw_ellipse_outline(cx - 5, cy, 7, 18, (60, 150, 255), 2)
         arcade.draw_ellipse_outline(cx + 5, cy, 7, 18, (255, 150, 40), 2)
+    elif soort == "drakentemmer":
+        # Een drakenei met een barstje
+        arcade.draw_ellipse_filled(cx, cy, 14, 18, (245, 240, 220))
+        arcade.draw_line(cx - 4, cy + 2, cx, cy - 2, (90, 80, 60), 2)
+        arcade.draw_line(cx, cy - 2, cx + 3, cy + 3, (90, 80, 60), 2)
+        arcade.draw_circle_filled(cx - 2, cy - 5, 2, (120, 190, 110))
     elif soort == "eigen":
         # Zelfgemaakt poppetje: een sterretje/blokje met een plusje
         arcade.draw_lrbt_rectangle_filled(cx - 7, cx + 7, cy - 7, cy + 7, arcade.color.WHITE)

@@ -7,6 +7,7 @@ import copy   # om bij een herstart verse kopieën van je eigen level te maken
 import math   # voor het vuurwerk bij winst
 import elementkoning as ek
 import portaalschieter as ps
+import drakentemmer as dt
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
@@ -439,6 +440,8 @@ class PlatformerSpel(arcade.View):
             self._teken_bouw_hud(self.speler)
         if self.speler.modus == "portaalschieter" and not self.twee:
             ps.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
+        if self.speler.modus == "drakentemmer" and not self.twee:
+            dt.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 96)
 
         # Sleutel-teller (alleen tonen als je sleutels hebt)
         if self.speler.sleutels > 0:
@@ -700,7 +703,7 @@ class PlatformerSpel(arcade.View):
         # In de vasthoud-modi (vliegtuig, golf, robot): geef door of de knop vastgehouden wordt
         if (self.speler.modus in ("vliegtuig", "golf", "robot", "ballon", "raket", "draak", "dronken", "spook")
                 or self.speler._kamp("vasthouden")
-                or self.speler.modus in ("element", "elementkoning")):
+                or self.speler.modus in ("element", "elementkoning", "drakentemmer")):
             self.speler.vlieg_omhoog = self._vlieg_omhoog
 
         # Laat de speler bewegen en botsingen controleren
@@ -748,6 +751,10 @@ class PlatformerSpel(arcade.View):
         if getattr(self.speler, "_bouw_terug", False):
             self.speler._bouw_terug = False
             self.platforms = [p for p in self.platforms if not getattr(p, "is_bouwblok", False)]
+
+        # Drakentemmer: vuurballen en de vuurstorm verslaan monsters (en de storm smelt spikes)
+        if self.speler.modus == "drakentemmer":
+            self._draak_vuur(self.speler)
 
         # Elementmeester: een aarde-schokgolf blaast monsters in de buurt weg
         self._element_schokgolf(self.speler)
@@ -964,6 +971,7 @@ class PlatformerSpel(arcade.View):
                      "vijftienkamp": "vijftienkamp", "twintigkamp": "twintigkamp",
                      "element": "element", "elementkoning": "elementkoning",
                      "bouwmeester": "bouwmeester", "portaalschieter": "portaalschieter",
+                     "drakentemmer": "drakentemmer",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -995,7 +1003,7 @@ class PlatformerSpel(arcade.View):
                        "spook", "vleermuis", "zombie", "pompoenkop",
                        "voorspeller", "pendel", "blinde", "dubbelflip", "vijfkamp", "tienkamp",
                        "vijftienkamp", "twintigkamp", "element",
-                       "elementkoning", "bouwmeester", "portaalschieter"):
+                       "elementkoning", "bouwmeester", "portaalschieter", "drakentemmer"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -1299,6 +1307,37 @@ class PlatformerSpel(arcade.View):
         for v in weg:
             self.vijanden.remove(v)
             self._voeg_punt_toe()                  # een punt voor elk weggeblazen monster
+        if weg:
+            geluid_manager.speel_vijand_dood()
+
+    def _draak_vuur(self, sp):
+        """Vuurballen raken monsters; de vuurstorm verslaat alles in de buurt."""
+        from vijand import Spikes
+        weg = []
+        storm = False
+        for v in sp._dt_vuurballen:
+            for vijand in self.vijanden:
+                if (vijand not in weg and not getattr(vijand, "is_spike", False)
+                        and dt.vuurbal_raakt(v, vijand)):
+                    weg.append(vijand)
+                    v[3] = 0                     # de vuurbal is op
+                    break
+        if sp._dt_storm_nieuw:
+            sp._dt_storm_nieuw = False
+            storm = True
+            cx, cy = sp.x + sp.breedte / 2, sp.y + sp.hoogte / 2
+            for vijand in self.vijanden:
+                vx = vijand.x + getattr(vijand, "breedte", 32) / 2
+                vy = vijand.y + getattr(vijand, "hoogte", 32) / 2
+                if math.hypot(vx - cx, vy - cy) > dt.STORM_BEREIK or vijand in weg:
+                    continue
+                if isinstance(vijand, Spikes) or not getattr(vijand, "is_spike", False):
+                    weg.append(vijand)           # spikes smelten, monsters gaan weg
+        for vijand in weg:
+            self.vijanden.remove(vijand)
+            if not isinstance(vijand, Spikes):
+                self._voeg_punt_toe()
+                dt.monster_opgegeten(sp, super_vullen=not storm)   # je draak eet het monster op en groeit
         if weg:
             geluid_manager.speel_vijand_dood()
 
@@ -1742,7 +1781,7 @@ class PlatformerSpel(arcade.View):
             sp.links_ingedrukt = False
         if (sp.modus in ("vliegtuig", "golf", "robot", "ballon", "raket", "draak", "dronken", "spook")
                 or sp._kamp("vasthouden")
-                or sp.modus in ("element", "elementkoning")):
+                or sp.modus in ("element", "elementkoning", "drakentemmer")):
             sp.vlieg_omhoog = self._vlieg[i]
         sp.bijwerken(self.level_breedte, self.platforms)
         self._pas_portalen_toe(sp, self._vorige[i])
@@ -2094,6 +2133,10 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.DOWN and self.speler.modus == "bouwmeester":
             # Bouwmeester: zet een blokje neer
             self._bouw_blokje(self.speler)
+        elif toets == arcade.key.DOWN and self.speler.modus == "drakentemmer":
+            # Drakentemmer: vuurbal spuwen (of vuurstorm als de superbalk vol is)
+            if not (self.dood or self.gewonnen or self.game_over) and dt.vuur(self.speler):
+                geluid_manager.speel_sprong()
         elif toets == arcade.key.DOWN and self.speler.modus == "portaalschieter":
             # Portaalschieter: blauw portaal neerzetten of oranje wegschieten
             if not (self.dood or self.gewonnen or self.game_over):
