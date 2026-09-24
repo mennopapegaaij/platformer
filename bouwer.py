@@ -406,7 +406,8 @@ class BouwerView(arcade.View):
             "level": (549, 591),
             "kaart": (594, 632),
             "draai": (635, 677),
-            "type": (680, 796),
+            "type": (680, 748),
+            "muur": (751, 796),        # gaat je dood als je tegen een muur botst?
         }
 
         self._laad()
@@ -630,6 +631,7 @@ class BouwerView(arcade.View):
         self.mode = "gewoon"
         self.acht_kleur = None          # eigen achtergrondkleur (None = het gewone thema)
         self.anim_soort = "uit"         # hoe alles beweegt (uit/opneer/zij/rondje/wiebel)
+        self.muurdood = True            # ga je dood als je tegen de zijkant van een blok botst?
         self.scroll = 0
         self.scroll_y = 0
 
@@ -683,6 +685,7 @@ class BouwerView(arcade.View):
                         self.anim_soort = "wiebel"
                     else:
                         self.anim_soort = "uit"
+                    self.muurdood = data.get("muurdood", True)   # oude levels: gewoon aan
                     for br in data.get("borden", []):            # tekstbordjes
                         self.bord_teksten[(int(br[0]), int(br[1]))] = br[2]
                 else:
@@ -713,6 +716,7 @@ class BouwerView(arcade.View):
                 "muziek": list(self.muziek),
                 "acht_kleur": list(self.acht_kleur) if self.acht_kleur else None,
                 "anim_soort": self.anim_soort,
+                "muurdood": self.muurdood,
                 "borden": [[k, r, t] for (k, r), t in self.bord_teksten.items()]}
         with open(self._bestand(), "w", encoding="utf-8") as f:
             json.dump(data, f)
@@ -938,10 +942,12 @@ class BouwerView(arcade.View):
         # Actie-knoppen
         kleuren = {"spelen": (40, 160, 60), "opslaan": (40, 110, 180),
                    "wissen": (170, 60, 60), "level": (150, 60, 160),
-                   "kaart": (100, 100, 120), "draai": (150, 110, 40), "type": type_kleur}
+                   "kaart": (100, 100, 120), "draai": (150, 110, 40), "type": type_kleur,
+                   "muur": (180, 50, 50) if self.muurdood else (50, 150, 70)}
         teksten = {"spelen": ("▶ %dP Spelen" % self.aantal_spelers) if self.aantal_spelers > 1 else "▶ Spelen",
                    "opslaan": "💾 Opslaan", "wissen": "🗑 Wissen", "level": "📁 %d" % self.slot,
-                   "kaart": "🗺 Kaart", "draai": "↻ %d°" % self.rotatie, "type": type_tekst}
+                   "kaart": "🗺 Kaart", "draai": "↻ %d°" % self.rotatie, "type": type_tekst,
+                   "muur": "💀 Af" if self.muurdood else "🧱 Stop"}
         for naam, (l, r) in self.actie_knoppen.items():
             arcade.draw_lrbt_rectangle_filled(l, r, BALK_Y + 8, SCHERM_HOOGTE - 8, kleuren[naam])
             arcade.draw_lrbt_rectangle_outline(l, r, BALK_Y + 8, SCHERM_HOOGTE - 8, arcade.color.WHITE, 2)
@@ -949,7 +955,12 @@ class BouwerView(arcade.View):
                 arcade.draw_text("Type:", (l + r) // 2, SCHERM_HOOGTE - 20,
                                  arcade.color.WHITE, 9, anchor_x="center")
                 arcade.draw_text(teksten[naam], (l + r) // 2, BALK_Y + 14,
-                                 arcade.color.WHITE, 12, bold=True, anchor_x="center")
+                                 arcade.color.WHITE, 10, bold=True, anchor_x="center")
+            elif naam == "muur":
+                arcade.draw_text("Botsen:", (l + r) // 2, SCHERM_HOOGTE - 20,
+                                 arcade.color.WHITE, 8, anchor_x="center")
+                arcade.draw_text(teksten[naam], (l + r) // 2, BALK_Y + 14,
+                                 arcade.color.WHITE, 8, bold=True, anchor_x="center")
             else:
                 arcade.draw_text(teksten[naam], (l + r) // 2, BALK_Y + 20,
                                  arcade.color.WHITE, 11, bold=True, anchor_x="center")
@@ -1174,6 +1185,12 @@ class BouwerView(arcade.View):
                 elif naam == "draai":
                     # Draai de plaats-stand een kwartslag verder (0 -> 90 -> 180 -> 270 -> 0)
                     self.rotatie = (self.rotatie + 90) % 360
+                elif naam == "muur":
+                    # Aan/uit: ga je dood als je tegen een muur botst?
+                    self.muurdood = not self.muurdood
+                    self._melding = ("💀 Tegen een muur botsen = af" if self.muurdood
+                                     else "🧱 Tegen een muur botsen = gewoon stoppen")
+                    self._melding_teller = 120
                 elif naam == "type":
                     # Klik door de types heen: gewoon -> race -> vlucht -> gewoon
                     volgende = {"gewoon": "race", "race": "vlucht", "vlucht": "gewoon"}
@@ -1556,7 +1573,7 @@ class BouwerView(arcade.View):
                 portalen, decoraties, springers, teleporters, acht_zones,
                 list(self.muziek), borden, checkpoints,
                 list(self.acht_kleur) if self.acht_kleur else None,
-                self.anim_soort)
+                self.anim_soort, self.muurdood)
 
     def _speel(self):
         """Sla het level op en speel het."""

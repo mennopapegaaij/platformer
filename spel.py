@@ -191,6 +191,9 @@ class PlatformerSpel(arcade.View):
             a = "uit"
         self.anim_soort = a
         self._anim_t = 0.0
+        # Muur-dood (een 17e onderdeel): ga je dood als je tegen een muur botst?
+        # (Staat het uit, dan stop je gewoon tegen de muur.)
+        self.muurdood = bool(data[16]) if len(data) > 16 else True
         # Respawn-punt onthouden tussen herstarts van HETZELFDE level.
         if not hasattr(self, "_respawn"):
             self._respawn = None
@@ -254,6 +257,10 @@ class PlatformerSpel(arcade.View):
                              and not getattr(p, "doorheen", False)]
         else:
             self._blokken = []                       # gewone levels: geen zijkant-dood
+        # Muur-dood uit (knop in de bouwmodus)? Dan stoppen spelers gewoon tegen de muren.
+        muur_blokken = self._blokken if (self.eigen and not self.muurdood) else None
+        for sp in self.spelers:
+            sp._muur_blokken = muur_blokken
         self.vijanden = vijanden
         self.powerups = powerups
         self.vlag_x = vlag_x
@@ -1625,14 +1632,27 @@ class PlatformerSpel(arcade.View):
                 p.bijwerken()
 
     def _raakt_blok_zijkant(self, sp):
-        """Botst deze speler tegen de ZIJKANT van een blok? (Geometry Dash-dood.)"""
+        """Botst deze speler tegen de ZIJKANT van een blok? (Geometry Dash-dood.)
+        Staat muur-dood uit (bouwmodus-knop), dan stop je tegen de muur en ga je niet af."""
+        p, van_links = self._muur_botsing(sp)
+        if p is None:
+            return False
+        if getattr(self, "muurdood", True):
+            return True
+        # Muur-dood staat uit: zet de speler netjes tegen de muur aan
+        sp.x = p.x - sp.breedte if van_links else p.x + p.breedte
+        sp.snelheid_x = 0
+        return False
+
+    def _muur_botsing(self, sp):
+        """Tegen welk blok botst deze speler van opzij? Geeft (blok, van_links) of (None, False)."""
         if (sp.modus in ("draaibol", "ninja", "magneet", "klimmer", "draaisturing", "plakker")
                 or sp._kamp("magneet")):
-            return False        # deze modi botsen juist tegen muren (rollen/afzetten/aangetrokken) -> niet dood
+            return None, False  # deze modi botsen juist tegen muren (rollen/afzetten/aangetrokken) -> niet dood
         if (sp.modus == "eigen" and getattr(sp, "eigen_instel", None)
                 and (sp.eigen_instel.get("muur") or sp.eigen_instel.get("magneet")
                      or sp.eigen_instel.get("plakken"))):
-            return False        # eigen poppetje met muur/magneet/plakken botst tegen muren -> niet dood
+            return None, False  # eigen poppetje met muur/magneet/plakken botst tegen muren -> niet dood
         for p in self._blokken:
             if not getattr(p, "vast", True):
                 continue                       # verdwenen blok: geen botsing
@@ -1643,8 +1663,8 @@ class PlatformerSpel(arcade.View):
             raakt_links = (sp.snelheid_x > 0 and sp.x < p.x and sp.x + sp.breedte > p.x)
             raakt_rechts = (sp.snelheid_x < 0 and sp.x + sp.breedte > p.x + p.breedte and sp.x < p.x + p.breedte)
             if raakt_links or raakt_rechts:
-                return True
-        return False
+                return p, raakt_links
+        return None, False
 
     def _check_blok_zijkant(self):
         """Eén-speler: ga dood als je tegen de zijkant van een blok botst."""

@@ -806,6 +806,16 @@ class Speler:
                     elif self.snelheid_x < 0:
                         self.x = p.x + p.breedte
 
+        # Muren waar je tegen stopt (eigen level waarin 'muur-dood' uit staat)
+        for p in getattr(self, "_muur_blokken", None) or ():
+            if (not getattr(p, "vast", True) or not self._overlapt(p)
+                    or self.y >= p.y + p.hoogte - 6 or self.y + self.hoogte <= p.y + 4):
+                continue
+            if self.snelheid_x > 0 and self.x < p.x:
+                self.x = p.x - self.breedte
+            elif self.snelheid_x < 0 and self.x + self.breedte > p.x + p.breedte:
+                self.x = p.x + p.breedte
+
         # Niet buiten het level lopen
         if self.x < 0:
             self.x = 0
