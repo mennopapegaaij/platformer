@@ -5,6 +5,7 @@ import arcade
 import math
 import random
 import elementkoning as ek   # de Elementenkoning (25 vormen) staat in een eigen bestand
+import portaalschieter as ps  # de Portaalschieter staat ook in een eigen bestand
 from instellingen import (SPELER_SNELHEID, SPRING_KRACHT, ZWAARTEKRACHT,
                            SPELER_KLEUR, OOG_KLEUR)
 
@@ -355,6 +356,7 @@ class Speler:
         self._grond_tijd = 0             # hete vloer: hoelang je al op de grond staat
         self._element_reset()            # elementmeester: begin als vuur
         ek.reset(self)                   # elementenkoning: begin bij element 1
+        ps.reset(self)                   # portaalschieter: nog geen portalen
         self._bouw_over = BOUW_MAX       # bouwmeester: hoeveel blokjes je nog hebt
         self._bouw_terug = False         # bouwmeester: moeten je blokjes terugkomen?
         self._gelande_platform = None    # op welk platform je het laatst landde
@@ -421,6 +423,7 @@ class Speler:
         self._grond_tijd = 0                # hete vloer: reset
         self._element_reset()               # elementmeester: weer vuur
         ek.reset(self)                      # elementenkoning: weer bij element 1
+        ps.reset(self)                      # portaalschieter: portalen weg
         self._bouw_over = BOUW_MAX          # bouwmeester: alle blokjes weer terug
         self._bouw_terug = False
         self._gelande_platform = None
@@ -1086,6 +1089,8 @@ class Speler:
             self._bouw_terug = True                      # (het spel haalt de oude weg)
         if self.modus == "elementkoning" and net_geland:
             ek.geland(self)                              # elementenkoning: volgende element
+        if self.modus == "portaalschieter":
+            ps.stap(self, platforms)                     # portaal-kogel vliegen + teleporteren
         if net_geland:
             if self._kamp("doorschiet"):
                 # Doorschieter: bij elke landing schiet je een stukje naar voren
@@ -1601,6 +1606,9 @@ class Speler:
             return
         if self.modus == "bouwmeester":
             self._teken_bouwmeester()
+            return
+        if self.modus == "portaalschieter":
+            ps.teken(self)
             return
         if self.modus == "voorspeller":
             self._teken_voorspeller()

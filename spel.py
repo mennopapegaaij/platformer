@@ -6,6 +6,7 @@ import arcade
 import copy   # om bij een herstart verse kopieën van je eigen level te maken
 import math   # voor het vuurwerk bij winst
 import elementkoning as ek
+import portaalschieter as ps
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
@@ -436,6 +437,8 @@ class PlatformerSpel(arcade.View):
             ek.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "bouwmeester" and not self.twee:
             self._teken_bouw_hud(self.speler)
+        if self.speler.modus == "portaalschieter" and not self.twee:
+            ps.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
 
         # Sleutel-teller (alleen tonen als je sleutels hebt)
         if self.speler.sleutels > 0:
@@ -960,7 +963,7 @@ class PlatformerSpel(arcade.View):
                      "vijfkamp": "vijfkamp", "tienkamp": "tienkamp",
                      "vijftienkamp": "vijftienkamp", "twintigkamp": "twintigkamp",
                      "element": "element", "elementkoning": "elementkoning",
-                     "bouwmeester": "bouwmeester",
+                     "bouwmeester": "bouwmeester", "portaalschieter": "portaalschieter",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -992,7 +995,7 @@ class PlatformerSpel(arcade.View):
                        "spook", "vleermuis", "zombie", "pompoenkop",
                        "voorspeller", "pendel", "blinde", "dubbelflip", "vijfkamp", "tienkamp",
                        "vijftienkamp", "twintigkamp", "element",
-                       "elementkoning", "bouwmeester"):
+                       "elementkoning", "bouwmeester", "portaalschieter"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -2091,6 +2094,11 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.DOWN and self.speler.modus == "bouwmeester":
             # Bouwmeester: zet een blokje neer
             self._bouw_blokje(self.speler)
+        elif toets == arcade.key.DOWN and self.speler.modus == "portaalschieter":
+            # Portaalschieter: blauw portaal neerzetten of oranje wegschieten
+            if not (self.dood or self.gewonnen or self.game_over):
+                ps.schiet(self.speler)
+                geluid_manager.speel_sprong()
         elif toets == arcade.key.P and self.testruimte:
             # In de testruimte: open de poppetjes-zoeker en kies er zelf één
             from poppetjeszoeker import PoppetjeZoeker
