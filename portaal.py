@@ -76,6 +76,7 @@ PORTAAL_KLEUREN = {
     "evolutie": ((40, 150, 90), (140, 255, 180)),       # DNA-groen = evolutie
     "schilder": ((200, 60, 150), (255, 170, 220)),      # verfroze = schilder
     "chemicus": ((60, 160, 140), (170, 240, 220)),      # labgroen = chemicus
+    "bommenlegger": ((70, 70, 80), (255, 170, 60)),     # zwart + vonk = bommenlegger
     "eigen": ((255, 150, 40), (255, 210, 130)),         # oranje = zelfgemaakt poppetje
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
@@ -437,6 +438,11 @@ def teken_portaal_icoon(soort, cx, cy):
         arcade.draw_circle_filled(cx, cy - 4, 6, (170, 80, 220))
         arcade.draw_lrbt_rectangle_filled(cx - 2, cx + 2, cy + 4, cy + 11, (230, 240, 245))
         arcade.draw_circle_outline(cx + 5, cy + 9, 2, (255, 255, 255), 1)
+    elif soort == "bommenlegger":
+        # Een bommetje met een vonkje
+        arcade.draw_circle_filled(cx - 1, cy - 2, 7, (40, 40, 45))
+        arcade.draw_line(cx + 3, cy + 4, cx + 6, cy + 9, (160, 120, 60), 2)
+        arcade.draw_circle_filled(cx + 6, cy + 10, 2.5, (255, 220, 80))
     elif soort == "eigen":
         # Zelfgemaakt poppetje: een sterretje/blokje met een plusje
         arcade.draw_lrbt_rectangle_filled(cx - 7, cx + 7, cy - 7, cy + 7, arcade.color.WHITE)

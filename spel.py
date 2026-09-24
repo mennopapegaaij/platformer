@@ -12,6 +12,7 @@ import mierenkolonie as mk
 import evolutie as evo
 import schilder as sv
 import chemicus as ch
+import bommenlegger as bm
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
@@ -455,6 +456,8 @@ class PlatformerSpel(arcade.View):
             sv.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 92)
         if self.speler.modus == "chemicus" and not self.twee:
             ch.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 96)
+        if self.speler.modus == "bommenlegger" and not self.twee:
+            bm.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "evolutie" and not self.twee:
             evo.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
             if self.speler._evo_kiezen and not self.dood:
@@ -788,6 +791,10 @@ class PlatformerSpel(arcade.View):
         if self.speler.modus == "mierenkolonie":
             self._mieren_geraakt(self.speler)
 
+        # Bommenlegger: ontploffingen blazen monsters, spikes en stenen blokken weg
+        if getattr(self.speler, "_bm_nieuw", None):
+            self._bommen_knal(self.speler)
+
         # Drakentemmer: vuurballen en de vuurstorm verslaan monsters (en de storm smelt spikes)
         if self.speler.modus == "drakentemmer":
             self._draak_vuur(self.speler)
@@ -1018,6 +1025,7 @@ class PlatformerSpel(arcade.View):
                      "bouwmeester": "bouwmeester", "portaalschieter": "portaalschieter",
                      "drakentemmer": "drakentemmer", "mierenkolonie": "mierenkolonie",
                      "evolutie": "evolutie", "schilder": "schilder", "chemicus": "chemicus",
+                     "bommenlegger": "bommenlegger",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -1050,7 +1058,7 @@ class PlatformerSpel(arcade.View):
                        "voorspeller", "pendel", "blinde", "dubbelflip", "vijfkamp", "tienkamp",
                        "vijftienkamp", "twintigkamp", "element",
                        "elementkoning", "bouwmeester", "portaalschieter", "drakentemmer",
-                       "mierenkolonie", "evolutie", "schilder", "chemicus"):
+                       "mierenkolonie", "evolutie", "schilder", "chemicus", "bommenlegger"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -1380,6 +1388,23 @@ class PlatformerSpel(arcade.View):
                     mk.mier_kwijt(sp, i)
                     geluid_manager.speel_geraakt()
                     return                       # maar één mier per stapje
+
+    def _bommen_knal(self, sp):
+        """Verwerk de ontploffingen van de bommenlegger."""
+        from vijand import Spikes
+        for bx, by in sp._bm_nieuw:
+            weg = [v for v in self.vijanden
+                   if (isinstance(v, Spikes) or not getattr(v, "is_spike", False)) and bm.in_bereik(v, bx, by)]
+            for v in weg:
+                self.vijanden.remove(v)
+                if not isinstance(v, Spikes):
+                    self._voeg_punt_toe()          # een punt voor elk opgeblazen monster
+            kapot = [p for p in self.platforms if bm.kan_weg(p) and bm.in_bereik(p, bx, by)]
+            if kapot:
+                self.platforms = [p for p in self.platforms if p not in kapot]
+                self._blokken = [p for p in self._blokken if p not in kapot]
+            geluid_manager.speel_vijand_dood()
+        sp._bm_nieuw = []
 
     def _draak_vuur(self, sp):
         """Vuurballen raken monsters; de vuurstorm verslaat alles in de buurt."""
@@ -2260,6 +2285,10 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.DOWN and self.speler.modus == "bouwmeester":
             # Bouwmeester: zet een blokje neer
             self._bouw_blokje(self.speler)
+        elif toets == arcade.key.DOWN and self.speler.modus == "bommenlegger":
+            # Bommenlegger: leg een bom
+            if not (self.dood or self.gewonnen or self.game_over) and bm.leg(self.speler):
+                geluid_manager.speel_sprong()
         elif toets == arcade.key.DOWN and self.speler.modus == "chemicus":
             # Chemicus: drink je brouwsel op
             if not (self.dood or self.gewonnen or self.game_over) and ch.drink(self.speler):

@@ -11,6 +11,7 @@ import mierenkolonie as mk    # en de Mierenkolonie ook
 import evolutie as evo        # en de Evolutie ook
 import schilder as sv         # en de Schilder ook
 import chemicus as ch         # en de Chemicus ook
+import bommenlegger as bm     # en de Bommenlegger ook
 from instellingen import (SPELER_SNELHEID, SPRING_KRACHT, ZWAARTEKRACHT,
                            SPELER_KLEUR, OOG_KLEUR)
 
@@ -367,6 +368,7 @@ class Speler:
         evo.reset(self)                  # evolutie: begin als simpel blobje
         sv.reset(self)                   # schilder: volle verfpotjes
         ch.reset(self)                   # chemicus: lege ketel
+        bm.reset(self)                   # bommenlegger: 3 bommen in je tas
         self._bouw_over = BOUW_MAX       # bouwmeester: hoeveel blokjes je nog hebt
         self._bouw_terug = False         # bouwmeester: moeten je blokjes terugkomen?
         self._gelande_platform = None    # op welk platform je het laatst landde
@@ -439,6 +441,7 @@ class Speler:
         evo.reset(self)                     # evolutie: weer een blobje
         sv.reset(self)                      # schilder: alle verf weg, potjes vol
         ch.reset(self)                      # chemicus: lege ketel, geen brouwsel
+        bm.reset(self)                      # bommenlegger: geen bommen meer op de grond
         self._bouw_over = BOUW_MAX          # bouwmeester: alle blokjes weer terug
         self._bouw_terug = False
         self._gelande_platform = None
@@ -653,6 +656,8 @@ class Speler:
                 ek.loop(self, L, R, snelheid)   # elk van de 25 elementen loopt anders
             elif self.modus == "schilder":
                 sv.loop(self, L, R, snelheid)             # rode verf = snel, gele verf = glad
+            elif self.modus == "bommenlegger":
+                bm.loop(self, L, R, snelheid)             # (tijdens een bomsprong word je opzij geblazen)
             elif self.modus == "chemicus":
                 loop = ch.loop_snelheid(self, snelheid)   # rendrank = sneller
                 if L and not R:
@@ -1153,6 +1158,8 @@ class Speler:
             sv.stap(self)                                # verf bijvullen, spettertjes
         if self.modus == "chemicus":
             ch.stap(self)                                # brouwsel uitwerken, bubbels
+        if self.modus == "bommenlegger":
+            bm.stap(self, platforms)                     # bommen tikken af en ontploffen
         if self.modus == "evolutie":
             evo.stap(self, platforms)                    # DNA verzamelen, deeltjes
             if net_geland:
@@ -1703,6 +1710,9 @@ class Speler:
             return
         if self.modus == "chemicus":
             ch.teken(self)
+            return
+        if self.modus == "bommenlegger":
+            bm.teken(self)
             return
         if self.modus == "voorspeller":
             self._teken_voorspeller()
