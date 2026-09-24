@@ -13,6 +13,7 @@ import evolutie as evo
 import schilder as sv
 import chemicus as ch
 import bommenlegger as bm
+import boogschutter as bs
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
@@ -458,6 +459,8 @@ class PlatformerSpel(arcade.View):
             ch.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 96)
         if self.speler.modus == "bommenlegger" and not self.twee:
             bm.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
+        if self.speler.modus == "boogschutter" and not self.twee:
+            bs.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "evolutie" and not self.twee:
             evo.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
             if self.speler._evo_kiezen and not self.dood:
@@ -791,6 +794,16 @@ class PlatformerSpel(arcade.View):
         if self.speler.modus == "mierenkolonie":
             self._mieren_geraakt(self.speler)
 
+        # Boogschutter: pijlen in de muren zijn opstapjes; vliegende pijlen raken monsters
+        if self.speler.modus == "boogschutter" or any(getattr(p, "is_pijl", False) for p in self.platforms):
+            vast = self.speler._bs_vast if self.speler.modus == "boogschutter" else []
+            self.platforms = [p for p in self.platforms if not getattr(p, "is_pijl", False) or p in vast]
+            for p in vast:
+                if p not in self.platforms:
+                    self.platforms.append(p)
+        if self.speler.modus == "boogschutter":
+            self._pijlen_raak(self.speler)
+
         # Bommenlegger: ontploffingen blazen monsters, spikes en stenen blokken weg
         if getattr(self.speler, "_bm_nieuw", None):
             self._bommen_knal(self.speler)
@@ -1025,7 +1038,7 @@ class PlatformerSpel(arcade.View):
                      "bouwmeester": "bouwmeester", "portaalschieter": "portaalschieter",
                      "drakentemmer": "drakentemmer", "mierenkolonie": "mierenkolonie",
                      "evolutie": "evolutie", "schilder": "schilder", "chemicus": "chemicus",
-                     "bommenlegger": "bommenlegger",
+                     "bommenlegger": "bommenlegger", "boogschutter": "boogschutter",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -1058,7 +1071,8 @@ class PlatformerSpel(arcade.View):
                        "voorspeller", "pendel", "blinde", "dubbelflip", "vijfkamp", "tienkamp",
                        "vijftienkamp", "twintigkamp", "element",
                        "elementkoning", "bouwmeester", "portaalschieter", "drakentemmer",
-                       "mierenkolonie", "evolutie", "schilder", "chemicus", "bommenlegger"):
+                       "mierenkolonie", "evolutie", "schilder", "chemicus", "bommenlegger",
+                       "boogschutter"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -1388,6 +1402,17 @@ class PlatformerSpel(arcade.View):
                     mk.mier_kwijt(sp, i)
                     geluid_manager.speel_geraakt()
                     return                       # maar één mier per stapje
+
+    def _pijlen_raak(self, sp):
+        """Een vliegende pijl die een monster raakt: monster weg, pijl weg."""
+        for pijl in list(sp._bs_vliegend):
+            for v in self.vijanden:
+                if not getattr(v, "is_spike", False) and bs.raakt(pijl, v):
+                    self.vijanden.remove(v)
+                    sp._bs_vliegend.remove(pijl)
+                    self._voeg_punt_toe()
+                    geluid_manager.speel_vijand_dood()
+                    break
 
     def _bommen_knal(self, sp):
         """Verwerk de ontploffingen van de bommenlegger."""
@@ -2285,6 +2310,10 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.DOWN and self.speler.modus == "bouwmeester":
             # Bouwmeester: zet een blokje neer
             self._bouw_blokje(self.speler)
+        elif toets == arcade.key.DOWN and self.speler.modus == "boogschutter":
+            # Boogschutter: schiet een pijl
+            if not (self.dood or self.gewonnen or self.game_over) and bs.schiet(self.speler):
+                geluid_manager.speel_sprong()
         elif toets == arcade.key.DOWN and self.speler.modus == "bommenlegger":
             # Bommenlegger: leg een bom
             if not (self.dood or self.gewonnen or self.game_over) and bm.leg(self.speler):

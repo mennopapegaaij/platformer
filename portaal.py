@@ -77,6 +77,7 @@ PORTAAL_KLEUREN = {
     "schilder": ((200, 60, 150), (255, 170, 220)),      # verfroze = schilder
     "chemicus": ((60, 160, 140), (170, 240, 220)),      # labgroen = chemicus
     "bommenlegger": ((70, 70, 80), (255, 170, 60)),     # zwart + vonk = bommenlegger
+    "boogschutter": ((60, 130, 60), (170, 230, 150)),   # boswachter-groen = boogschutter
     "eigen": ((255, 150, 40), (255, 210, 130)),         # oranje = zelfgemaakt poppetje
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
@@ -443,6 +444,11 @@ def teken_portaal_icoon(soort, cx, cy):
         arcade.draw_circle_filled(cx - 1, cy - 2, 7, (40, 40, 45))
         arcade.draw_line(cx + 3, cy + 4, cx + 6, cy + 9, (160, 120, 60), 2)
         arcade.draw_circle_filled(cx + 6, cy + 10, 2.5, (255, 220, 80))
+    elif soort == "boogschutter":
+        # Een pijl
+        arcade.draw_line(cx - 9, cy - 5, cx + 7, cy + 5, (230, 200, 150), 2)
+        arcade.draw_triangle_filled(cx + 11, cy + 7, cx + 4, cy + 6, cx + 7, cy + 1, (230, 230, 240))
+        arcade.draw_line(cx - 9, cy - 5, cx - 12, cy - 1, (230, 60, 60), 2)
     elif soort == "eigen":
         # Zelfgemaakt poppetje: een sterretje/blokje met een plusje
         arcade.draw_lrbt_rectangle_filled(cx - 7, cx + 7, cy - 7, cy + 7, arcade.color.WHITE)

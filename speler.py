@@ -12,6 +12,7 @@ import evolutie as evo        # en de Evolutie ook
 import schilder as sv         # en de Schilder ook
 import chemicus as ch         # en de Chemicus ook
 import bommenlegger as bm     # en de Bommenlegger ook
+import boogschutter as bs     # en de Boogschutter ook
 from instellingen import (SPELER_SNELHEID, SPRING_KRACHT, ZWAARTEKRACHT,
                            SPELER_KLEUR, OOG_KLEUR)
 
@@ -369,6 +370,7 @@ class Speler:
         sv.reset(self)                   # schilder: volle verfpotjes
         ch.reset(self)                   # chemicus: lege ketel
         bm.reset(self)                   # bommenlegger: 3 bommen in je tas
+        bs.reset(self)                   # boogschutter: volle koker
         self._bouw_over = BOUW_MAX       # bouwmeester: hoeveel blokjes je nog hebt
         self._bouw_terug = False         # bouwmeester: moeten je blokjes terugkomen?
         self._gelande_platform = None    # op welk platform je het laatst landde
@@ -442,6 +444,7 @@ class Speler:
         sv.reset(self)                      # schilder: alle verf weg, potjes vol
         ch.reset(self)                      # chemicus: lege ketel, geen brouwsel
         bm.reset(self)                      # bommenlegger: geen bommen meer op de grond
+        bs.reset(self)                      # boogschutter: pijlen uit de muren, koker vol
         self._bouw_over = BOUW_MAX          # bouwmeester: alle blokjes weer terug
         self._bouw_terug = False
         self._gelande_platform = None
@@ -1160,6 +1163,8 @@ class Speler:
             ch.stap(self)                                # brouwsel uitwerken, bubbels
         if self.modus == "bommenlegger":
             bm.stap(self, platforms)                     # bommen tikken af en ontploffen
+        if self.modus == "boogschutter":
+            bs.stap(self, platforms)                     # pijlen vliegen en blijven in muren steken
         if self.modus == "evolutie":
             evo.stap(self, platforms)                    # DNA verzamelen, deeltjes
             if net_geland:
@@ -1713,6 +1718,9 @@ class Speler:
             return
         if self.modus == "bommenlegger":
             bm.teken(self)
+            return
+        if self.modus == "boogschutter":
+            bs.teken(self)
             return
         if self.modus == "voorspeller":
             self._teken_voorspeller()

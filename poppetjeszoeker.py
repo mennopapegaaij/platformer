@@ -75,6 +75,7 @@ POPPETJES = [
     ("schilder", "Schilder", "Spuit verf (omlaag), 8 kleuren (1-8): trampoline, snel, spikes weg, glad, teleport, lanceer, wolk, modder."),
     ("chemicus", "Chemicus", "Meng 6 drankjes (1-6) in je ketel en drink op (omlaag). 209 recepten om te ontdekken!"),
     ("bommenlegger", "Bommenlegger", "Omlaag = bom. Blaast monsters, spikes en stenen blokken weg, en jou omhoog (bomsprong)!"),
+    ("boogschutter", "Boogschutter", "Omlaag = pijl. Pijlen blijven in muren steken en je kunt erop staan: bouw een trap!"),
     ("eigen", "Mijn poppetje", "Je zelfgemaakte poppetje uit de poppetjes-maker."),
 ]
 
