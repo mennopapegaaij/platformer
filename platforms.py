@@ -99,6 +99,28 @@ class BlokPlatform(Platform):
         arcade.draw_line(x + 3 * w / 4, y + h / 2, x + 3 * w / 4, y + h, (90, 60, 40), 2)
 
 
+class BouwBlok(BlokPlatform):
+    """Een blokje dat de Bouwmeester zelf neerzet tijdens het spelen (een houten kistje)."""
+
+    is_bouwblok = True    # zo weet het spel: dit blokje heeft de speler zelf gebouwd
+
+    def __init__(self, x, y, breedte, hoogte):
+        super().__init__(x, y, breedte, hoogte)
+        self._groei = 0   # tikt op bij het verschijnen (dan 'ploept' hij even op)
+
+    def teken(self):
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        if self._groei < 8:
+            self._groei += 1
+            krimp = (8 - self._groei) * 2          # verschijnt met een klein ploep-effect
+            x, y, w, h = x + krimp, y + krimp, w - 2 * krimp, h - 2 * krimp
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (235, 170, 60))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (140, 85, 25), 3)
+        # Twee planken schuin eroverheen (een kistje)
+        arcade.draw_line(x + 3, y + 3, x + w - 3, y + h - 3, (170, 105, 35), 3)
+        arcade.draw_line(x + 3, y + h - 3, x + w - 3, y + 3, (170, 105, 35), 3)
+
+
 class SchuinBlok:
     """Een schuin blok (helling): je loopt er soepel overheen omhoog of omlaag.
 

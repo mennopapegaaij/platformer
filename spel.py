@@ -209,7 +209,7 @@ class PlatformerSpel(arcade.View):
         self._muziek_stap = 0
         self._muziek_teller = 0.0
         self._verf_tijd = 0           # tikt door zodat meerdere kleuren overvloeien
-        self.platforms = platforms
+        self.platforms = list(platforms)   # een kopie: zo blijven bouwblokjes niet in het level hangen
         # Volg-voorwerpen: alles waar je de 'volg mij'-verf op hebt gezet.
         # Die komen tijdens het spelen achter de speler aan (zie _update_volgers).
         self.volgers = [o for lijst in (platforms, vijanden, self.portalen,
@@ -427,6 +427,8 @@ class PlatformerSpel(arcade.View):
             self._teken_element_hud(self.speler)
         if self.speler.modus == "elementkoning" and not self.twee:
             ek.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
+        if self.speler.modus == "bouwmeester" and not self.twee:
+            self._teken_bouw_hud(self.speler)
 
         # Sleutel-teller (alleen tonen als je sleutels hebt)
         if self.speler.sleutels > 0:
@@ -732,6 +734,11 @@ class PlatformerSpel(arcade.View):
             self._speler_geraakt()
             return
 
+        # Bouwmeester: op echte grond geland? Dan komen je oude blokjes terug
+        if getattr(self.speler, "_bouw_terug", False):
+            self.speler._bouw_terug = False
+            self.platforms = [p for p in self.platforms if not getattr(p, "is_bouwblok", False)]
+
         # Elementmeester: een aarde-schokgolf blaast monsters in de buurt weg
         self._element_schokgolf(self.speler)
 
@@ -946,6 +953,7 @@ class PlatformerSpel(arcade.View):
                      "vijfkamp": "vijfkamp", "tienkamp": "tienkamp",
                      "vijftienkamp": "vijftienkamp", "twintigkamp": "twintigkamp",
                      "element": "element", "elementkoning": "elementkoning",
+                     "bouwmeester": "bouwmeester",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -977,7 +985,7 @@ class PlatformerSpel(arcade.View):
                        "spook", "vleermuis", "zombie", "pompoenkop",
                        "voorspeller", "pendel", "blinde", "dubbelflip", "vijfkamp", "tienkamp",
                        "vijftienkamp", "twintigkamp", "element",
-                       "elementkoning"):
+                       "elementkoning", "bouwmeester"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -1284,6 +1292,19 @@ class PlatformerSpel(arcade.View):
         if weg:
             geluid_manager.speel_vijand_dood()
 
+    def _bouw_blokje(self, sp):
+        """Bouwmeester: zet een blokje neer (als je er nog hebt en als er plek is)."""
+        if self.dood or self.gewonnen or self.game_over:
+            return
+        from platforms import BouwBlok
+        from speler import BOUW_CEL
+        plek = sp.bouw_plek(self.platforms)
+        if plek is None:
+            return
+        self.platforms.append(BouwBlok(plek[0], plek[1], BOUW_CEL, BOUW_CEL))
+        sp._bouw_over -= 1
+        geluid_manager.speel_sprong()      # tok!
+
     def _elementkoning_raakt(self, vijand):
         """Elementenkoning: lava smelt spikes, gif verslaat monsters, kristal stuitert
         op spikes. Geeft "weg" (vijand weg), "veilig" (niks aan de hand) of None."""
@@ -1328,6 +1349,20 @@ class PlatformerSpel(arcade.View):
         arcade.draw_circle_filled(x - 110, y + 6, 8, ELEMENT_KLEUR[nu])
         arcade.draw_text("Nu: " + ELEMENT_NAAM[nu], x - 96, y, ELEMENT_KLEUR[nu], 13, bold=True)
         arcade.draw_text("-> daarna: " + ELEMENT_NAAM[straks], x + 5, y, (200, 200, 200), 11)
+
+    def _teken_bouw_hud(self, sp):
+        """Balkje bovenin: hoeveel blokjes je nog hebt en welke toets je gebruikt."""
+        from speler import BOUW_MAX
+        x = SCHERM_BREEDTE // 2
+        y = SCHERM_HOOGTE - 86
+        arcade.draw_lrbt_rectangle_filled(x - 170, x + 170, y - 10, y + 22, (0, 0, 0, 150))
+        arcade.draw_text("Blokjes:", x - 160, y, (255, 220, 120), 13, bold=True)
+        for i in range(BOUW_MAX):
+            bx = x - 85 + i * 22
+            if i < sp._bouw_over:
+                arcade.draw_lrbt_rectangle_filled(bx, bx + 16, y - 2, y + 14, (235, 170, 60))
+            arcade.draw_lrbt_rectangle_outline(bx, bx + 16, y - 2, y + 14, (200, 140, 50), 2)
+        arcade.draw_text("pijltje omlaag = bouwen", x - 10, y, (220, 220, 220), 11)
 
     def _teken_nacht(self, sp):
         """Maak alles donker behalve een rond lichtje om de speler heen."""
@@ -2033,6 +2068,9 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.N and self.testruimte:
             # In de testruimte: wissel naar het volgende poppetje
             self._test_volgende(1)
+        elif toets == arcade.key.DOWN and self.speler.modus == "bouwmeester":
+            # Bouwmeester: zet een blokje neer
+            self._bouw_blokje(self.speler)
         elif toets == arcade.key.P and self.testruimte:
             # In de testruimte: open de poppetjes-zoeker en kies er zelf één
             from poppetjeszoeker import PoppetjeZoeker

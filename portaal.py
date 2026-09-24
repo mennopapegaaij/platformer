@@ -69,6 +69,7 @@ PORTAAL_KLEUREN = {
     "twintigkamp": ((20, 90, 90), (60, 200, 200)),      # turkoois = twintigkamp (20 in 1)
     "element": ((120, 60, 160), (230, 180, 255)),       # paars = elementmeester
     "elementkoning": ((200, 150, 20), (255, 225, 90)),  # goud = elementenkoning
+    "bouwmeester": ((200, 120, 30), (255, 200, 90)),    # oranje = bouwmeester
     "eigen": ((255, 150, 40), (255, 210, 130)),         # oranje = zelfgemaakt poppetje
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
@@ -388,6 +389,12 @@ def teken_portaal_icoon(soort, cx, cy):
                                     (cx, cy + 9), (cx - 5, cy + 3), (cx - 9, cy + 7)], (255, 210, 40))
         for i, kl in enumerate(((255, 110, 30), (60, 150, 255), (80, 200, 80), (190, 110, 240))):
             arcade.draw_circle_filled(cx - 9 + i * 6, cy - 5, 3, kl)
+    elif soort == "bouwmeester":
+        # Drie kistjes als een trapje
+        for i in range(3):
+            bx, by = cx - 10 + i * 7, cy - 9 + i * 6
+            arcade.draw_lrbt_rectangle_filled(bx, bx + 7, by, by + 7, (235, 170, 60))
+            arcade.draw_lrbt_rectangle_outline(bx, bx + 7, by, by + 7, (140, 85, 25), 1)
     elif soort == "eigen":
         # Zelfgemaakt poppetje: een sterretje/blokje met een plusje
         arcade.draw_lrbt_rectangle_filled(cx - 7, cx + 7, cy - 7, cy + 7, arcade.color.WHITE)

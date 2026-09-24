@@ -247,6 +247,10 @@ ELEM_AARDE_ZWAARTE = 1.4  # aarde is zwaar
 ELEM_SCHOK_BEREIK = 170   # hoe ver de schokgolf van een aarde-stamp monsters wegblaast
 ELEM_FLITS = 20           # hoe lang de flits duurt als je van vorm wisselt
 
+# --- Bouwmeester: zet zelf blokjes neer (pijltje omlaag) ---
+BOUW_MAX = 3              # zoveel blokjes heb je; je krijgt ze terug als je op echte grond landt
+BOUW_CEL = 40             # blokjes staan netjes in een raster van 40 bij 40
+
 # --- Draaibol-modus: elke druk draait de zwaartekracht een kwartslag ---
 # Bij elke stand hoort een zwaartekracht-richting (x, y):
 #   0 = naar beneden, 1 = naar rechts, 2 = naar boven, 3 = naar links
@@ -351,6 +355,9 @@ class Speler:
         self._grond_tijd = 0             # hete vloer: hoelang je al op de grond staat
         self._element_reset()            # elementmeester: begin als vuur
         ek.reset(self)                   # elementenkoning: begin bij element 1
+        self._bouw_over = BOUW_MAX       # bouwmeester: hoeveel blokjes je nog hebt
+        self._bouw_terug = False         # bouwmeester: moeten je blokjes terugkomen?
+        self._gelande_platform = None    # op welk platform je het laatst landde
 
     def reset(self):
         """Zet de speler terug naar de beginpositie (bij het opnieuw spelen van een level)."""
@@ -414,6 +421,9 @@ class Speler:
         self._grond_tijd = 0                # hete vloer: reset
         self._element_reset()               # elementmeester: weer vuur
         ek.reset(self)                      # elementenkoning: weer bij element 1
+        self._bouw_over = BOUW_MAX          # bouwmeester: alle blokjes weer terug
+        self._bouw_terug = False
+        self._gelande_platform = None
 
     def volledig_reset(self):
         """Reset alles inclusief levens (voor een nieuw spel)."""
@@ -785,6 +795,17 @@ class Speler:
                         self.x = p.x + p.breedte
                         self._muur_kant = -1    # muur zit links van je
 
+        # Bouwmeester: je eigen blokjes zijn muren, je loopt er niet doorheen
+        if self.modus == "bouwmeester":
+            for p in platforms:
+                if getattr(p, "is_bouwblok", False) and self._overlapt(p):
+                    if self.y >= p.y + p.hoogte - 12:
+                        continue                    # je staat er bovenop, dat is goed
+                    if self.snelheid_x > 0:
+                        self.x = p.x - self.breedte
+                    elif self.snelheid_x < 0:
+                        self.x = p.x + p.breedte
+
         # Niet buiten het level lopen
         if self.x < 0:
             self.x = 0
@@ -954,6 +975,7 @@ class Speler:
             # Landen op het platform (van bovenaf)
             if platform.raakt(self.x, self.y, self.breedte, self.hoogte):
                 self.y = platform.y + platform.hoogte
+                self._gelande_platform = platform     # onthoud waar je op landde
                 self.x += getattr(platform, "dx", 0)  # meerijden op een bewegend blok
                 self.heeft_dubbel_gesprongen = False  # Op de grond: extra sprong herlaadbaar
                 self._lucht_sprongen = 0              # eigen poppetje: luchtsprongen herladen
@@ -1048,6 +1070,10 @@ class Speler:
                 self._au = True                          # hete vloer: te lang op de grond -> af
         if self.modus == "element" and net_geland:
             self._element_geland()
+        if (self.modus == "bouwmeester" and net_geland
+                and not getattr(self._gelande_platform, "is_bouwblok", False)):
+            self._bouw_over = BOUW_MAX                   # echte grond: alle blokjes terug
+            self._bouw_terug = True                      # (het spel haalt de oude weg)
         if self.modus == "elementkoning" and net_geland:
             ek.geland(self)                              # elementenkoning: volgende element
         if net_geland:
@@ -1562,6 +1588,9 @@ class Speler:
             return
         if self.modus == "elementkoning":
             ek.teken(self)
+            return
+        if self.modus == "bouwmeester":
+            self._teken_bouwmeester()
             return
         if self.modus == "voorspeller":
             self._teken_voorspeller()
@@ -2434,6 +2463,63 @@ class Speler:
                                       max(1.2, w / 16 * min(1.0, 2.5 / rijen)), (40, 30, 20))
         arcade.draw_circle_filled(x + w * 0.28, y + h * 0.78, max(2.5, w / 11), OOG_KLEUR)
         arcade.draw_circle_filled(x + w * 0.72, y + h * 0.78, max(2.5, w / 11), OOG_KLEUR)
+
+    # ================= BOUWMEESTER =================
+    def bouw_plek(self, platforms):
+        """Waar komt het volgende blokje? Geeft (x, y) terug, of None als het niet kan.
+        In de lucht: onder je voeten. Op de grond: vóór je."""
+        if self._bouw_over <= 0:
+            return None
+        c = BOUW_CEL
+        if self.staat_op_grond:
+            if self.kijkt_rechts:
+                bx = math.ceil((self.x + self.breedte) / c) * c
+            else:
+                bx = math.floor(self.x / c) * c - c
+            by = round(self.y / c) * c
+        else:
+            bx = math.floor((self.x + self.breedte / 2) / c) * c
+            by = math.floor(self.y / c) * c - c
+        # Niet in een ander blok of in jezelf bouwen
+        for p in platforms:
+            if (getattr(p, "vast", True) and not getattr(p, "is_schuin", False)
+                    and bx < p.x + p.breedte and bx + c > p.x
+                    and by < p.y + p.hoogte and by + c > p.y):
+                return None
+        if (bx < self.x + self.breedte and bx + c > self.x
+                and by < self.y + self.hoogte and by + c > self.y):
+            return None
+        return bx, by
+
+    def _teken_bouwmeester(self):
+        """Teken de bouwmeester: blauwe overall, gele bouwhelm, en zijn blokjes-teller."""
+        x, y, w, h = self.x, self.y, self.breedte, self.hoogte
+        cx = x + w / 2
+        # Blauwe overall met een gereedschapsriem
+        arcade.draw_lrbt_rectangle_filled(x + 2, x + w - 2, y, y + h * 0.7, (60, 110, 200))
+        arcade.draw_lrbt_rectangle_filled(x + 2, x + w - 2, y + h * 0.3, y + h * 0.38, (120, 80, 40))
+        arcade.draw_lrbt_rectangle_filled(cx - 2, cx + 2, y + h * 0.28, y + h * 0.4, (230, 200, 60))
+        # Gezicht
+        arcade.draw_lrbt_rectangle_filled(x + 4, x + w - 4, y + h * 0.62, y + h - 6, (240, 200, 160))
+        kijk = 2 if self.kijkt_rechts else -2
+        arcade.draw_circle_filled(cx - 5 + kijk, y + h * 0.8, 2.5, OOG_KLEUR)
+        arcade.draw_circle_filled(cx + 5 + kijk, y + h * 0.8, 2.5, OOG_KLEUR)
+        # Gele bouwhelm met een klepje
+        arcade.draw_arc_filled(cx, y + h - 6, w - 4, 20, (255, 205, 30), 0, 180)
+        klep = 1 if self.kijkt_rechts else -1
+        arcade.draw_lrbt_rectangle_filled(min(cx, cx + klep * (w / 2 + 3)), max(cx, cx + klep * (w / 2 + 3)),
+                                          y + h - 7, y + h - 4, (230, 180, 20))
+        # Een klein kistje in de hand (als je nog blokjes hebt)
+        if self._bouw_over > 0:
+            hx = x + w + 2 if self.kijkt_rechts else x - 12
+            arcade.draw_lrbt_rectangle_filled(hx, hx + 10, y + h * 0.35, y + h * 0.35 + 10, (235, 170, 60))
+            arcade.draw_lrbt_rectangle_outline(hx, hx + 10, y + h * 0.35, y + h * 0.35 + 10, (140, 85, 25), 1)
+        # Teller boven je hoofd: gevulde vakjes = blokjes die je nog hebt
+        for i in range(BOUW_MAX):
+            bx = cx - (BOUW_MAX * 9) / 2 + i * 9
+            if i < self._bouw_over:
+                arcade.draw_lrbt_rectangle_filled(bx, bx + 7, y + h + 8, y + h + 15, (235, 170, 60))
+            arcade.draw_lrbt_rectangle_outline(bx, bx + 7, y + h + 8, y + h + 15, (140, 85, 25), 1)
 
     # ================= ELEMENTMEESTER =================
     def _element_reset(self):
