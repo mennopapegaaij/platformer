@@ -14,6 +14,7 @@ import schilder as sv
 import chemicus as ch
 import bommenlegger as bm
 import boogschutter as bs
+import spinnenheld as sh
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
@@ -461,6 +462,8 @@ class PlatformerSpel(arcade.View):
             bm.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "boogschutter" and not self.twee:
             bs.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
+        if self.speler.modus == "spinnenheld" and not self.twee:
+            sh.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "evolutie" and not self.twee:
             evo.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
             if self.speler._evo_kiezen and not self.dood:
@@ -803,6 +806,14 @@ class PlatformerSpel(arcade.View):
                     self.platforms.append(p)
         if self.speler.modus == "boogschutter":
             self._pijlen_raak(self.speler)
+        # Spinnenheld: webnetten pakken monsters in een cocon
+        if self.speler.modus == "spinnenheld":
+            for net in list(self.speler._sh_netten):
+                for v in self.vijanden:
+                    if not getattr(v, "is_spike", False) and sh.net_raakt(net, v):
+                        sh.pak_in(self.speler, v)
+                        self.speler._sh_netten.remove(net)
+                        break
 
         # Bommenlegger: ontploffingen blazen monsters, spikes en stenen blokken weg
         if getattr(self.speler, "_bm_nieuw", None):
@@ -864,7 +875,8 @@ class PlatformerSpel(arcade.View):
         nieuwe_vijanden = []   # monsters die de arena-baas oproept
         speler_cx = self.speler.x + self.speler.breedte / 2
         for vijand in self.vijanden:
-            if not (self.speler.modus == "schilder" and not getattr(vijand, "is_spike", False)
+            in_cocon = self.speler.modus == "spinnenheld" and vijand in self.speler._sh_coconnen
+            if not in_cocon and not (self.speler.modus == "schilder" and not getattr(vijand, "is_spike", False)
                     and sv.in_modder(self.speler, vijand)):
                 vijand.bijwerken(speler_cx)          # (in bruine modder zit een monster vast)
 
@@ -902,8 +914,8 @@ class PlatformerSpel(arcade.View):
             elif (not self.speler.is_onkwetsbaar() and
                   vijand.raakt_speler(self.speler.x, self.speler.y,
                                       self.speler.breedte, self.speler.hoogte)):
-                if getattr(vijand, "geverfd", False):
-                    gevolg = "veilig"             # groen geverfde spike: onschadelijk
+                if getattr(vijand, "geverfd", False) or in_cocon:
+                    gevolg = "veilig"             # groen geverfde spike / monster in een cocon: onschadelijk
                 else:
                     gevolg = self._elementkoning_raakt(vijand)
                 if gevolg == "weg":
@@ -1039,6 +1051,7 @@ class PlatformerSpel(arcade.View):
                      "drakentemmer": "drakentemmer", "mierenkolonie": "mierenkolonie",
                      "evolutie": "evolutie", "schilder": "schilder", "chemicus": "chemicus",
                      "bommenlegger": "bommenlegger", "boogschutter": "boogschutter",
+                     "spinnenheld": "spinnenheld",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -1072,7 +1085,7 @@ class PlatformerSpel(arcade.View):
                        "vijftienkamp", "twintigkamp", "element",
                        "elementkoning", "bouwmeester", "portaalschieter", "drakentemmer",
                        "mierenkolonie", "evolutie", "schilder", "chemicus", "bommenlegger",
-                       "boogschutter"):
+                       "boogschutter", "spinnenheld"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -2310,6 +2323,10 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.DOWN and self.speler.modus == "bouwmeester":
             # Bouwmeester: zet een blokje neer
             self._bouw_blokje(self.speler)
+        elif toets == arcade.key.DOWN and self.speler.modus == "spinnenheld":
+            # Spinnenheld: web schieten (of loslaten)
+            if not (self.dood or self.gewonnen or self.game_over) and sh.web(self.speler, self.platforms):
+                geluid_manager.speel_sprong()
         elif toets == arcade.key.DOWN and self.speler.modus == "boogschutter":
             # Boogschutter: schiet een pijl
             if not (self.dood or self.gewonnen or self.game_over) and bs.schiet(self.speler):

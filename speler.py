@@ -13,6 +13,7 @@ import schilder as sv         # en de Schilder ook
 import chemicus as ch         # en de Chemicus ook
 import bommenlegger as bm     # en de Bommenlegger ook
 import boogschutter as bs     # en de Boogschutter ook
+import spinnenheld as sh      # en de Spinnenheld ook
 from instellingen import (SPELER_SNELHEID, SPRING_KRACHT, ZWAARTEKRACHT,
                            SPELER_KLEUR, OOG_KLEUR)
 
@@ -371,6 +372,7 @@ class Speler:
         ch.reset(self)                   # chemicus: lege ketel
         bm.reset(self)                   # bommenlegger: 3 bommen in je tas
         bs.reset(self)                   # boogschutter: volle koker
+        sh.reset(self)                   # spinnenheld: geen web
         self._bouw_over = BOUW_MAX       # bouwmeester: hoeveel blokjes je nog hebt
         self._bouw_terug = False         # bouwmeester: moeten je blokjes terugkomen?
         self._gelande_platform = None    # op welk platform je het laatst landde
@@ -445,6 +447,7 @@ class Speler:
         ch.reset(self)                      # chemicus: lege ketel, geen brouwsel
         bm.reset(self)                      # bommenlegger: geen bommen meer op de grond
         bs.reset(self)                      # boogschutter: pijlen uit de muren, koker vol
+        sh.reset(self)                      # spinnenheld: web los, cocons weg
         self._bouw_over = BOUW_MAX          # bouwmeester: alle blokjes weer terug
         self._bouw_terug = False
         self._gelande_platform = None
@@ -476,6 +479,12 @@ class Speler:
             self.grootte_timer -= 1
             if self.grootte_timer == 0:
                 self.zet_grootte(1.0, 0)     # weer normale grootte
+
+        # Spinnenheld aan een web: slinger-natuurkunde
+        if self.modus == "spinnenheld" and self._sh_anker is not None:
+            sh.stap(self, platforms)
+            sh.slinger(self, platforms, level_breedte)
+            return
 
         # Draaibol heeft zijn eigen natuurkunde (zwaartekracht kan 4 kanten op)
         if self.modus == "draaibol":
@@ -791,6 +800,9 @@ class Speler:
                     self.kijkt_rechts = True
                 else:
                     self.snelheid_x = 0
+            elif self.modus == "spinnenheld" and self._sh_vaart is not None:
+                # Spinnenheld net losgelaten: je vliegt door met je slinger-vaart
+                sh.vlieg(self, L, R, snelheid)
             elif L:
                 self.snelheid_x = -snelheid
                 self.kijkt_rechts = False   # Speler kijkt naar links
@@ -1165,6 +1177,8 @@ class Speler:
             bm.stap(self, platforms)                     # bommen tikken af en ontploffen
         if self.modus == "boogschutter":
             bs.stap(self, platforms)                     # pijlen vliegen en blijven in muren steken
+        if self.modus == "spinnenheld":
+            sh.stap(self, platforms)                     # webnetten vliegen, cocons worden zwakker
         if self.modus == "evolutie":
             evo.stap(self, platforms)                    # DNA verzamelen, deeltjes
             if net_geland:
@@ -1400,6 +1414,9 @@ class Speler:
             return
         if self.modus == "elementkoning":
             ek.spring(self)
+            return
+        if self.modus == "spinnenheld" and self._sh_anker is not None:
+            sh.los(self, sprong=True)          # springen = web loslaten (met een zetje omhoog)
             return
         if self.modus == "drakentemmer":
             dt.spring(self)
@@ -1721,6 +1738,9 @@ class Speler:
             return
         if self.modus == "boogschutter":
             bs.teken(self)
+            return
+        if self.modus == "spinnenheld":
+            sh.teken(self)
             return
         if self.modus == "voorspeller":
             self._teken_voorspeller()
