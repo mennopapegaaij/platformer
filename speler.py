@@ -671,15 +671,7 @@ class Speler:
             elif self.modus == "bommenlegger":
                 bm.loop(self, L, R, snelheid)             # (tijdens een bomsprong word je opzij geblazen)
             elif self.modus == "chemicus":
-                loop = ch.loop_snelheid(self, snelheid)   # rendrank = sneller
-                if L and not R:
-                    self.snelheid_x = -loop
-                    self.kijkt_rechts = False
-                elif R and not L:
-                    self.snelheid_x = loop
-                    self.kijkt_rechts = True
-                else:
-                    self.snelheid_x = 0
+                ch.loop(self, L, R, snelheid)             # rendrank = sneller, luchtdash = zoef
             elif self.modus == "evolutie":
                 loop = evo.loop_snelheid(self, snelheid)  # snelle poten = sneller
                 if L and not R:
@@ -1172,7 +1164,7 @@ class Speler:
         if self.modus == "schilder":
             sv.stap(self)                                # verf bijvullen, spettertjes
         if self.modus == "chemicus":
-            ch.stap(self)                                # brouwsel uitwerken, bubbels
+            ch.stap(self, platforms)                     # brouwsel uitwerken, superkrachten, bubbels
         if self.modus == "bommenlegger":
             bm.stap(self, platforms)                     # bommen tikken af en ontploffen
         if self.modus == "boogschutter":

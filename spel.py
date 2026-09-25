@@ -806,6 +806,17 @@ class PlatformerSpel(arcade.View):
                     self.platforms.append(p)
         if self.speler.modus == "boogschutter":
             self._pijlen_raak(self.speler)
+        # Chemicus: superkrachten die iets met monsters doen (schokgolf, omver lopen, vuurballen...)
+        if self.speler.modus == "chemicus":
+            monsters_weg, spikes_weg, vuurbal = ch.wereld(self.speler, self.vijanden)
+            for v in monsters_weg + spikes_weg:
+                self.vijanden.remove(v)
+            for v in monsters_weg:
+                self._voeg_punt_toe()
+            if monsters_weg or spikes_weg:
+                geluid_manager.speel_vijand_dood()
+            if vuurbal:
+                self.kogels.append(Kogel(*vuurbal))
         # Spinnenheld: webnetten pakken monsters in een cocon
         if self.speler.modus == "spinnenheld":
             for net in list(self.speler._sh_netten):
@@ -876,7 +887,9 @@ class PlatformerSpel(arcade.View):
         speler_cx = self.speler.x + self.speler.breedte / 2
         for vijand in self.vijanden:
             in_cocon = self.speler.modus == "spinnenheld" and vijand in self.speler._sh_coconnen
-            if not in_cocon and not (self.speler.modus == "schilder" and not getattr(vijand, "is_spike", False)
+            if self.speler.modus == "chemicus" and not getattr(vijand, "is_spike", False) and ch.monster_stil(self.speler):
+                pass                                 # tijdrem: dit monster staat even stil
+            elif not in_cocon and not (self.speler.modus == "schilder" and not getattr(vijand, "is_spike", False)
                     and sv.in_modder(self.speler, vijand)):
                 vijand.bijwerken(speler_cx)          # (in bruine modder zit een monster vast)
 
@@ -914,7 +927,8 @@ class PlatformerSpel(arcade.View):
             elif (not self.speler.is_onkwetsbaar() and
                   vijand.raakt_speler(self.speler.x, self.speler.y,
                                       self.speler.breedte, self.speler.hoogte)):
-                if getattr(vijand, "geverfd", False) or in_cocon:
+                if (getattr(vijand, "geverfd", False) or in_cocon
+                        or (self.speler.modus == "chemicus" and ch.veilig(self.speler, vijand))):
                     gevolg = "veilig"             # groen geverfde spike / monster in een cocon: onschadelijk
                 else:
                     gevolg = self._elementkoning_raakt(vijand)
