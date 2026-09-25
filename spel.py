@@ -18,6 +18,7 @@ import spinnenheld as sh
 import tijdreiziger as tr
 import robotbouwer as rb
 import dierentemmer as dm
+import fabriek as fb
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
@@ -477,6 +478,8 @@ class PlatformerSpel(arcade.View):
             rb.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "dierentemmer" and not self.twee:
             dm.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
+        if self.speler.modus == "fabriek" and not self.twee:
+            fb.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "evolutie" and not self.twee:
             evo.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
             if self.speler._evo_kiezen and not self.dood:
@@ -819,6 +822,13 @@ class PlatformerSpel(arcade.View):
                     self.platforms.append(p)
         if self.speler.modus == "boogschutter":
             self._pijlen_raak(self.speler)
+        # Fabriek-baas: machines, banden, trappen en bruggen zijn platforms
+        if self.speler.modus == "fabriek" or any(getattr(p, "is_fabriek", False) for p in self.platforms):
+            delen = self.speler._fb_delen if self.speler.modus == "fabriek" else []
+            self.platforms = [p for p in self.platforms if not getattr(p, "is_fabriek", False) or p in delen]
+            for p in delen:
+                if p not in self.platforms:
+                    self.platforms.append(p)
         # Tijdreiziger: je vroeger-ik is een platform (tijd-lift) en ruimt monsters op
         if self.speler.modus == "tijdreiziger" or any(getattr(p, "is_echo", False) for p in self.platforms):
             echo = self.speler._tr_echo if self.speler.modus == "tijdreiziger" else None
@@ -1106,6 +1116,7 @@ class PlatformerSpel(arcade.View):
                      "bommenlegger": "bommenlegger", "boogschutter": "boogschutter",
                      "spinnenheld": "spinnenheld", "tijdreiziger": "tijdreiziger",
                      "robotbouwer": "robotbouwer", "dierentemmer": "dierentemmer",
+                     "fabriek": "fabriek",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -1140,7 +1151,7 @@ class PlatformerSpel(arcade.View):
                        "elementkoning", "bouwmeester", "portaalschieter", "drakentemmer",
                        "mierenkolonie", "evolutie", "schilder", "chemicus", "bommenlegger",
                        "boogschutter", "spinnenheld", "tijdreiziger", "robotbouwer",
-                       "dierentemmer"):
+                       "dierentemmer", "fabriek"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -2287,6 +2298,15 @@ class PlatformerSpel(arcade.View):
                 else:
                     self._verlaat_arena()            # terug naar de kaart
             return
+        # Fabriek-baas: 1-4 = machine neerzetten
+        if self.speler.modus == "fabriek" and not (self.dood or self.gewonnen or self.game_over):
+            soort = {arcade.key.KEY_1: "mijn", arcade.key.KEY_2: "band", arcade.key.KEY_3: "trap",
+                     arcade.key.KEY_4: "brug", arcade.key.NUM_1: "mijn", arcade.key.NUM_2: "band",
+                     arcade.key.NUM_3: "trap", arcade.key.NUM_4: "brug"}.get(toets)
+            if soort:
+                if fb.plaats(self.speler, soort, self.platforms):
+                    geluid_manager.speel_sprong()
+                return
         # Robotbouwer: 1-6 = onderdelen erop of eraf
         if self.speler.modus == "robotbouwer":
             nummer = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3,
@@ -2406,6 +2426,10 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.DOWN and self.speler.modus == "bouwmeester":
             # Bouwmeester: zet een blokje neer
             self._bouw_blokje(self.speler)
+        elif toets == arcade.key.DOWN and self.speler.modus == "fabriek":
+            # Fabriek-baas: sloop de machine voor je
+            if not (self.dood or self.gewonnen or self.game_over):
+                fb.sloop(self.speler)
         elif toets == arcade.key.DOWN and self.speler.modus == "dierentemmer":
             # Dierentemmer: al je dieren doen hun kunstje
             if not (self.dood or self.gewonnen or self.game_over):

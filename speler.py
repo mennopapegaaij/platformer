@@ -17,6 +17,7 @@ import spinnenheld as sh      # en de Spinnenheld ook
 import tijdreiziger as tr     # en de Tijdreiziger ook
 import robotbouwer as rb      # en de Robotbouwer ook
 import dierentemmer as dm     # en de Dierentemmer ook
+import fabriek as fb          # en de Fabriek-baas ook
 from instellingen import (SPELER_SNELHEID, SPRING_KRACHT, ZWAARTEKRACHT,
                            SPELER_KLEUR, OOG_KLEUR)
 
@@ -379,6 +380,7 @@ class Speler:
         tr.reset(self)                   # tijdreiziger: volle tijd-energie
         rb.reset(self)                   # robotbouwer: kale robot, volle batterij
         dm.reset(self)                   # dierentemmer: nog geen dieren
+        fb.reset(self)                   # fabriek-baas: lege fabriek
         self._bouw_over = BOUW_MAX       # bouwmeester: hoeveel blokjes je nog hebt
         self._bouw_terug = False         # bouwmeester: moeten je blokjes terugkomen?
         self._gelande_platform = None    # op welk platform je het laatst landde
@@ -457,6 +459,7 @@ class Speler:
         tr.reset(self)                      # tijdreiziger: geschiedenis en vroeger-ik weg
         rb.reset(self)                      # robotbouwer: onderdelen eraf, batterij vol
         dm.reset(self)                      # dierentemmer: dieren weg
+        fb.reset(self)                      # fabriek-baas: fabriek afgebroken, tandwielen terug
         self._bouw_over = BOUW_MAX          # bouwmeester: alle blokjes weer terug
         self._bouw_terug = False
         self._gelande_platform = None
@@ -1209,6 +1212,8 @@ class Speler:
             rb.stap(self, platforms)                     # batterij opladen, veer-stuiter
         if self.modus == "dierentemmer":
             dm.stap(self)                                # je dieren lopen achter je aan
+        if self.modus == "fabriek":
+            fb.stap(self, platforms)                     # mijnen, banden en bouwers aan het werk
         if self.modus == "evolutie":
             evo.stap(self, platforms)                    # DNA verzamelen, deeltjes
             if net_geland:
@@ -1787,6 +1792,9 @@ class Speler:
             return
         if self.modus == "dierentemmer":
             dm.teken(self)
+            return
+        if self.modus == "fabriek":
+            fb.teken(self)
             return
         if self.modus == "voorspeller":
             self._teken_voorspeller()

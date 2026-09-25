@@ -80,6 +80,7 @@ POPPETJES = [
     ("tijdreiziger", "Tijdreiziger", "Omlaag vasthouden = terugspoelen, 1 = tijdstop, 2 = vroeger-ik opnemen (sta erop!)."),
     ("robotbouwer", "Robotbouwer", "Bouw je robot met 1-6: wielen/veer, raket/schild, grijparm/laser. 4 geheime combo's!"),
     ("dierentemmer", "Dierentemmer", "Spring op een monster = getemd! Je dieren volgen je en doen kunstjes (omlaag)."),
+    ("fabriek", "Fabriek-baas", "1 mijn, 2 band, 3 trappenbouwer, 4 brugbouwer. Mijn -> band -> bouwer = trap of brug!"),
     ("eigen", "Mijn poppetje", "Je zelfgemaakte poppetje uit de poppetjes-maker."),
 ]
 
