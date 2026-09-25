@@ -10,7 +10,9 @@
 #  Toets 7 : SMELTERIJ        (4) - 2 IJZER -> 1 STAAL
 #  Toets 8 : LIFT             (4) - STAAL   -> de lift gaat een verdieping hoger
 #  Toets 9 : KANON            (3) - elk blokje wordt een kogel tegen monsters
+#  Toets 0 : ROBOTSTATION     (5) - er vliegt een robotje uit dat helpt (zie ROBOTJES)
 #  Omlaag  : SLOPEN           - haal de machine voor je (of onder je) weg, tandwielen terug
+#            (bij een KAPOTTE machine: repareren)
 # (tussen haakjes: zoveel tandwielen kost het)
 #
 # STROOM: machines werken alleen als er een windmolen in de buurt staat (240 pixels).
@@ -19,6 +21,13 @@
 # DOORGEVEN: krijgt een machine een blokje dat hij niet wil (of is hij vol),
 #   dan geeft hij het door naar de andere kant. Zo kun je machines achter elkaar zetten:
 #   [MIJN] -> band -> [BRUG: pakt hout] -> band -> [TRAP: pakt steen] -> band -> [TANDWIEL: pakt ijzer]
+# SLIJTAGE: na 15 blokjes gaat een machine kapot (rook!). Dan doet hij niks meer tot hij
+#   gerepareerd is: door jou (omlaag) of door een robotje. Windmolens en banden slijten niet.
+# ROBOTJES: een robotje blijft in de buurt van zijn station (300 pixels) en doet, als het
+#   station stroom heeft, steeds het belangrijkste klusje:
+#   1. een kapotte machine repareren
+#   2. een los blokje (dat op de grond ligt) oppakken en naar een machine brengen die het wil
+#   3. niks te doen? Terug naar het station.
 # Alles is vast: geen toeval.
 
 import math
@@ -27,11 +36,12 @@ from platforms import Platform
 
 TANDWIELEN = 20           # zoveel tandwielen heb je aan het begin
 KOST = {"mijn": 4, "band": 1, "trap": 3, "brug": 3, "tandwiel": 3,
-        "molen": 3, "smelterij": 4, "lift": 4, "kanon": 3}
-TOETSEN = ["mijn", "band", "trap", "brug", "tandwiel", "molen", "smelterij", "lift", "kanon"]
+        "molen": 3, "smelterij": 4, "lift": 4, "kanon": 3, "robot": 5}
+TOETSEN = ["mijn", "band", "trap", "brug", "tandwiel", "molen", "smelterij", "lift", "kanon", "robot"]
 NAAM = {"mijn": "mijn", "band": "band", "trap": "trap", "brug": "brug", "tandwiel": "tandwiel",
-        "molen": "molen", "smelterij": "smelter", "lift": "lift", "kanon": "kanon"}
-STROOM_NODIG = {"mijn": 1, "trap": 1, "brug": 1, "tandwiel": 1, "smelterij": 2, "lift": 1, "kanon": 1}
+        "molen": "molen", "smelterij": "smelter", "lift": "lift", "kanon": "kanon", "robot": "robot"}
+STROOM_NODIG = {"mijn": 1, "trap": 1, "brug": 1, "tandwiel": 1, "smelterij": 2, "lift": 1, "kanon": 1,
+                "robot": 1}
 MOLEN_STROOM = 4          # zoveel stroom geeft een windmolen
 STROOM_BEREIK = 240       # zo ver reikt de stroom van een molen (opzij)
 MIJN_VOLGORDE = ["steen", "hout", "steen", "ijzer"]
@@ -60,6 +70,10 @@ LIFT_SNELHEID = 1.5
 MAX_MUNITIE = 5
 KANON_BEREIK = 450
 KANON_RUST = 30
+SLIJTAGE_MAX = 15         # na zoveel blokjes gaat een machine kapot
+ROBOT_BEREIK = 300        # zo ver van zijn station gaat een robotje
+ROBOT_SNELHEID = 3
+REPAREER_TIJD = 60        # zo lang doet een robotje over een reparatie (1 seconde)
 
 
 class FabriekDeel(Platform):
@@ -85,6 +99,8 @@ class FabriekDeel(Platform):
         self.plank = None             # lift: de plank die op en neer gaat
         self.lift_op = 1              # lift: gaat de plank omhoog (1) of omlaag (-1)?
         self.glim = 0                 # glimt even als er iets gemaakt is
+        self.slijtage = 0             # telt de blokjes; bij SLIJTAGE_MAX gaat hij kapot
+        self.kapot = False
         self.t = 0
 
     def teken(self):
@@ -96,6 +112,7 @@ def reset(sp):
     sp._fb_delen = []         # alle FabriekDelen (machines, banden en wat ze bouwden)
     sp._fb_blokjes = []       # {"x", "y", "vy", "stof"}
     sp._fb_schoten = []       # kanonschoten die het spel nog moet afvuren (x, y, richting)
+    sp._fb_robots = []        # robotjes {"station", "x", "y", "taak", "doel", "blokje", "klok"}
     sp._fb_t = 0
     sp._fb_melding = ""
     sp._fb_melding_tijd = 0
@@ -133,6 +150,29 @@ def is_machine(d):
     return d.soort in KOST and d.soort != "band"
 
 
+def kan_slijten(d):
+    return is_machine(d) and d.soort not in ("molen",)
+
+
+def _slijt(d):
+    """De machine heeft weer een blokje gedaan. Na SLIJTAGE_MAX gaat hij kapot."""
+    if kan_slijten(d):
+        d.slijtage += 1
+        if d.slijtage >= SLIJTAGE_MAX:
+            d.kapot = True
+
+
+def repareer(d):
+    d.kapot = False
+    d.slijtage = 0
+    d.glim = 20
+
+
+def werkt(d):
+    """Heeft deze machine stroom en is hij heel?"""
+    return d.stroom > 0 and not d.kapot
+
+
 def plaats(sp, soort, platforms):
     """Toets 1-9: zet een machine of band vlak voor je neer."""
     if not sp.staat_op_grond:
@@ -160,6 +200,9 @@ def plaats(sp, soort, platforms):
     if soort == "lift":
         deel.plank = FabriekDeel("liftplank", x, y + MACHINE, MACHINE, 8, k)
         sp._fb_delen.append(deel.plank)
+    if soort == "robot":
+        sp._fb_robots.append({"station": deel, "x": x + MACHINE / 2, "y": y + MACHINE + 20,
+                              "taak": None, "doel": None, "blokje": None, "klok": 0})
     return True
 
 
@@ -174,9 +217,20 @@ def sloop(sp):
         _meld(sp, "Hier staat niks om te slopen")
         return False
     d = kandidaten[0]
+    if d.kapot:
+        repareer(d)                              # kapotte machine: repareren in plaats van slopen
+        _meld(sp, "Gerepareerd!")
+        return True
     sp._fb_delen.remove(d)
     if d.plank is not None and d.plank in sp._fb_delen:
         sp._fb_delen.remove(d.plank)             # de liftplank gaat mee
+    for r in [r for r in sp._fb_robots if r["station"] is d]:
+        if r["blokje"] is not None:              # het robotje laat zijn blokje vallen
+            b = r["blokje"]
+            b["x"], b["y"], b["vy"] = r["x"] - BLOKJE / 2, r["y"] - 16, 0
+            b.pop("robot", None)
+            sp._fb_blokjes.append(b)
+        sp._fb_robots.remove(r)
     sp._fb_tandwielen += KOST[d.soort]
     return True
 
@@ -262,6 +316,7 @@ def _verwerk(sp, machine, stof):
     s = machine.soort
     machine.bezig = VERWERK_TIJD
     machine.glim = 20
+    _slijt(machine)
     if s in ("trap", "brug"):
         _bouw(sp, machine)
     elif s == "tandwiel":
@@ -297,21 +352,22 @@ def stap(sp, platforms):
         if d.bezig > 0:
             d.bezig -= d.stroom                    # met minder stroom duurt het langer
     # Mijnen: grondstoffen maken (sneller met meer stroom)
-    for m in [d for d in delen if d.soort == "mijn"]:
+    for m in [d for d in delen if d.soort == "mijn" and not d.kapot]:
         m.werk = min(MIJN_TIJD, m.werk + m.stroom)
         if m.werk >= MIJN_TIJD and _maak_blokje(sp, m, MIJN_VOLGORDE[m.teller % len(MIJN_VOLGORDE)]):
             m.werk = 0
             m.teller += 1
+            _slijt(m)
     # Smelterij: 2 ijzer -> 1 staal
     for s in [d for d in delen if d.soort == "smelterij"]:
-        if s.voorraad >= IJZER_PER_STAAL and s.stroom > 0 and _maak_blokje(sp, s, "staal"):
+        if s.voorraad >= IJZER_PER_STAAL and werkt(s) and _maak_blokje(sp, s, "staal"):
             s.voorraad -= IJZER_PER_STAAL
     # Lift: de plank gaat op en neer (alleen met stroom)
     for l in [d for d in delen if d.soort == "lift"]:
         p = l.plank
         top = l.y + MACHINE + l.verdiepingen * VERDIEPING
         p.x = l.x
-        if l.stroom > 0 and l.verdiepingen > 0:
+        if werkt(l) and l.verdiepingen > 0:
             p.y += LIFT_SNELHEID * l.stroom * l.lift_op
             if p.y >= top:
                 p.y, l.lift_op = top, -1
@@ -351,7 +407,7 @@ def stap(sp, platforms):
             if not _overlapt(b["x"], b["y"], BLOKJE, BLOKJE, m):
                 continue
             if _wil(m, b["stof"]):
-                if m.stroom > 0 and m.bezig <= 0:
+                if werkt(m) and m.bezig <= 0:
                     _verwerk(sp, m, b["stof"])
                     klaar.append(b)
                 # anders: even wachten tot de machine klaar is (of stroom krijgt)
@@ -359,13 +415,123 @@ def stap(sp, platforms):
                 _geef_door(b, m)
             break
     sp._fb_blokjes = [b for b in sp._fb_blokjes if b not in klaar]
+    for r in sp._fb_robots:
+        _robot_stap(sp, r)
+
+
+# ---------------------------------------------------------------------------
+# Robotjes
+# ---------------------------------------------------------------------------
+def _in_bereik(r, x):
+    st = r["station"]
+    return abs(x - (st.x + MACHINE / 2)) <= ROBOT_BEREIK
+
+
+def _los(sp, b):
+    """Ligt dit blokje los op de grond (niet op een band, niet in een machine, niet vallend)?"""
+    if b["vy"] != 0 or b.get("robot"):
+        return False
+    for p in sp._fb_delen:
+        if p.soort == "band" and abs(b["y"] - (p.y + p.hoogte)) < 1 and b["x"] + BLOKJE > p.x and b["x"] < p.x + p.breedte:
+            return False
+        if is_machine(p) and _overlapt(b["x"], b["y"], BLOKJE, BLOKJE, p):
+            return False
+    return True
+
+
+def _wie_wil(sp, r, stof):
+    """De dichtstbijzijnde machine (in het bereik van het robotje) die dit blokje wil."""
+    kandidaten = [m for m in sp._fb_delen if is_machine(m) and _wil(m, stof) and not m.kapot
+                  and _in_bereik(r, m.x + MACHINE / 2)]
+    if not kandidaten:
+        return None
+    return min(kandidaten, key=lambda m: (abs(m.x - r["x"]), m.x))
+
+
+def _vlieg(r, doel_x, doel_y):
+    """Vlieg een stukje naar (doel_x, doel_y). Geeft True als het robotje er is."""
+    dx, dy = doel_x - r["x"], doel_y - r["y"]
+    afstand = math.hypot(dx, dy)
+    if afstand <= ROBOT_SNELHEID:
+        r["x"], r["y"] = doel_x, doel_y
+        return True
+    r["x"] += dx / afstand * ROBOT_SNELHEID
+    r["y"] += dy / afstand * ROBOT_SNELHEID
+    return False
+
+
+def _robot_stap(sp, r):
+    st = r["station"]
+    r["klok"] += 1
+    if not werkt(st):
+        return                                   # station zonder stroom (of kapot): robotje staat stil
+    # Is het doel er nog?
+    if r["taak"] == "repareer" and (r["doel"] not in sp._fb_delen or not r["doel"].kapot):
+        r["taak"] = None
+    if r["taak"] == "haal" and r["doel"] not in sp._fb_blokjes:
+        r["taak"] = None
+    if r["taak"] == "breng" and (r["doel"] not in sp._fb_delen or r["doel"].kapot
+                                 or not _wil(r["doel"], r["blokje"]["stof"])):
+        r["doel"] = _wie_wil(sp, r, r["blokje"]["stof"])
+        if r["doel"] is None:
+            r["taak"] = "terug"                  # niemand wil het meer: terug naar het station
+    # Nieuw klusje zoeken
+    if r["taak"] in (None, "terug") and r["blokje"] is None:
+        kapot = [m for m in sp._fb_delen if m.kapot and _in_bereik(r, m.x + MACHINE / 2)]
+        if kapot:
+            r["taak"], r["doel"] = "repareer", min(kapot, key=lambda m: (abs(m.x - r["x"]), m.x))
+            r["bezig"] = 0                       # de reparatie begint opnieuw
+        else:
+            los = [b for b in sp._fb_blokjes if _los(sp, b) and _in_bereik(r, b["x"])
+                   and _wie_wil(sp, r, b["stof"]) is not None]
+            if los:
+                b = min(los, key=lambda b: (abs(b["x"] - r["x"]), b["x"]))
+                b["robot"] = True
+                r["taak"], r["doel"] = "haal", b
+            else:
+                r["taak"] = "terug"
+    # Het klusje doen
+    if r["taak"] == "repareer":
+        m = r["doel"]
+        if _vlieg(r, m.x + MACHINE / 2, m.y + MACHINE + 18):
+            m.glim = 5
+            if r.get("bezig", 0) >= REPAREER_TIJD:
+                repareer(m)
+                r["bezig"] = 0
+                r["taak"] = None
+            else:
+                r["bezig"] = r.get("bezig", 0) + 1
+    elif r["taak"] == "haal":
+        b = r["doel"]
+        if _vlieg(r, b["x"] + BLOKJE / 2, b["y"] + BLOKJE + 14):
+            sp._fb_blokjes.remove(b)             # opgepakt!
+            r["blokje"] = b
+            r["doel"] = _wie_wil(sp, r, b["stof"])
+            r["taak"] = "breng" if r["doel"] is not None else "terug"
+    elif r["taak"] == "breng":
+        m = r["doel"]
+        if _vlieg(r, m.x + MACHINE / 2, m.y + MACHINE + 18):
+            b = r["blokje"]
+            b["x"], b["y"], b["vy"] = m.x + MACHINE / 2 - BLOKJE / 2, m.y + 14, 0   # in de machine stoppen
+            b.pop("robot", None)
+            sp._fb_blokjes.append(b)
+            r["blokje"] = None
+            r["taak"] = None
+    elif r["taak"] == "terug":
+        if _vlieg(r, st.x + MACHINE / 2, st.y + MACHINE + 20) and r["blokje"] is not None:
+            b = r["blokje"]                      # niemand wil het: naast het station neerleggen
+            b["x"], b["y"], b["vy"] = st.x - BLOKJE - 2, st.y + 20, 0
+            b["niemand"] = True
+            sp._fb_blokjes.append(b)
+            r["blokje"] = None
+            r["taak"] = None
 
 
 def kanon_schoten(sp, vijanden):
     """Kanonnen met munitie en stroom schieten op een monster voor ze. Geeft [(x, y, richting)]."""
     schoten = []
     for k in [d for d in sp._fb_delen if d.soort == "kanon"]:
-        if k.munitie <= 0 or k.stroom <= 0 or k.rust > 0:
+        if k.munitie <= 0 or not werkt(k) or k.rust > 0:
             continue
         r = k.richting
         loop_x = k.x + MACHINE / 2
@@ -375,6 +541,7 @@ def kanon_schoten(sp, vijanden):
             k.munitie -= 1
             k.rust = KANON_RUST
             k.glim = 10
+            _slijt(k)
             schoten.append((k.x + MACHINE + 4 if r > 0 else k.x - 4, k.y + 26, r))
     return schoten
 
@@ -508,7 +675,40 @@ def _teken_deel(d):
         for i in range(MAX_MUNITIE):
             arcade.draw_lrbt_rectangle_filled(x + 3 + i * 7, x + 8 + i * 7, y + 3, y + 8,
                                               (220, 200, 90) if i < d.munitie else (40, 45, 40))
+    elif d.soort == "robot":
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (70, 90, 110))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (40, 50, 60), 2)
+        arcade.draw_arc_filled(x + w / 2, y + 4, 24, 36, (30, 40, 50), 0, 180)          # garagedeur
+        arcade.draw_line(x + w / 2, y + h, x + w / 2, y + h + 8, (150, 150, 160), 2)
+        arcade.draw_circle_filled(x + w / 2, y + h + 9, 2.5, (90, 240, 200))
+    if d.kapot:
+        # Kapot: rook en een rood moersleuteltje
+        for i in range(3):
+            fase = (d.t // 6 + i * 5) % 15
+            arcade.draw_circle_filled(x + 10 + i * 10, y + h + fase * 2, 4 + fase / 3, (70, 70, 70, 200 - fase * 12))
+        arcade.draw_circle_filled(x + w / 2, y + h / 2, 9, (230, 50, 50))
+        arcade.draw_line(x + w / 2 - 5, y + h / 2 - 5, x + w / 2 + 5, y + h / 2 + 5, (255, 255, 255), 3)
+        arcade.draw_circle_outline(x + w / 2 + 5, y + h / 2 + 5, 3, (255, 255, 255), 2)
     _stroomlampje(d, x, y, w, h)
+
+
+def _teken_robot(r, t):
+    x, y = r["x"], r["y"]
+    if r["blokje"] is not None:
+        b = r["blokje"]
+        arcade.draw_line(x, y - 6, x, y - 12, (150, 150, 160), 1)
+        arcade.draw_lrbt_rectangle_filled(x - BLOKJE / 2, x + BLOKJE / 2, y - 12 - BLOKJE, y - 12,
+                                          STOF_KLEUR[b["stof"]])
+    # propeller
+    breed = 12 * abs(math.cos(t * 0.6))
+    arcade.draw_line(x - breed, y + 10, x + breed, y + 10, (220, 220, 230), 2)
+    arcade.draw_line(x, y + 6, x, y + 10, (150, 150, 160), 2)
+    arcade.draw_circle_filled(x, y, 8, (240, 200, 60))
+    arcade.draw_circle_filled(x + 2, y + 1, 3.5, (255, 255, 255))
+    arcade.draw_circle_filled(x + 3, y + 1, 1.8, (20, 20, 30))
+    if r["taak"] == "repareer" and r.get("bezig", 0) > 0 and t % 6 < 3:
+        for i in range(3):                       # vonkjes
+            arcade.draw_line(x - 6 + i * 6, y - 14, x - 8 + i * 8, y - 20, (255, 230, 120), 2)
 
 
 def teken(sp):
@@ -516,6 +716,8 @@ def teken(sp):
         kleur = STOF_KLEUR[b["stof"]]
         arcade.draw_lrbt_rectangle_filled(b["x"], b["x"] + BLOKJE, b["y"], b["y"] + BLOKJE, kleur)
         arcade.draw_lrbt_rectangle_outline(b["x"], b["x"] + BLOKJE, b["y"], b["y"] + BLOKJE, (40, 40, 40), 1)
+    for r in sp._fb_robots:
+        _teken_robot(r, sp._fb_t)
     # De fabriek-baas: overall, gele helm en een moersleutel
     x, y, w, h = sp.x, sp.y, sp.breedte, sp.hoogte
     cx = x + w / 2
@@ -544,9 +746,9 @@ def teken_hud(sp, x, y):
         b = y - rij * 26
         kan = sp._fb_tandwielen >= KOST[soort]
         arcade.draw_lrbt_rectangle_filled(l, l + 86, b, b + 18, (70, 110, 70) if kan else (60, 60, 60))
-        arcade.draw_text("%d %s (%d)" % (i + 1, NAAM[soort], KOST[soort]), l + 43, b + 4,
+        arcade.draw_text("%d %s (%d)" % ((i + 1) % 10, NAAM[soort], KOST[soort]), l + 43, b + 4,
                          (255, 255, 255) if kan else (140, 140, 140), 9, anchor_x="center")
-    arcade.draw_text("omlaag = slopen", x + 222, y - 22, (200, 200, 200), 9)
+    arcade.draw_text("omlaag = slopen (of repareren)", x + 292, y - 50, (200, 200, 200), 9, anchor_x="right")
     # Uitleg van de kleuren van de grondstoffen
     for i, stof in enumerate(("steen", "hout", "ijzer", "staal")):
         l = x - 292 + i * 70

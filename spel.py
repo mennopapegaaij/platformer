@@ -2301,12 +2301,12 @@ class PlatformerSpel(arcade.View):
                 else:
                     self._verlaat_arena()            # terug naar de kaart
             return
-        # Fabriek-baas: 1-9 = machine neerzetten
+        # Fabriek-baas: 1-9 en 0 = machine neerzetten
         if self.speler.modus == "fabriek" and not (self.dood or self.gewonnen or self.game_over):
             cijfers = [arcade.key.KEY_1, arcade.key.KEY_2, arcade.key.KEY_3, arcade.key.KEY_4, arcade.key.KEY_5,
-                       arcade.key.KEY_6, arcade.key.KEY_7, arcade.key.KEY_8, arcade.key.KEY_9]
+                       arcade.key.KEY_6, arcade.key.KEY_7, arcade.key.KEY_8, arcade.key.KEY_9, arcade.key.KEY_0]
             numpad = [arcade.key.NUM_1, arcade.key.NUM_2, arcade.key.NUM_3, arcade.key.NUM_4, arcade.key.NUM_5,
-                      arcade.key.NUM_6, arcade.key.NUM_7, arcade.key.NUM_8, arcade.key.NUM_9]
+                      arcade.key.NUM_6, arcade.key.NUM_7, arcade.key.NUM_8, arcade.key.NUM_9, arcade.key.NUM_0]
             soort = None
             if toets in cijfers:
                 soort = fb.TOETSEN[cijfers.index(toets)]
