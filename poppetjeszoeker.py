@@ -78,6 +78,7 @@ POPPETJES = [
     ("boogschutter", "Boogschutter", "Omlaag = pijl. Pijlen blijven in muren steken en je kunt erop staan: bouw een trap!"),
     ("spinnenheld", "Spinnenheld", "Omlaag in de lucht = slinger-web, op de grond = webnet (monster in een cocon)."),
     ("tijdreiziger", "Tijdreiziger", "Omlaag vasthouden = terugspoelen, 1 = tijdstop, 2 = vroeger-ik opnemen (sta erop!)."),
+    ("robotbouwer", "Robotbouwer", "Bouw je robot met 1-6: wielen/veer, raket/schild, grijparm/laser. 4 geheime combo's!"),
     ("eigen", "Mijn poppetje", "Je zelfgemaakte poppetje uit de poppetjes-maker."),
 ]
 

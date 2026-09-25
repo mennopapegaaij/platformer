@@ -16,6 +16,7 @@ import bommenlegger as bm
 import boogschutter as bs
 import spinnenheld as sh
 import tijdreiziger as tr
+import robotbouwer as rb
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
@@ -469,6 +470,8 @@ class PlatformerSpel(arcade.View):
             sh.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "tijdreiziger" and not self.twee:
             tr.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
+        if self.speler.modus == "robotbouwer" and not self.twee:
+            rb.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "evolutie" and not self.twee:
             evo.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
             if self.speler._evo_kiezen and not self.dood:
@@ -738,7 +741,7 @@ class PlatformerSpel(arcade.View):
         # In de vasthoud-modi (vliegtuig, golf, robot): geef door of de knop vastgehouden wordt
         if (self.speler.modus in ("vliegtuig", "golf", "robot", "ballon", "raket", "draak", "dronken", "spook")
                 or self.speler._kamp("vasthouden")
-                or self.speler.modus in ("element", "elementkoning", "drakentemmer", "evolutie")):
+                or self.speler.modus in ("element", "elementkoning", "drakentemmer", "evolutie", "robotbouwer")):
             self.speler.vlieg_omhoog = self._vlieg_omhoog
 
         # Laat de speler bewegen en botsingen controleren
@@ -822,6 +825,12 @@ class PlatformerSpel(arcade.View):
                     self.vijanden.remove(v)
                     self._voeg_punt_toe()
                     geluid_manager.speel_vijand_dood()
+        # Robotbouwer met stormram: met volle vaart ram je monsters weg
+        if self.speler.modus == "robotbouwer":
+            for v in [v for v in self.vijanden if rb.stormram(self.speler, v)]:
+                self.vijanden.remove(v)
+                self._voeg_punt_toe()
+                geluid_manager.speel_vijand_dood()
         # Chemicus: superkrachten die iets met monsters doen (schokgolf, omver lopen, vuurballen...)
         if self.speler.modus == "chemicus":
             monsters_weg, spikes_weg, vuurbal = ch.wereld(self.speler, self.vijanden)
@@ -1084,6 +1093,7 @@ class PlatformerSpel(arcade.View):
                      "evolutie": "evolutie", "schilder": "schilder", "chemicus": "chemicus",
                      "bommenlegger": "bommenlegger", "boogschutter": "boogschutter",
                      "spinnenheld": "spinnenheld", "tijdreiziger": "tijdreiziger",
+                     "robotbouwer": "robotbouwer",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -1117,7 +1127,7 @@ class PlatformerSpel(arcade.View):
                        "vijftienkamp", "twintigkamp", "element",
                        "elementkoning", "bouwmeester", "portaalschieter", "drakentemmer",
                        "mierenkolonie", "evolutie", "schilder", "chemicus", "bommenlegger",
-                       "boogschutter", "spinnenheld", "tijdreiziger"):
+                       "boogschutter", "spinnenheld", "tijdreiziger", "robotbouwer"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -2178,6 +2188,11 @@ class PlatformerSpel(arcade.View):
 
     def _speler_geraakt(self):
         """Verwerk dat de speler geraakt wordt: leven aftrekken of game over."""
+        # Robotbouwer met schild: het schild houdt de klap tegen (niet in een kuil)
+        if (self.speler.modus == "robotbouwer" and not self.speler.is_gevallen()
+                and rb.bescherm(self.speler)):
+            geluid_manager.speel_geraakt()
+            return
         # Chemicus met schilddrank: het schild houdt de klap tegen (niet in een kuil)
         if (self.speler.modus == "chemicus" and not self.speler.is_gevallen()
                 and ch.bescherm(self.speler)):
@@ -2254,6 +2269,15 @@ class PlatformerSpel(arcade.View):
                 else:
                     self._verlaat_arena()            # terug naar de kaart
             return
+        # Robotbouwer: 1-6 = onderdelen erop of eraf
+        if self.speler.modus == "robotbouwer":
+            nummer = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3,
+                      arcade.key.KEY_4: 4, arcade.key.KEY_5: 5, arcade.key.KEY_6: 6,
+                      arcade.key.NUM_1: 1, arcade.key.NUM_2: 2, arcade.key.NUM_3: 3,
+                      arcade.key.NUM_4: 4, arcade.key.NUM_5: 5, arcade.key.NUM_6: 6}.get(toets)
+            if nummer:
+                rb.kies(self.speler, nummer)
+                return
         # Tijdreiziger: 1 = tijdstop, 2 = vroeger-ik opnemen
         if self.speler.modus == "tijdreiziger" and not (self.dood or self.gewonnen or self.game_over):
             if toets in (arcade.key.KEY_1, arcade.key.NUM_1):
@@ -2364,6 +2388,19 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.DOWN and self.speler.modus == "bouwmeester":
             # Bouwmeester: zet een blokje neer
             self._bouw_blokje(self.speler)
+        elif toets == arcade.key.DOWN and self.speler.modus == "robotbouwer":
+            # Robotbouwer: de arm doet zijn ding (grijpen of laser)
+            if not (self.dood or self.gewonnen or self.game_over):
+                wat = rb.actie(self.speler, self.platforms)
+                if wat == "laser":
+                    doel = rb.laser(self.speler, self.vijanden, self.platforms)
+                    if doel is not None:
+                        self.vijanden.remove(doel)
+                        if not getattr(doel, "is_spike", False):
+                            self._voeg_punt_toe()
+                        geluid_manager.speel_vijand_dood()
+                elif wat == "grijp":
+                    geluid_manager.speel_sprong()
         elif toets == arcade.key.DOWN and self.speler.modus == "tijdreiziger":
             # Tijdreiziger: zolang je omlaag vasthoudt spoel je terug
             self.speler._tr_spoel = True

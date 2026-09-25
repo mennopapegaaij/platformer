@@ -15,6 +15,7 @@ import bommenlegger as bm     # en de Bommenlegger ook
 import boogschutter as bs     # en de Boogschutter ook
 import spinnenheld as sh      # en de Spinnenheld ook
 import tijdreiziger as tr     # en de Tijdreiziger ook
+import robotbouwer as rb      # en de Robotbouwer ook
 from instellingen import (SPELER_SNELHEID, SPRING_KRACHT, ZWAARTEKRACHT,
                            SPELER_KLEUR, OOG_KLEUR)
 
@@ -375,6 +376,7 @@ class Speler:
         bs.reset(self)                   # boogschutter: volle koker
         sh.reset(self)                   # spinnenheld: geen web
         tr.reset(self)                   # tijdreiziger: volle tijd-energie
+        rb.reset(self)                   # robotbouwer: kale robot, volle batterij
         self._bouw_over = BOUW_MAX       # bouwmeester: hoeveel blokjes je nog hebt
         self._bouw_terug = False         # bouwmeester: moeten je blokjes terugkomen?
         self._gelande_platform = None    # op welk platform je het laatst landde
@@ -451,6 +453,7 @@ class Speler:
         bs.reset(self)                      # boogschutter: pijlen uit de muren, koker vol
         sh.reset(self)                      # spinnenheld: web los, cocons weg
         tr.reset(self)                      # tijdreiziger: geschiedenis en vroeger-ik weg
+        rb.reset(self)                      # robotbouwer: onderdelen eraf, batterij vol
         self._bouw_over = BOUW_MAX          # bouwmeester: alle blokjes weer terug
         self._bouw_terug = False
         self._gelande_platform = None
@@ -482,6 +485,11 @@ class Speler:
             self.grootte_timer -= 1
             if self.grootte_timer == 0:
                 self.zet_grootte(1.0, 0)     # weer normale grootte
+
+        # Robotbouwer aan de grijparm: je wordt in een rechte lijn naar de rand getrokken
+        if self.modus == "robotbouwer" and self._rb_zip is not None:
+            rb.zip_stap(self)
+            return
 
         # Tijdreiziger die terugspoelt: geen natuurkunde, je gaat terug langs je eigen spoor
         if self.modus == "tijdreiziger" and tr.spoel(self):
@@ -679,6 +687,8 @@ class Speler:
                 bm.loop(self, L, R, snelheid)             # (tijdens een bomsprong word je opzij geblazen)
             elif self.modus == "chemicus":
                 ch.loop(self, L, R, snelheid)             # rendrank = sneller, luchtdash = zoef
+            elif self.modus == "robotbouwer":
+                rb.loop(self, L, R, snelheid)             # wielen = snel rijden met vaart
             elif self.modus == "evolutie":
                 loop = evo.loop_snelheid(self, snelheid)  # snelle poten = sneller
                 if L and not R:
@@ -981,6 +991,8 @@ class Speler:
             evo.zwaartekracht(self, richting)   # vallen, stampen of glijden
         elif self.modus == "chemicus":
             ch.zwaartekracht(self, richting)    # veerdrank = lichter
+        elif self.modus == "robotbouwer":
+            rb.zwaartekracht(self, richting)    # raket = omhoog vliegen
         elif self.modus == "element":
             vorm = self.element()
             if vorm == "lucht":
@@ -1180,6 +1192,8 @@ class Speler:
             sh.stap(self, platforms)                     # webnetten vliegen, cocons worden zwakker
         if self.modus == "tijdreiziger":
             tr.stap(self)                                # onthouden, opnemen, vroeger-ik
+        if self.modus == "robotbouwer":
+            rb.stap(self, platforms)                     # batterij opladen, veer-stuiter
         if self.modus == "evolutie":
             evo.stap(self, platforms)                    # DNA verzamelen, deeltjes
             if net_geland:
@@ -1415,6 +1429,9 @@ class Speler:
             return
         if self.modus == "elementkoning":
             ek.spring(self)
+            return
+        if self.modus == "robotbouwer":
+            rb.spring(self)                    # veer = hoger, kanonsprong = enorm hoog
             return
         if self.modus == "spinnenheld" and self._sh_anker is not None:
             sh.los(self, sprong=True)          # springen = web loslaten (met een zetje omhoog)
@@ -1745,6 +1762,9 @@ class Speler:
             return
         if self.modus == "tijdreiziger":
             tr.teken(self)
+            return
+        if self.modus == "robotbouwer":
+            rb.teken(self)
             return
         if self.modus == "voorspeller":
             self._teken_voorspeller()
