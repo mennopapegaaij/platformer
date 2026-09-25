@@ -1481,6 +1481,33 @@ SPIKE_INFO = {
 }
 
 
+# Monstersoorten die je in de bouwmodus kunt kiezen (klik nog eens op "Vijand")
+VIJAND_SOORTEN = ["gewoon", "vlieg", "spring", "groot", "geest", "jager", "slijm", "vuur",
+                  "ijs", "bom", "vleermuis", "slang", "robot", "kraai", "paddenstoel", "stekel"]
+VIJAND_NAAM = {"gewoon": "Vijand", "vlieg": "Vlieger", "spring": "Springer", "groot": "Groot",
+               "geest": "Geest", "jager": "Jager", "slijm": "Slijm", "vuur": "Vuur", "ijs": "IJs",
+               "bom": "Bom", "vleermuis": "Vleermuis", "slang": "Slang", "robot": "Robot",
+               "kraai": "Kraai", "paddenstoel": "Paddo", "stekel": "Stekel"}
+VIJAND_KLEUR = {"gewoon": (220, 40, 40), "vlieg": (120, 170, 255), "spring": (80, 200, 90),
+                "groot": (150, 40, 40), "geest": (235, 235, 245), "jager": (240, 140, 40),
+                "slijm": (120, 220, 80), "vuur": (255, 110, 30), "ijs": (150, 220, 255),
+                "bom": (50, 50, 60), "vleermuis": (100, 60, 130), "slang": (60, 150, 60),
+                "robot": (150, 160, 175), "kraai": (30, 30, 40), "paddenstoel": (220, 60, 60),
+                "stekel": (130, 90, 160)}
+
+
+def maak_vijand(soort, x, y, links, rechts):
+    """Maak een monster van een bepaald soort (voor de bouwmodus)."""
+    klassen = {"gewoon": Vijand, "vlieg": VliegendVijand, "spring": SpringendVijand,
+               "groot": GroteVijand, "geest": GeestVijand, "jager": JagerVijand,
+               "slijm": SlijmVijand, "vuur": VuurVijand, "ijs": IJsVijand, "bom": BomVijand,
+               "vleermuis": VleermuisVijand, "slang": SlangVijand, "robot": RobotVijand,
+               "kraai": KraaiVijand, "paddenstoel": PaddenstoelVijand, "stekel": StekelVijand}
+    if soort == "gewoon":
+        return Vijand(x, y, links, rechts, 2)
+    return klassen.get(soort, Vijand)(x, y, links, rechts)
+
+
 def maak_spike(soort, x, y, rotatie=0):
     """Maak een Spikes van een bepaald soort (uit SPIKE_INFO)."""
     aantal, kleur = SPIKE_INFO.get(soort, SPIKE_INFO["gewoon"])

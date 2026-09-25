@@ -8,7 +8,7 @@ import json
 import os
 from instellingen import SCHERM_BREEDTE, SCHERM_HOOGTE
 from decoratie import teken_deco, DECO_SOORTEN, DECO_NAAM
-from vijand import SPIKE_SOORTEN, SPIKE_NAAM, SPIKE_INFO
+from vijand import SPIKE_SOORTEN, SPIKE_NAAM, SPIKE_INFO, VIJAND_SOORTEN, VIJAND_NAAM, VIJAND_KLEUR
 from platforms import BLOK_SOORTEN, BLOK_NAAM
 from teleport import teken_tele_icoon
 
@@ -210,10 +210,16 @@ def teken_item(soort, x, y, grootte, rotatie=0):
                 bx = x + 3 + i * bw
                 p1, p2, p3 = d(bx, y + 3), d(bx + bw - 1, y + 3), d(bx + bw / 2, y + g - 5)
                 arcade.draw_triangle_filled(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1], kleur)
-    elif soort == "vijand":
-        arcade.draw_lrbt_rectangle_filled(x + 5, x + g - 5, y + 5, y + g - 5, (220, 40, 40))
-        arcade.draw_circle_filled(x + g // 2 - 6, y + g - 12, 3, arcade.color.BLACK)
-        arcade.draw_circle_filled(x + g // 2 + 6, y + g - 12, 3, arcade.color.BLACK)
+    elif soort == "vijand" or soort.startswith("vijand_"):
+        s = soort.split("_", 1)[1] if "_" in soort else "gewoon"
+        kleur = VIJAND_KLEUR.get(s, (220, 40, 40))
+        arcade.draw_lrbt_rectangle_filled(x + 5, x + g - 5, y + 5, y + g - 5, kleur)
+        oog = arcade.color.WHITE if s in ("bom", "kraai") else arcade.color.BLACK
+        arcade.draw_circle_filled(x + g // 2 - 6, y + g - 12, 3, oog)
+        arcade.draw_circle_filled(x + g // 2 + 6, y + g - 12, 3, oog)
+        if s != "gewoon" and g >= 30:
+            # eerste 2 letters van de soort, zodat je ze uit elkaar houdt (niet in de kleine balk)
+            arcade.draw_text(VIJAND_NAAM[s][:2], x + g / 2, y + 7, oog, 9, bold=True, anchor_x="center")
     elif soort == "molen":
         # Draaimolen: twee rode balletjes aan een schuine balk
         cx, cy = x + g / 2, y + g / 2
@@ -382,6 +388,7 @@ class BouwerView(arcade.View):
         self.deco_soort = "bloem"      # welke decoratie je plaatst (klik op Deco)
         self.spring_soort = "bol3"     # welk spring-ding je plaatst (klik op Spring)
         self.spike_soort = "gewoon"    # welke spike je plaatst (klik op Spike)
+        self.vijand_soort = "gewoon"   # welk monster je plaatst (klik op Vijand)
         self.blok_soort = "gewoon"     # welk blok je plaatst (klik op Blok)
         self.tele_soort = "blauw"      # welke teleporter-kleur je plaatst (klik op Tele)
         self.boss_soort = "start"      # "start" (waar de boss begint) of "stop" (waar hij doodgaat)
@@ -900,6 +907,9 @@ class BouwerView(arcade.View):
             elif soort == "spike":
                 teken_item("spike_" + self.spike_soort, l + 2, BALK_Y + 10, 20, self.rotatie)
                 naam = SPIKE_NAAM[self.spike_soort]
+            elif soort == "vijand":
+                teken_item("vijand_" + self.vijand_soort, l + 2, BALK_Y + 10, 20)
+                naam = VIJAND_NAAM[self.vijand_soort]
             elif soort == "blok":
                 teken_item("blok_" + self.blok_soort, l + 2, BALK_Y + 10, 20)
                 naam = BLOK_NAAM[self.blok_soort]
@@ -1061,6 +1071,8 @@ class BouwerView(arcade.View):
                 self.grid[(kol, rij)] = "spring_" + self.spring_soort
             elif self.gekozen == "spike":
                 self.grid[(kol, rij)] = "spike_" + self.spike_soort
+            elif self.gekozen == "vijand":
+                self.grid[(kol, rij)] = "vijand_" + self.vijand_soort
             elif self.gekozen == "blok":
                 self.grid[(kol, rij)] = "blok_" + self.blok_soort
             elif self.gekozen == "boss":
@@ -1126,6 +1138,10 @@ class BouwerView(arcade.View):
                     # Nog een keer op Spring klikken: wissel tussen bol en mat
                     i = SPRING_SOORTEN.index(self.spring_soort)
                     self.spring_soort = SPRING_SOORTEN[(i + 1) % len(SPRING_SOORTEN)]
+                elif soort == "vijand" and self.gekozen == "vijand":
+                    # Nog een keer op Vijand klikken: door de monster-soorten wisselen
+                    i = VIJAND_SOORTEN.index(self.vijand_soort)
+                    self.vijand_soort = VIJAND_SOORTEN[(i + 1) % len(VIJAND_SOORTEN)]
                 elif soort == "spike" and self.gekozen == "spike":
                     # Nog een keer op Spike klikken: door de 5 spike-soorten wisselen
                     i = SPIKE_SOORTEN.index(self.spike_soort)
@@ -1282,7 +1298,7 @@ class BouwerView(arcade.View):
         """Zet het raster om in echte level-gegevens voor het spel."""
         from platforms import (Platform, BlokPlatform, SchuinBlok, StuiterBlok,
                                VerdwijnBlok, BewegendBlok, Deur)
-        from vijand import (Vijand, Spikes, maak_spike, Draaimolen, DraaiPaar,
+        from vijand import (Vijand, Spikes, maak_spike, maak_vijand, Draaimolen, DraaiPaar,
                             Achtervolger, DraaiSpike, BossLijn)
         import math
         from powerup import ExtraLevenPowerUp, GroottePowerUp, SleutelPowerUp
@@ -1361,8 +1377,9 @@ class BouwerView(arcade.View):
                     vijanden.append(DraaiSpike(wx + CEL // 2, wy + CEL // 2))
                 else:
                     vijanden.append(maak_spike(s, wx + 4, wy, rot))   # gewone spikes
-            elif soort == "vijand":
-                vijanden.append(Vijand(wx, wy, wx - 80, wx + CEL + 80, 2))
+            elif soort == "vijand" or soort.startswith("vijand_"):
+                s = soort.split("_", 1)[1] if "_" in soort else "gewoon"
+                vijanden.append(maak_vijand(s, wx, wy, wx - 80, wx + CEL + 80))
             elif soort == "molen":
                 # Draaimolen: draait rond het MIDDEN van dit vakje
                 vijanden.append(Draaimolen(wx + CEL // 2, wy + CEL // 2))
@@ -1478,8 +1495,9 @@ class BouwerView(arcade.View):
                 if s == "draai":
                     return DraaiSpike(cx, cy)
                 return maak_spike(s, wx + 4, wy, rot)
-            if soort == "vijand":
-                return Vijand(wx, wy, wx - 80, wx + CEL + 80, 2)
+            if soort == "vijand" or soort.startswith("vijand_"):
+                s = soort.split("_", 1)[1] if "_" in soort else "gewoon"
+                return maak_vijand(s, wx, wy, wx - 80, wx + CEL + 80)
             if soort == "molen":
                 return Draaimolen(cx, cy)
             if soort == "hart":
