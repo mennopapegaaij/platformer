@@ -15,6 +15,7 @@ import chemicus as ch
 import bommenlegger as bm
 import boogschutter as bs
 import spinnenheld as sh
+import tijdreiziger as tr
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
@@ -358,6 +359,8 @@ class PlatformerSpel(arcade.View):
             for vijand in self.vijanden:
                 if in_beeld(vijand, vijand.breedte) and not getattr(vijand, "onzichtbaar", False):
                     self._anim_teken(vijand)
+            if self.speler.modus == "tijdreiziger" and tr.bevroren(self.speler):
+                tr.teken_bevroren(self.vijanden)       # tijdstop: blauw ijslaagje
 
             # Teken de spring-bollen en spring-matten
             for springer in self.springers:
@@ -464,6 +467,8 @@ class PlatformerSpel(arcade.View):
             bs.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "spinnenheld" and not self.twee:
             sh.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
+        if self.speler.modus == "tijdreiziger" and not self.twee:
+            tr.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "evolutie" and not self.twee:
             evo.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
             if self.speler._evo_kiezen and not self.dood:
@@ -806,6 +811,17 @@ class PlatformerSpel(arcade.View):
                     self.platforms.append(p)
         if self.speler.modus == "boogschutter":
             self._pijlen_raak(self.speler)
+        # Tijdreiziger: je vroeger-ik is een platform (tijd-lift) en ruimt monsters op
+        if self.speler.modus == "tijdreiziger" or any(getattr(p, "is_echo", False) for p in self.platforms):
+            echo = self.speler._tr_echo if self.speler.modus == "tijdreiziger" else None
+            self.platforms = [p for p in self.platforms if not getattr(p, "is_echo", False) or p is echo]
+            if echo is not None and echo not in self.platforms:
+                self.platforms.append(echo)
+            if echo is not None:
+                for v in [v for v in self.vijanden if not getattr(v, "is_spike", False) and tr.echo_raakt(self.speler, v)]:
+                    self.vijanden.remove(v)
+                    self._voeg_punt_toe()
+                    geluid_manager.speel_vijand_dood()
         # Chemicus: superkrachten die iets met monsters doen (schokgolf, omver lopen, vuurballen...)
         if self.speler.modus == "chemicus":
             monsters_weg, spikes_weg, vuurbal = ch.wereld(self.speler, self.vijanden)
@@ -886,7 +902,9 @@ class PlatformerSpel(arcade.View):
         nieuwe_vijanden = []   # monsters die de arena-baas oproept
         speler_cx = self.speler.x + self.speler.breedte / 2
         for vijand in self.vijanden:
-            in_cocon = self.speler.modus == "spinnenheld" and vijand in self.speler._sh_coconnen
+            in_cocon = ((self.speler.modus == "spinnenheld" and vijand in self.speler._sh_coconnen)
+                        or (self.speler.modus == "tijdreiziger" and tr.bevroren(self.speler)
+                            and not getattr(vijand, "is_spike", False)))   # (tijdstop: ook stil en veilig)
             if self.speler.modus == "chemicus" and not getattr(vijand, "is_spike", False) and ch.monster_stil(self.speler):
                 pass                                 # tijdrem: dit monster staat even stil
             elif not in_cocon and not (self.speler.modus == "schilder" and not getattr(vijand, "is_spike", False)
@@ -1065,7 +1083,7 @@ class PlatformerSpel(arcade.View):
                      "drakentemmer": "drakentemmer", "mierenkolonie": "mierenkolonie",
                      "evolutie": "evolutie", "schilder": "schilder", "chemicus": "chemicus",
                      "bommenlegger": "bommenlegger", "boogschutter": "boogschutter",
-                     "spinnenheld": "spinnenheld",
+                     "spinnenheld": "spinnenheld", "tijdreiziger": "tijdreiziger",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -1099,7 +1117,7 @@ class PlatformerSpel(arcade.View):
                        "vijftienkamp", "twintigkamp", "element",
                        "elementkoning", "bouwmeester", "portaalschieter", "drakentemmer",
                        "mierenkolonie", "evolutie", "schilder", "chemicus", "bommenlegger",
-                       "boogschutter", "spinnenheld"):
+                       "boogschutter", "spinnenheld", "tijdreiziger"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -2236,6 +2254,15 @@ class PlatformerSpel(arcade.View):
                 else:
                     self._verlaat_arena()            # terug naar de kaart
             return
+        # Tijdreiziger: 1 = tijdstop, 2 = vroeger-ik opnemen
+        if self.speler.modus == "tijdreiziger" and not (self.dood or self.gewonnen or self.game_over):
+            if toets in (arcade.key.KEY_1, arcade.key.NUM_1):
+                if tr.tijdstop(self.speler):
+                    geluid_manager.speel_powerup()
+                return
+            if toets in (arcade.key.KEY_2, arcade.key.NUM_2):
+                tr.opname(self.speler)
+                return
         # Chemicus: drankjes 1-6 in de ketel, Backspace = ketel leeg
         if self.speler.modus == "chemicus":
             drank = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3,
@@ -2337,6 +2364,9 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.DOWN and self.speler.modus == "bouwmeester":
             # Bouwmeester: zet een blokje neer
             self._bouw_blokje(self.speler)
+        elif toets == arcade.key.DOWN and self.speler.modus == "tijdreiziger":
+            # Tijdreiziger: zolang je omlaag vasthoudt spoel je terug
+            self.speler._tr_spoel = True
         elif toets == arcade.key.DOWN and self.speler.modus == "spinnenheld":
             # Spinnenheld: web schieten (of loslaten)
             if not (self.dood or self.gewonnen or self.game_over) and sh.web(self.speler, self.platforms):
@@ -2481,6 +2511,8 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.UP or toets == arcade.key.SPACE:
             # Vliegtuig-modus: knop losgelaten = niet meer stuwen (je zakt)
             self._vlieg_omhoog = False
+        elif toets == arcade.key.DOWN and self.speler.modus == "tijdreiziger":
+            self.speler._tr_spoel = False        # tijdreiziger: stoppen met terugspoelen
 
     def _naar_kaart(self):
         """Ga terug naar de levelkaart — punten en levens worden bewaard."""

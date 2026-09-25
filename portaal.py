@@ -79,6 +79,7 @@ PORTAAL_KLEUREN = {
     "bommenlegger": ((70, 70, 80), (255, 170, 60)),     # zwart + vonk = bommenlegger
     "boogschutter": ((60, 130, 60), (170, 230, 150)),   # boswachter-groen = boogschutter
     "spinnenheld": ((90, 60, 130), (240, 240, 250)),    # paars + web-wit = spinnenheld
+    "tijdreiziger": ((40, 70, 140), (250, 220, 120)),   # nachtblauw + goud = tijdreiziger
     "eigen": ((255, 150, 40), (255, 210, 130)),         # oranje = zelfgemaakt poppetje
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
@@ -458,6 +459,12 @@ def teken_portaal_icoon(soort, cx, cy):
                              cx + math.cos(h) * 10, cy + math.sin(h) * 10, (240, 240, 250), 1)
         arcade.draw_circle_outline(cx, cy, 5, (240, 240, 250), 1)
         arcade.draw_circle_outline(cx, cy, 9, (240, 240, 250), 1)
+    elif soort == "tijdreiziger":
+        # Een zandloper
+        arcade.draw_triangle_filled(cx - 7, cy + 9, cx + 7, cy + 9, cx, cy, (250, 220, 120))
+        arcade.draw_triangle_filled(cx - 7, cy - 9, cx + 7, cy - 9, cx, cy, (250, 220, 120))
+        arcade.draw_line(cx - 8, cy + 10, cx + 8, cy + 10, (240, 240, 250), 2)
+        arcade.draw_line(cx - 8, cy - 10, cx + 8, cy - 10, (240, 240, 250), 2)
     elif soort == "eigen":
         # Zelfgemaakt poppetje: een sterretje/blokje met een plusje
         arcade.draw_lrbt_rectangle_filled(cx - 7, cx + 7, cy - 7, cy + 7, arcade.color.WHITE)

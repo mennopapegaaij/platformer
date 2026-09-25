@@ -14,6 +14,7 @@ import chemicus as ch         # en de Chemicus ook
 import bommenlegger as bm     # en de Bommenlegger ook
 import boogschutter as bs     # en de Boogschutter ook
 import spinnenheld as sh      # en de Spinnenheld ook
+import tijdreiziger as tr     # en de Tijdreiziger ook
 from instellingen import (SPELER_SNELHEID, SPRING_KRACHT, ZWAARTEKRACHT,
                            SPELER_KLEUR, OOG_KLEUR)
 
@@ -373,6 +374,7 @@ class Speler:
         bm.reset(self)                   # bommenlegger: 3 bommen in je tas
         bs.reset(self)                   # boogschutter: volle koker
         sh.reset(self)                   # spinnenheld: geen web
+        tr.reset(self)                   # tijdreiziger: volle tijd-energie
         self._bouw_over = BOUW_MAX       # bouwmeester: hoeveel blokjes je nog hebt
         self._bouw_terug = False         # bouwmeester: moeten je blokjes terugkomen?
         self._gelande_platform = None    # op welk platform je het laatst landde
@@ -448,6 +450,7 @@ class Speler:
         bm.reset(self)                      # bommenlegger: geen bommen meer op de grond
         bs.reset(self)                      # boogschutter: pijlen uit de muren, koker vol
         sh.reset(self)                      # spinnenheld: web los, cocons weg
+        tr.reset(self)                      # tijdreiziger: geschiedenis en vroeger-ik weg
         self._bouw_over = BOUW_MAX          # bouwmeester: alle blokjes weer terug
         self._bouw_terug = False
         self._gelande_platform = None
@@ -479,6 +482,10 @@ class Speler:
             self.grootte_timer -= 1
             if self.grootte_timer == 0:
                 self.zet_grootte(1.0, 0)     # weer normale grootte
+
+        # Tijdreiziger die terugspoelt: geen natuurkunde, je gaat terug langs je eigen spoor
+        if self.modus == "tijdreiziger" and tr.spoel(self):
+            return
 
         # Spinnenheld aan een web: slinger-natuurkunde
         if self.modus == "spinnenheld" and self._sh_anker is not None:
@@ -1171,6 +1178,8 @@ class Speler:
             bs.stap(self, platforms)                     # pijlen vliegen en blijven in muren steken
         if self.modus == "spinnenheld":
             sh.stap(self, platforms)                     # webnetten vliegen, cocons worden zwakker
+        if self.modus == "tijdreiziger":
+            tr.stap(self)                                # onthouden, opnemen, vroeger-ik
         if self.modus == "evolutie":
             evo.stap(self, platforms)                    # DNA verzamelen, deeltjes
             if net_geland:
@@ -1733,6 +1742,9 @@ class Speler:
             return
         if self.modus == "spinnenheld":
             sh.teken(self)
+            return
+        if self.modus == "tijdreiziger":
+            tr.teken(self)
             return
         if self.modus == "voorspeller":
             self._teken_voorspeller()
