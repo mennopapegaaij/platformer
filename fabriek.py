@@ -135,17 +135,6 @@ def _vrij(x, y, w, h, platforms):
     return not any(_vast(p) and _overlapt(x, y, w, h, p) for p in platforms)
 
 
-def _staat_stevig(x, y, w, platforms):
-    """Is er onder de HELE breedte (van x tot x+w) grond op hoogte y? (Niet half over een rand.)
-    De grond mag uit meerdere stukjes bestaan, zolang er nergens een gat zit."""
-    stukken = [p for p in platforms if _vast(p) and abs(p.y + p.hoogte - y) < 1]
-    for i in range(int(w) + 1):
-        px = x + i
-        if not any(p.x <= px <= p.x + p.breedte for p in stukken):
-            return False                         # hier zit niks onder: hij hangt over de rand
-    return True
-
-
 def is_machine(d):
     return d.soort in KOST and d.soort != "band"
 
@@ -190,9 +179,6 @@ def plaats(sp, soort, platforms):
     y = sp.y
     if not _vrij(x, y, w, h, platforms):
         _meld(sp, "Daar is geen plek")
-        return False
-    if not _staat_stevig(x, y, w, platforms):
-        _meld(sp, "Dat hangt over de rand!")
         return False
     sp._fb_tandwielen -= KOST[soort]
     deel = FabriekDeel(soort, x, y, w, h, k)
