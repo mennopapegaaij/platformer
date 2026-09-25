@@ -1488,12 +1488,13 @@ VIJAND_NAAM = {"gewoon": "Vijand", "vlieg": "Vlieger", "spring": "Springer", "gr
                "geest": "Geest", "jager": "Jager", "slijm": "Slijm", "vuur": "Vuur", "ijs": "IJs",
                "bom": "Bom", "vleermuis": "Vleermuis", "slang": "Slang", "robot": "Robot",
                "kraai": "Kraai", "paddenstoel": "Paddo", "stekel": "Stekel"}
-VIJAND_KLEUR = {"gewoon": (220, 40, 40), "vlieg": (120, 170, 255), "spring": (80, 200, 90),
-                "groot": (150, 40, 40), "geest": (235, 235, 245), "jager": (240, 140, 40),
-                "slijm": (120, 220, 80), "vuur": (255, 110, 30), "ijs": (150, 220, 255),
-                "bom": (50, 50, 60), "vleermuis": (100, 60, 130), "slang": (60, 150, 60),
-                "robot": (150, 160, 175), "kraai": (30, 30, 40), "paddenstoel": (220, 60, 60),
-                "stekel": (130, 90, 160)}
+# Kleuren voor de plaatjes in de bouwmodus (niet VIJAND_KLEUR: die naam is al de kleur van het gewone monster!)
+BOUW_VIJAND_KLEUR = {"gewoon": (220, 40, 40), "vlieg": (120, 170, 255), "spring": (80, 200, 90),
+                     "groot": (150, 40, 40), "geest": (235, 235, 245), "jager": (240, 140, 40),
+                     "slijm": (120, 220, 80), "vuur": (255, 110, 30), "ijs": (150, 220, 255),
+                     "bom": (50, 50, 60), "vleermuis": (100, 60, 130), "slang": (60, 150, 60),
+                     "robot": (150, 160, 175), "kraai": (30, 30, 40), "paddenstoel": (220, 60, 60),
+                     "stekel": (130, 90, 160)}
 
 
 def maak_vijand(soort, x, y, links, rechts):

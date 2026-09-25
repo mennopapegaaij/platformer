@@ -8,7 +8,7 @@ import json
 import os
 from instellingen import SCHERM_BREEDTE, SCHERM_HOOGTE
 from decoratie import teken_deco, DECO_SOORTEN, DECO_NAAM
-from vijand import SPIKE_SOORTEN, SPIKE_NAAM, SPIKE_INFO, VIJAND_SOORTEN, VIJAND_NAAM, VIJAND_KLEUR
+from vijand import SPIKE_SOORTEN, SPIKE_NAAM, SPIKE_INFO, VIJAND_SOORTEN, VIJAND_NAAM, BOUW_VIJAND_KLEUR
 from platforms import BLOK_SOORTEN, BLOK_NAAM
 from teleport import teken_tele_icoon
 
@@ -212,7 +212,7 @@ def teken_item(soort, x, y, grootte, rotatie=0):
                 arcade.draw_triangle_filled(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1], kleur)
     elif soort == "vijand" or soort.startswith("vijand_"):
         s = soort.split("_", 1)[1] if "_" in soort else "gewoon"
-        kleur = VIJAND_KLEUR.get(s, (220, 40, 40))
+        kleur = BOUW_VIJAND_KLEUR.get(s, (220, 40, 40))
         arcade.draw_lrbt_rectangle_filled(x + 5, x + g - 5, y + 5, y + g - 5, kleur)
         oog = arcade.color.WHITE if s in ("bom", "kraai") else arcade.color.BLACK
         arcade.draw_circle_filled(x + g // 2 - 6, y + g - 12, 3, oog)
