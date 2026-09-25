@@ -17,6 +17,7 @@ import boogschutter as bs
 import spinnenheld as sh
 import tijdreiziger as tr
 import robotbouwer as rb
+import dierentemmer as dm
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
@@ -362,6 +363,8 @@ class PlatformerSpel(arcade.View):
                     self._anim_teken(vijand)
             if self.speler.modus == "tijdreiziger" and tr.bevroren(self.speler):
                 tr.teken_bevroren(self.vijanden)       # tijdstop: blauw ijslaagje
+            if self.speler.modus == "dierentemmer":
+                dm.teken_vast(self.vijanden)           # vastgeplakt of bevroren
 
             # Teken de spring-bollen en spring-matten
             for springer in self.springers:
@@ -472,6 +475,8 @@ class PlatformerSpel(arcade.View):
             tr.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "robotbouwer" and not self.twee:
             rb.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
+        if self.speler.modus == "dierentemmer" and not self.twee:
+            dm.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "evolutie" and not self.twee:
             evo.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
             if self.speler._evo_kiezen and not self.dood:
@@ -825,6 +830,9 @@ class PlatformerSpel(arcade.View):
                     self.vijanden.remove(v)
                     self._voeg_punt_toe()
                     geluid_manager.speel_vijand_dood()
+        # Dierentemmer: vastgeplakte en bevroren monsters worden langzaam weer vrij
+        if self.speler.modus == "dierentemmer":
+            dm.tik_vast(self.vijanden)
         # Robotbouwer met stormram: met volle vaart ram je monsters weg
         if self.speler.modus == "robotbouwer":
             for v in [v for v in self.vijanden if rb.stormram(self.speler, v)]:
@@ -913,7 +921,8 @@ class PlatformerSpel(arcade.View):
         for vijand in self.vijanden:
             in_cocon = ((self.speler.modus == "spinnenheld" and vijand in self.speler._sh_coconnen)
                         or (self.speler.modus == "tijdreiziger" and tr.bevroren(self.speler)
-                            and not getattr(vijand, "is_spike", False)))   # (tijdstop: ook stil en veilig)
+                            and not getattr(vijand, "is_spike", False))    # (tijdstop: ook stil en veilig)
+                        or (self.speler.modus == "dierentemmer" and dm.vast(vijand)))   # (slijm/ijs)
             if self.speler.modus == "chemicus" and not getattr(vijand, "is_spike", False) and ch.monster_stil(self.speler):
                 pass                                 # tijdrem: dit monster staat even stil
             elif not in_cocon and not (self.speler.modus == "schilder" and not getattr(vijand, "is_spike", False)
@@ -935,7 +944,10 @@ class PlatformerSpel(arcade.View):
             if (van_boven and
                     vijand.speler_springt_erop(self.speler.x, self.speler.y,
                                                self.speler.breedte, self.speler.hoogte)):
-                if hasattr(vijand, 'word_gestompt'):
+                if self.speler.modus == "dierentemmer" and dm.kan_temmen(vijand):
+                    vijanden_weg.append(vijand)     # getemd: het loopt nu met je mee!
+                    dm.tem(self.speler, vijand)
+                elif hasattr(vijand, 'word_gestompt'):
                     vijand.word_gestompt()
                     if vijand.levens <= 0:
                         vijanden_weg.append(vijand)
@@ -1093,7 +1105,7 @@ class PlatformerSpel(arcade.View):
                      "evolutie": "evolutie", "schilder": "schilder", "chemicus": "chemicus",
                      "bommenlegger": "bommenlegger", "boogschutter": "boogschutter",
                      "spinnenheld": "spinnenheld", "tijdreiziger": "tijdreiziger",
-                     "robotbouwer": "robotbouwer",
+                     "robotbouwer": "robotbouwer", "dierentemmer": "dierentemmer",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -1127,7 +1139,8 @@ class PlatformerSpel(arcade.View):
                        "vijftienkamp", "twintigkamp", "element",
                        "elementkoning", "bouwmeester", "portaalschieter", "drakentemmer",
                        "mierenkolonie", "evolutie", "schilder", "chemicus", "bommenlegger",
-                       "boogschutter", "spinnenheld", "tijdreiziger", "robotbouwer"):
+                       "boogschutter", "spinnenheld", "tijdreiziger", "robotbouwer",
+                       "dierentemmer"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -2188,6 +2201,11 @@ class PlatformerSpel(arcade.View):
 
     def _speler_geraakt(self):
         """Verwerk dat de speler geraakt wordt: leven aftrekken of game over."""
+        # Dierentemmer met een lijfwacht: die houdt de klap tegen (niet in een kuil)
+        if (self.speler.modus == "dierentemmer" and not self.speler.is_gevallen()
+                and dm.bescherm(self.speler)):
+            geluid_manager.speel_geraakt()
+            return
         # Robotbouwer met schild: het schild houdt de klap tegen (niet in een kuil)
         if (self.speler.modus == "robotbouwer" and not self.speler.is_gevallen()
                 and rb.bescherm(self.speler)):
@@ -2388,6 +2406,18 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.DOWN and self.speler.modus == "bouwmeester":
             # Bouwmeester: zet een blokje neer
             self._bouw_blokje(self.speler)
+        elif toets == arcade.key.DOWN and self.speler.modus == "dierentemmer":
+            # Dierentemmer: al je dieren doen hun kunstje
+            if not (self.dood or self.gewonnen or self.game_over):
+                weg, spikes_weg, vuur = dm.doe_kunstjes(self.speler, self.vijanden, self.platforms)
+                for v in weg + spikes_weg:
+                    self.vijanden.remove(v)
+                for v in weg:
+                    self._voeg_punt_toe()
+                if weg or spikes_weg:
+                    geluid_manager.speel_vijand_dood()
+                for kogel in vuur:
+                    self.kogels.append(Kogel(*kogel))
         elif toets == arcade.key.DOWN and self.speler.modus == "robotbouwer":
             # Robotbouwer: de arm doet zijn ding (grijpen of laser)
             if not (self.dood or self.gewonnen or self.game_over):

@@ -16,6 +16,7 @@ import boogschutter as bs     # en de Boogschutter ook
 import spinnenheld as sh      # en de Spinnenheld ook
 import tijdreiziger as tr     # en de Tijdreiziger ook
 import robotbouwer as rb      # en de Robotbouwer ook
+import dierentemmer as dm     # en de Dierentemmer ook
 from instellingen import (SPELER_SNELHEID, SPRING_KRACHT, ZWAARTEKRACHT,
                            SPELER_KLEUR, OOG_KLEUR)
 
@@ -377,6 +378,7 @@ class Speler:
         sh.reset(self)                   # spinnenheld: geen web
         tr.reset(self)                   # tijdreiziger: volle tijd-energie
         rb.reset(self)                   # robotbouwer: kale robot, volle batterij
+        dm.reset(self)                   # dierentemmer: nog geen dieren
         self._bouw_over = BOUW_MAX       # bouwmeester: hoeveel blokjes je nog hebt
         self._bouw_terug = False         # bouwmeester: moeten je blokjes terugkomen?
         self._gelande_platform = None    # op welk platform je het laatst landde
@@ -454,6 +456,7 @@ class Speler:
         sh.reset(self)                      # spinnenheld: web los, cocons weg
         tr.reset(self)                      # tijdreiziger: geschiedenis en vroeger-ik weg
         rb.reset(self)                      # robotbouwer: onderdelen eraf, batterij vol
+        dm.reset(self)                      # dierentemmer: dieren weg
         self._bouw_over = BOUW_MAX          # bouwmeester: alle blokjes weer terug
         self._bouw_terug = False
         self._gelande_platform = None
@@ -689,6 +692,16 @@ class Speler:
                 ch.loop(self, L, R, snelheid)             # rendrank = sneller, luchtdash = zoef
             elif self.modus == "robotbouwer":
                 rb.loop(self, L, R, snelheid)             # wielen = snel rijden met vaart
+            elif self.modus == "dierentemmer":
+                loop = dm.loop_snelheid(self, snelheid)   # speurneuzen = sneller
+                if L and not R:
+                    self.snelheid_x = -loop
+                    self.kijkt_rechts = False
+                elif R and not L:
+                    self.snelheid_x = loop
+                    self.kijkt_rechts = True
+                else:
+                    self.snelheid_x = 0
             elif self.modus == "evolutie":
                 loop = evo.loop_snelheid(self, snelheid)  # snelle poten = sneller
                 if L and not R:
@@ -1194,6 +1207,8 @@ class Speler:
             tr.stap(self)                                # onthouden, opnemen, vroeger-ik
         if self.modus == "robotbouwer":
             rb.stap(self, platforms)                     # batterij opladen, veer-stuiter
+        if self.modus == "dierentemmer":
+            dm.stap(self)                                # je dieren lopen achter je aan
         if self.modus == "evolutie":
             evo.stap(self, platforms)                    # DNA verzamelen, deeltjes
             if net_geland:
@@ -1432,6 +1447,10 @@ class Speler:
             return
         if self.modus == "robotbouwer":
             rb.spring(self)                    # veer = hoger, kanonsprong = enorm hoog
+            return
+        if self.modus == "dierentemmer" and self.staat_op_grond:
+            # Springers maken je sprong hoger
+            self.snelheid_y = (SPRING_KRACHT + self.sprong_bonus) * dm.sprong_factor(self) * self.zwaartekracht_richting
             return
         if self.modus == "spinnenheld" and self._sh_anker is not None:
             sh.los(self, sprong=True)          # springen = web loslaten (met een zetje omhoog)
@@ -1765,6 +1784,9 @@ class Speler:
             return
         if self.modus == "robotbouwer":
             rb.teken(self)
+            return
+        if self.modus == "dierentemmer":
+            dm.teken(self)
             return
         if self.modus == "voorspeller":
             self._teken_voorspeller()
