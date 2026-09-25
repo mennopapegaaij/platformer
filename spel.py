@@ -829,6 +829,9 @@ class PlatformerSpel(arcade.View):
             for p in delen:
                 if p not in self.platforms:
                     self.platforms.append(p)
+        if self.speler.modus == "fabriek":
+            for schot in fb.kanon_schoten(self.speler, self.vijanden):
+                self.kogels.append(Kogel(*schot))       # kanon: pang!
         # Tijdreiziger: je vroeger-ik is een platform (tijd-lift) en ruimt monsters op
         if self.speler.modus == "tijdreiziger" or any(getattr(p, "is_echo", False) for p in self.platforms):
             echo = self.speler._tr_echo if self.speler.modus == "tijdreiziger" else None
@@ -2298,12 +2301,17 @@ class PlatformerSpel(arcade.View):
                 else:
                     self._verlaat_arena()            # terug naar de kaart
             return
-        # Fabriek-baas: 1-5 = machine neerzetten
+        # Fabriek-baas: 1-9 = machine neerzetten
         if self.speler.modus == "fabriek" and not (self.dood or self.gewonnen or self.game_over):
-            soort = {arcade.key.KEY_1: "mijn", arcade.key.KEY_2: "band", arcade.key.KEY_3: "trap",
-                     arcade.key.KEY_4: "brug", arcade.key.KEY_5: "tandwiel",
-                     arcade.key.NUM_1: "mijn", arcade.key.NUM_2: "band", arcade.key.NUM_3: "trap",
-                     arcade.key.NUM_4: "brug", arcade.key.NUM_5: "tandwiel"}.get(toets)
+            cijfers = [arcade.key.KEY_1, arcade.key.KEY_2, arcade.key.KEY_3, arcade.key.KEY_4, arcade.key.KEY_5,
+                       arcade.key.KEY_6, arcade.key.KEY_7, arcade.key.KEY_8, arcade.key.KEY_9]
+            numpad = [arcade.key.NUM_1, arcade.key.NUM_2, arcade.key.NUM_3, arcade.key.NUM_4, arcade.key.NUM_5,
+                      arcade.key.NUM_6, arcade.key.NUM_7, arcade.key.NUM_8, arcade.key.NUM_9]
+            soort = None
+            if toets in cijfers:
+                soort = fb.TOETSEN[cijfers.index(toets)]
+            elif toets in numpad:
+                soort = fb.TOETSEN[numpad.index(toets)]
             if soort:
                 if fb.plaats(self.speler, soort, self.platforms):
                     geluid_manager.speel_sprong()
