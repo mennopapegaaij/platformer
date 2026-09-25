@@ -2298,11 +2298,12 @@ class PlatformerSpel(arcade.View):
                 else:
                     self._verlaat_arena()            # terug naar de kaart
             return
-        # Fabriek-baas: 1-4 = machine neerzetten
+        # Fabriek-baas: 1-5 = machine neerzetten
         if self.speler.modus == "fabriek" and not (self.dood or self.gewonnen or self.game_over):
             soort = {arcade.key.KEY_1: "mijn", arcade.key.KEY_2: "band", arcade.key.KEY_3: "trap",
-                     arcade.key.KEY_4: "brug", arcade.key.NUM_1: "mijn", arcade.key.NUM_2: "band",
-                     arcade.key.NUM_3: "trap", arcade.key.NUM_4: "brug"}.get(toets)
+                     arcade.key.KEY_4: "brug", arcade.key.KEY_5: "tandwiel",
+                     arcade.key.NUM_1: "mijn", arcade.key.NUM_2: "band", arcade.key.NUM_3: "trap",
+                     arcade.key.NUM_4: "brug", arcade.key.NUM_5: "tandwiel"}.get(toets)
             if soort:
                 if fb.plaats(self.speler, soort, self.platforms):
                     geluid_manager.speel_sprong()

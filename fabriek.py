@@ -5,19 +5,23 @@
 #  Toets 2 : LOPENDE BAND   (1 tandwiel)   - vervoert blokjes (en jou!) de kant op die je kijkt
 #  Toets 3 : TRAPPENBOUWER  (3 tandwielen) - maakt van elk blokje een traptree erbij
 #  Toets 4 : BRUGBOUWER     (3 tandwielen) - maakt van elk blokje een stuk brug erbij
+#  Toets 5 : TANDWIEL-MACHINE (3 tandwielen) - maakt van elke 3 blokjes 1 nieuw tandwiel
 #  Omlaag  : SLOPEN         - haal de machine voor je (of onder je) weg, tandwielen terug
 #
 # Machines zet je vlak voor je neer, op de grond waar je staat, in de richting waar je kijkt.
 # Een mijn gooit zijn blokjes naar voren. Ligt daar een band, dan rijden de blokjes mee.
 # Komt een blokje bij een bouwer, dan bouwt die een stukje trap of brug.
+# Komt een blokje bij een tandwiel-machine, dan verdien je (na 3 blokjes) een tandwiel.
 # Voorbeeld:  [MIJN] -> [band][band] -> [BRUGBOUWER] ====brug====>
 # Alles is vast: geen toeval.
 
+import math
 import arcade
 from platforms import Platform
 
 TANDWIELEN = 12           # zoveel tandwielen heb je aan het begin
-KOST = {"mijn": 4, "band": 1, "trap": 3, "brug": 3}
+KOST = {"mijn": 4, "band": 1, "trap": 3, "brug": 3, "tandwiel": 3}
+BLOKJES_PER_TANDWIEL = 3
 MACHINE = 40              # machines zijn 40 x 40
 BAND_BREEDTE = 64
 BAND_HOOGTE = 10
@@ -45,6 +49,8 @@ class FabriekDeel(Platform):
         self.dx = BAND_SNELHEID * richting if soort == "band" else 0   # op een band rijd je mee
         self.klok = 0                 # mijn: aftellen tot het volgende blokje
         self.gebouwd = []             # bouwer: wat hij al gebouwd heeft
+        self.voorraad = 0             # tandwiel-machine: zoveel blokjes zitten erin
+        self.glim = 0                 # tandwiel-machine: glimt even als er een tandwiel uit komt
         self.t = 0
 
     def teken(self):
@@ -137,6 +143,15 @@ def _bouw(sp, bouwer):
     return True
 
 
+def _maak_tandwiel(sp, machine):
+    """Tandwiel-machine: elke 3 blokjes worden 1 tandwiel."""
+    machine.voorraad += 1
+    if machine.voorraad >= BLOKJES_PER_TANDWIEL:
+        machine.voorraad = 0
+        machine.glim = 30
+        sp._fb_tandwielen += 1
+
+
 def stap(sp, platforms):
     """Elke stap: mijnen maken blokjes, blokjes rijden en vallen, bouwers bouwen."""
     sp._fb_t += 1
@@ -145,6 +160,8 @@ def stap(sp, platforms):
     delen = sp._fb_delen
     for d in delen:
         d.t += 1
+        if d.glim > 0:
+            d.glim -= 1
     # Mijnen: elke seconde een blokje (als de uitgang vrij is)
     for m in [d for d in delen if d.soort == "mijn"]:
         m.klok += 1
@@ -158,7 +175,7 @@ def stap(sp, platforms):
         sp._fb_blokjes.append({"x": bx, "y": by, "vy": 0})
     # Blokjes: meerijden op een band, anders vallen tot ze ergens op liggen
     alles = [p for p in platforms if _vast(p) and not getattr(p, "is_fabriek", False)] + delen
-    bouwers = [d for d in delen if d.soort in ("trap", "brug")]
+    bouwers = [d for d in delen if d.soort in ("trap", "brug", "tandwiel")]
     klaar = []
     for b in sp._fb_blokjes:
         band = next((p for p in delen if p.soort == "band" and abs(b["y"] - (p.y + p.hoogte)) < 1
@@ -183,7 +200,10 @@ def stap(sp, platforms):
         # Bij een bouwer aangekomen? Dan wordt het een stukje trap of brug
         for bw in bouwers:
             if _overlapt(b["x"], b["y"], BLOKJE, BLOKJE, bw):
-                if _bouw(sp, bw):
+                if bw.soort == "tandwiel":
+                    _maak_tandwiel(sp, bw)
+                    klaar.append(b)
+                elif _bouw(sp, bw):
                     klaar.append(b)
                 break
     sp._fb_blokjes = [b for b in sp._fb_blokjes if b not in klaar]
@@ -227,6 +247,24 @@ def _teken_deel(d):
             for i in range(3):
                 arcade.draw_lrbt_rectangle_filled(x + 9 + i * 10, x + 12 + i * 10, y + 10, y + 22, (230, 240, 255))
         arcade.draw_text(str(len(d.gebouwd)), x + w / 2, y + 1, (255, 255, 255), 8, anchor_x="center")
+    elif d.soort == "tandwiel":
+        arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (150, 120, 60))
+        arcade.draw_lrbt_rectangle_outline(x, x + w, y, y + h, (40, 40, 40), 2)
+        # draaiend tandwiel
+        hoek = d.t * 0.05
+        cx, cy = x + w / 2, y + h / 2 + 3
+        for i in range(8):
+            a = hoek + i * math.pi / 4
+            arcade.draw_circle_filled(cx + math.cos(a) * 10, cy + math.sin(a) * 10, 3, (250, 210, 80))
+        arcade.draw_circle_filled(cx, cy, 9, (250, 210, 80))
+        arcade.draw_circle_filled(cx, cy, 3, (150, 120, 60))
+        # hoeveel blokjes erin zitten
+        for i in range(BLOKJES_PER_TANDWIEL):
+            arcade.draw_lrbt_rectangle_filled(x + 6 + i * 10, x + 13 + i * 10, y + 3, y + 7,
+                                              (190, 140, 70) if i < d.voorraad else (70, 60, 40))
+        if d.glim > 0:
+            arcade.draw_text("+1", cx, y + h + 4 + (30 - d.glim) * 0.8, (250, 210, 80, d.glim * 8), 12,
+                             bold=True, anchor_x="center")
     elif d.soort == "trede":
         arcade.draw_lrbt_rectangle_filled(x, x + w, y, y + h, (170, 90, 60))
         for ry in range(int(y), int(y + h), 12):
@@ -263,12 +301,14 @@ def teken(sp):
 def teken_hud(sp, x, y):
     arcade.draw_lrbt_rectangle_filled(x - 280, x + 280, y - 10, y + 22, (0, 0, 0, 155))
     arcade.draw_text("Tandwielen: %d" % sp._fb_tandwielen, x - 272, y + 1, (250, 210, 80), 11, bold=True)
-    for i, (soort, naam) in enumerate((("mijn", "mijn"), ("band", "band"), ("trap", "trap"), ("brug", "brug"))):
-        l = x - 130 + i * 78
+    for i, (soort, naam) in enumerate((("mijn", "mijn"), ("band", "band"), ("trap", "trap"), ("brug", "brug"),
+                                       ("tandwiel", "tandwiel"))):
+        l = x - 145 + i * 84
         kan = sp._fb_tandwielen >= KOST[soort]
-        arcade.draw_lrbt_rectangle_filled(l, l + 74, y, y + 18, (70, 110, 70) if kan else (60, 60, 60))
-        arcade.draw_text("%d %s (%d)" % (i + 1, naam, KOST[soort]), l + 37, y + 4,
+        arcade.draw_lrbt_rectangle_filled(l, l + 80, y, y + 18, (70, 110, 70) if kan else (60, 60, 60))
+        arcade.draw_text("%d %s (%d)" % (i + 1, naam, KOST[soort]), l + 40, y + 4,
                          (255, 255, 255) if kan else (140, 140, 140), 9, anchor_x="center")
-    arcade.draw_text("omlaag = slopen", x + 185, y + 1, (200, 200, 200), 9)
+    arcade.draw_lrbt_rectangle_filled(x - 60, x + 60, y - 26, y - 10, (0, 0, 0, 155))
+    arcade.draw_text("omlaag = slopen", x, y - 22, (200, 200, 200), 9, anchor_x="center")
     if sp._fb_melding_tijd > 0:
-        arcade.draw_text(sp._fb_melding, x, y - 24, (250, 220, 150), 13, bold=True, anchor_x="center")
+        arcade.draw_text(sp._fb_melding, x, y - 46, (250, 220, 150), 13, bold=True, anchor_x="center")
