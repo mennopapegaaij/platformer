@@ -20,6 +20,7 @@ import dierentemmer as dm     # en de Dierentemmer ook
 import fabriek as fb          # en de Fabriek-baas ook
 import stad as sb             # en de Stadsbouwer ook
 import trein as tn            # en de Treinmachinist ook
+import uitvinder as uv        # en de Uitvinder ook
 from instellingen import (SPELER_SNELHEID, SPRING_KRACHT, ZWAARTEKRACHT,
                            SPELER_KLEUR, OOG_KLEUR)
 
@@ -385,6 +386,7 @@ class Speler:
         fb.reset(self)                   # fabriek-baas: lege fabriek
         sb.reset(self)                   # stadsbouwer: nog geen stad
         tn.reset(self)                   # treinmachinist: nog geen spoor
+        uv.reset(self)                   # uitvinder: lege werkbank
         self._bouw_over = BOUW_MAX       # bouwmeester: hoeveel blokjes je nog hebt
         self._bouw_terug = False         # bouwmeester: moeten je blokjes terugkomen?
         self._gelande_platform = None    # op welk platform je het laatst landde
@@ -466,6 +468,7 @@ class Speler:
         fb.reset(self)                      # fabriek-baas: fabriek afgebroken, tandwielen terug
         sb.reset(self)                      # stadsbouwer: stad weg, munten terug
         tn.reset(self)                      # treinmachinist: spoor en trein weg
+        uv.reset(self)                      # uitvinder: uitvinding weg
         self._bouw_over = BOUW_MAX          # bouwmeester: alle blokjes weer terug
         self._bouw_terug = False
         self._gelande_platform = None
@@ -701,6 +704,8 @@ class Speler:
                 ch.loop(self, L, R, snelheid)             # rendrank = sneller, luchtdash = zoef
             elif self.modus == "robotbouwer":
                 rb.loop(self, L, R, snelheid)             # wielen = snel rijden met vaart
+            elif self.modus == "uitvinder":
+                uv.loop(self, L, R, snelheid)             # skateboard, katapult, hovercraft
             elif self.modus == "dierentemmer":
                 loop = dm.loop_snelheid(self, snelheid)   # speurneuzen = sneller
                 if L and not R:
@@ -1015,6 +1020,8 @@ class Speler:
             ch.zwaartekracht(self, richting)    # veerdrank = lichter
         elif self.modus == "robotbouwer":
             rb.zwaartekracht(self, richting)    # raket = omhoog vliegen
+        elif self.modus == "uitvinder":
+            uv.zwaartekracht(self, richting)    # luchtschip, hovercraft
         elif self.modus == "element":
             vorm = self.element()
             if vorm == "lucht":
@@ -1220,6 +1227,8 @@ class Speler:
             dm.stap(self)                                # je dieren lopen achter je aan
         if self.modus == "fabriek":
             fb.stap(self, platforms)                     # mijnen, banden en bouwers aan het werk
+        if self.modus == "uitvinder":
+            uv.stap(self)                                # uitvinding aftellen, stuiteren, bommen
         if self.modus == "evolutie":
             evo.stap(self, platforms)                    # DNA verzamelen, deeltjes
             if net_geland:
@@ -1807,6 +1816,9 @@ class Speler:
             return
         if self.modus == "trein":
             tn.teken(self)
+            return
+        if self.modus == "uitvinder":
+            uv.teken(self)
             return
         if self.modus == "voorspeller":
             self._teken_voorspeller()

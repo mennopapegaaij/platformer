@@ -21,6 +21,7 @@ import dierentemmer as dm
 import fabriek as fb
 import stad as sb
 import trein as tn
+import uitvinder as uv
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
@@ -368,6 +369,8 @@ class PlatformerSpel(arcade.View):
                 tr.teken_bevroren(self.vijanden)       # tijdstop: blauw ijslaagje
             if self.speler.modus == "dierentemmer":
                 dm.teken_vast(self.vijanden)           # vastgeplakt of bevroren
+            if self.speler.modus == "uitvinder" and uv.bevroren(self.speler):
+                uv.teken_bevroren(self.vijanden)       # tijdstopwaaier: bevroren
 
             # Teken de spring-bollen en spring-matten
             for springer in self.springers:
@@ -486,6 +489,8 @@ class PlatformerSpel(arcade.View):
             sb.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "trein" and not self.twee:
             tn.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
+        if self.speler.modus == "uitvinder" and not self.twee:
+            uv.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "evolutie" and not self.twee:
             evo.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
             if self.speler._evo_kiezen and not self.dood:
@@ -755,7 +760,8 @@ class PlatformerSpel(arcade.View):
         # In de vasthoud-modi (vliegtuig, golf, robot): geef door of de knop vastgehouden wordt
         if (self.speler.modus in ("vliegtuig", "golf", "robot", "ballon", "raket", "draak", "dronken", "spook")
                 or self.speler._kamp("vasthouden")
-                or self.speler.modus in ("element", "elementkoning", "drakentemmer", "evolutie", "robotbouwer")):
+                or self.speler.modus in ("element", "elementkoning", "drakentemmer", "evolutie", "robotbouwer",
+                                           "uitvinder")):
             self.speler.vlieg_omhoog = self._vlieg_omhoog
 
         # Laat de speler bewegen en botsingen controleren
@@ -828,6 +834,15 @@ class PlatformerSpel(arcade.View):
                     self.platforms.append(p)
         if self.speler.modus == "boogschutter":
             self._pijlen_raak(self.speler)
+        # Uitvinder: wekkerbommen en de stofzuiger ruimen monsters (en spikes) op
+        if self.speler.modus == "uitvinder":
+            weg, spikes_weg = uv.wereld(self.speler, self.vijanden)
+            for v in weg + spikes_weg:
+                self.vijanden.remove(v)
+            for v in weg:
+                self._voeg_punt_toe()
+            if weg or spikes_weg:
+                geluid_manager.speel_vijand_dood()
         # Treinmachinist: rails en wagons zijn platforms; de trein rijdt en ramt monsters
         if self.speler.modus == "trein" or any(getattr(p, "is_trein", False) for p in self.platforms):
             if self.speler.modus == "trein":
@@ -962,9 +977,13 @@ class PlatformerSpel(arcade.View):
             in_cocon = ((self.speler.modus == "spinnenheld" and vijand in self.speler._sh_coconnen)
                         or (self.speler.modus == "tijdreiziger" and tr.bevroren(self.speler)
                             and not getattr(vijand, "is_spike", False))    # (tijdstop: ook stil en veilig)
-                        or (self.speler.modus == "dierentemmer" and dm.vast(vijand)))   # (slijm/ijs)
+                        or (self.speler.modus == "dierentemmer" and dm.vast(vijand))    # (slijm/ijs)
+                        or (self.speler.modus == "uitvinder" and uv.bevroren(self.speler)
+                            and not getattr(vijand, "is_spike", False)))   # (tijdstopwaaier)
             if self.speler.modus == "chemicus" and not getattr(vijand, "is_spike", False) and ch.monster_stil(self.speler):
                 pass                                 # tijdrem: dit monster staat even stil
+            elif self.speler.modus == "uitvinder" and not getattr(vijand, "is_spike", False) and uv.monster_sloom(self.speler):
+                pass                                 # vertrager: dit monster staat even stil
             elif not in_cocon and not (self.speler.modus == "schilder" and not getattr(vijand, "is_spike", False)
                     and sv.in_modder(self.speler, vijand)):
                 vijand.bijwerken(speler_cx)          # (in bruine modder zit een monster vast)
@@ -1146,7 +1165,7 @@ class PlatformerSpel(arcade.View):
                      "bommenlegger": "bommenlegger", "boogschutter": "boogschutter",
                      "spinnenheld": "spinnenheld", "tijdreiziger": "tijdreiziger",
                      "robotbouwer": "robotbouwer", "dierentemmer": "dierentemmer",
-                     "fabriek": "fabriek", "stad": "stad", "trein": "trein",
+                     "fabriek": "fabriek", "stad": "stad", "trein": "trein", "uitvinder": "uitvinder",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -1181,7 +1200,7 @@ class PlatformerSpel(arcade.View):
                        "elementkoning", "bouwmeester", "portaalschieter", "drakentemmer",
                        "mierenkolonie", "evolutie", "schilder", "chemicus", "bommenlegger",
                        "boogschutter", "spinnenheld", "tijdreiziger", "robotbouwer",
-                       "dierentemmer", "fabriek", "stad", "trein"):
+                       "dierentemmer", "fabriek", "stad", "trein", "uitvinder"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -2242,6 +2261,11 @@ class PlatformerSpel(arcade.View):
 
     def _speler_geraakt(self):
         """Verwerk dat de speler geraakt wordt: leven aftrekken of game over."""
+        # Uitvinder met een schildrobot (niet in een kuil)
+        if (self.speler.modus == "uitvinder" and not self.speler.is_gevallen()
+                and uv.bescherm(self.speler)):
+            geluid_manager.speel_geraakt()
+            return
         # Stadsbouwer met een schild van de smid (niet in een kuil)
         if (self.speler.modus == "stad" and not self.speler.is_gevallen()
                 and sb.bescherm(self.speler)):
@@ -2333,6 +2357,15 @@ class PlatformerSpel(arcade.View):
                 else:
                     self._verlaat_arena()            # terug naar de kaart
             return
+        # Uitvinder: 1-6 = onderdeel op de werkbank
+        if self.speler.modus == "uitvinder":
+            nummer = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3,
+                      arcade.key.KEY_4: 4, arcade.key.KEY_5: 5, arcade.key.KEY_6: 6,
+                      arcade.key.NUM_1: 1, arcade.key.NUM_2: 2, arcade.key.NUM_3: 3,
+                      arcade.key.NUM_4: 4, arcade.key.NUM_5: 5, arcade.key.NUM_6: 6}.get(toets)
+            if nummer:
+                uv.kies(self.speler, nummer)
+                return
         # Treinmachinist: 1-3 = rails, 4 = locomotief/wagon, 5 = station
         if self.speler.modus == "trein" and not (self.dood or self.gewonnen or self.game_over):
             nummer = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3, arcade.key.KEY_4: 4,
@@ -2497,6 +2530,10 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.DOWN and self.speler.modus == "bouwmeester":
             # Bouwmeester: zet een blokje neer
             self._bouw_blokje(self.speler)
+        elif toets == arcade.key.DOWN and self.speler.modus == "uitvinder":
+            # Uitvinder: bouwen (2 onderdelen op de werkbank) of je uitvinding gebruiken
+            if not (self.dood or self.gewonnen or self.game_over) and uv.omlaag(self.speler):
+                geluid_manager.speel_powerup()
         elif toets == arcade.key.DOWN and self.speler.modus == "trein":
             # Treinmachinist: het laatste stuk rails weghalen
             if not (self.dood or self.gewonnen or self.game_over):
