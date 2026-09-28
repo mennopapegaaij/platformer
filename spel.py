@@ -20,6 +20,7 @@ import robotbouwer as rb
 import dierentemmer as dm
 import fabriek as fb
 import stad as sb
+import trein as tn
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
@@ -483,6 +484,8 @@ class PlatformerSpel(arcade.View):
             fb.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "stad" and not self.twee:
             sb.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
+        if self.speler.modus == "trein" and not self.twee:
+            tn.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "evolutie" and not self.twee:
             evo.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
             if self.speler._evo_kiezen and not self.dood:
@@ -825,6 +828,15 @@ class PlatformerSpel(arcade.View):
                     self.platforms.append(p)
         if self.speler.modus == "boogschutter":
             self._pijlen_raak(self.speler)
+        # Treinmachinist: rails en wagons zijn platforms; de trein rijdt en ramt monsters
+        if self.speler.modus == "trein" or any(getattr(p, "is_trein", False) for p in self.platforms):
+            if self.speler.modus == "trein":
+                for v in tn.wereld(self.speler, self.vijanden):
+                    self.vijanden.remove(v)
+                    self._voeg_punt_toe()
+                    geluid_manager.speel_vijand_dood()
+            delen = tn.platforms_van(self.speler) if self.speler.modus == "trein" else []
+            self.platforms = [p for p in self.platforms if not getattr(p, "is_trein", False)] + delen
         # Stadsbouwer: gebouwen zijn platforms; de bewoners werken en de wachters verjagen monsters
         if self.speler.modus == "stad" or any(getattr(p, "is_stad", False) for p in self.platforms):
             gebouwen = self.speler._sb_gebouwen if self.speler.modus == "stad" else []
@@ -1134,7 +1146,7 @@ class PlatformerSpel(arcade.View):
                      "bommenlegger": "bommenlegger", "boogschutter": "boogschutter",
                      "spinnenheld": "spinnenheld", "tijdreiziger": "tijdreiziger",
                      "robotbouwer": "robotbouwer", "dierentemmer": "dierentemmer",
-                     "fabriek": "fabriek", "stad": "stad",
+                     "fabriek": "fabriek", "stad": "stad", "trein": "trein",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -1169,7 +1181,7 @@ class PlatformerSpel(arcade.View):
                        "elementkoning", "bouwmeester", "portaalschieter", "drakentemmer",
                        "mierenkolonie", "evolutie", "schilder", "chemicus", "bommenlegger",
                        "boogschutter", "spinnenheld", "tijdreiziger", "robotbouwer",
-                       "dierentemmer", "fabriek", "stad"):
+                       "dierentemmer", "fabriek", "stad", "trein"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -2321,6 +2333,21 @@ class PlatformerSpel(arcade.View):
                 else:
                     self._verlaat_arena()            # terug naar de kaart
             return
+        # Treinmachinist: 1-3 = rails, 4 = locomotief/wagon, 5 = station
+        if self.speler.modus == "trein" and not (self.dood or self.gewonnen or self.game_over):
+            nummer = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3, arcade.key.KEY_4: 4,
+                      arcade.key.KEY_5: 5, arcade.key.NUM_1: 1, arcade.key.NUM_2: 2, arcade.key.NUM_3: 3,
+                      arcade.key.NUM_4: 4, arcade.key.NUM_5: 5}.get(toets)
+            if nummer:
+                if nummer <= 3:
+                    gelukt = tn.leg(self.speler, ("recht", "omhoog", "omlaag")[nummer - 1], self.platforms)
+                elif nummer == 4:
+                    gelukt = tn.trein_erbij(self.speler)
+                else:
+                    gelukt = tn.station_erbij(self.speler)
+                if gelukt:
+                    geluid_manager.speel_sprong()
+                return
         # Stadsbouwer: 1-6 = gebouw neerzetten
         if self.speler.modus == "stad" and not (self.dood or self.gewonnen or self.game_over):
             cijfers = [arcade.key.KEY_1, arcade.key.KEY_2, arcade.key.KEY_3,
@@ -2470,6 +2497,10 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.DOWN and self.speler.modus == "bouwmeester":
             # Bouwmeester: zet een blokje neer
             self._bouw_blokje(self.speler)
+        elif toets == arcade.key.DOWN and self.speler.modus == "trein":
+            # Treinmachinist: het laatste stuk rails weghalen
+            if not (self.dood or self.gewonnen or self.game_over):
+                tn.haal_weg(self.speler)
         elif toets == arcade.key.DOWN and self.speler.modus == "stad":
             # Stadsbouwer: sloop het gebouw voor je
             if not (self.dood or self.gewonnen or self.game_over):

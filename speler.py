@@ -19,6 +19,7 @@ import robotbouwer as rb      # en de Robotbouwer ook
 import dierentemmer as dm     # en de Dierentemmer ook
 import fabriek as fb          # en de Fabriek-baas ook
 import stad as sb             # en de Stadsbouwer ook
+import trein as tn            # en de Treinmachinist ook
 from instellingen import (SPELER_SNELHEID, SPRING_KRACHT, ZWAARTEKRACHT,
                            SPELER_KLEUR, OOG_KLEUR)
 
@@ -383,6 +384,7 @@ class Speler:
         dm.reset(self)                   # dierentemmer: nog geen dieren
         fb.reset(self)                   # fabriek-baas: lege fabriek
         sb.reset(self)                   # stadsbouwer: nog geen stad
+        tn.reset(self)                   # treinmachinist: nog geen spoor
         self._bouw_over = BOUW_MAX       # bouwmeester: hoeveel blokjes je nog hebt
         self._bouw_terug = False         # bouwmeester: moeten je blokjes terugkomen?
         self._gelande_platform = None    # op welk platform je het laatst landde
@@ -463,6 +465,7 @@ class Speler:
         dm.reset(self)                      # dierentemmer: dieren weg
         fb.reset(self)                      # fabriek-baas: fabriek afgebroken, tandwielen terug
         sb.reset(self)                      # stadsbouwer: stad weg, munten terug
+        tn.reset(self)                      # treinmachinist: spoor en trein weg
         self._bouw_over = BOUW_MAX          # bouwmeester: alle blokjes weer terug
         self._bouw_terug = False
         self._gelande_platform = None
@@ -1801,6 +1804,9 @@ class Speler:
             return
         if self.modus == "stad":
             sb.teken(self)
+            return
+        if self.modus == "trein":
+            tn.teken(self)
             return
         if self.modus == "voorspeller":
             self._teken_voorspeller()
