@@ -83,7 +83,7 @@ POPPETJES = [
     ("fabriek", "Fabriek-baas", "Bouw met 1-0 een fabriek: mijn, banden, bouwers, molens, smelterij, lift, kanon en robotjes!"),
     ("stad", "Stadsbouwer", "Bouw met 1-6 huizen, markt, bakkerij, smederij, wachttoren en fontein. Bewoners helpen je!"),
     ("trein", "Treinmachinist", "1-3 rails (recht/omhoog/omlaag), 4 trein + wagons, 5 station. Rijd mee over kuilen!"),
-    ("uitvinder", "Uitvinder", "Leg 2 onderdelen (1-6) op je werkbank en bouw (omlaag). 12 uitvindingen om te ontdekken!"),
+    ("uitvinder", "Uitvinder", "Leg 1 tot 3 onderdelen (1-8) op je werkbank en bouw (omlaag). 100 uitvindingen om te ontdekken!"),
     ("eigen", "Mijn poppetje", "Je zelfgemaakte poppetje uit de poppetjes-maker."),
 ]
 

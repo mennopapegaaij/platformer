@@ -1468,6 +1468,9 @@ class Speler:
         if self.modus == "robotbouwer":
             rb.spring(self)                    # veer = hoger, kanonsprong = enorm hoog
             return
+        if self.modus == "uitvinder":
+            uv.spring(self)                    # springveren = hoger, windsprong = extra luchtsprong
+            return
         if self.modus == "dierentemmer" and self.staat_op_grond:
             # Springers maken je sprong hoger
             self.snelheid_y = (SPRING_KRACHT + self.sprong_bonus) * dm.sprong_factor(self) * self.zwaartekracht_richting
