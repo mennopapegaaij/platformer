@@ -81,6 +81,7 @@ POPPETJES = [
     ("robotbouwer", "Robotbouwer", "Bouw je robot met 1-6: wielen/veer, raket/schild, grijparm/laser. 4 geheime combo's!"),
     ("dierentemmer", "Dierentemmer", "Spring op een monster = getemd! Je dieren volgen je en doen kunstjes (omlaag)."),
     ("fabriek", "Fabriek-baas", "Bouw met 1-0 een fabriek: mijn, banden, bouwers, molens, smelterij, lift, kanon en robotjes!"),
+    ("stad", "Stadsbouwer", "Bouw met 1-6 huizen, markt, bakkerij, smederij, wachttoren en fontein. Bewoners helpen je!"),
     ("eigen", "Mijn poppetje", "Je zelfgemaakte poppetje uit de poppetjes-maker."),
 ]
 

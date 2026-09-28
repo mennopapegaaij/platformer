@@ -19,6 +19,7 @@ import tijdreiziger as tr
 import robotbouwer as rb
 import dierentemmer as dm
 import fabriek as fb
+import stad as sb
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
@@ -480,6 +481,8 @@ class PlatformerSpel(arcade.View):
             dm.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "fabriek" and not self.twee:
             fb.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
+        if self.speler.modus == "stad" and not self.twee:
+            sb.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "evolutie" and not self.twee:
             evo.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
             if self.speler._evo_kiezen and not self.dood:
@@ -822,6 +825,18 @@ class PlatformerSpel(arcade.View):
                     self.platforms.append(p)
         if self.speler.modus == "boogschutter":
             self._pijlen_raak(self.speler)
+        # Stadsbouwer: gebouwen zijn platforms; de bewoners werken en de wachters verjagen monsters
+        if self.speler.modus == "stad" or any(getattr(p, "is_stad", False) for p in self.platforms):
+            gebouwen = self.speler._sb_gebouwen if self.speler.modus == "stad" else []
+            self.platforms = [p for p in self.platforms if not getattr(p, "is_stad", False) or p in gebouwen]
+            for p in gebouwen:
+                if p not in self.platforms:
+                    self.platforms.append(p)
+        if self.speler.modus == "stad":
+            for v in sb.wereld(self.speler, self.vijanden, self.platforms):
+                self.vijanden.remove(v)
+                self._voeg_punt_toe()
+                geluid_manager.speel_vijand_dood()
         # Fabriek-baas: machines, banden, trappen en bruggen zijn platforms
         if self.speler.modus == "fabriek" or any(getattr(p, "is_fabriek", False) for p in self.platforms):
             delen = self.speler._fb_delen if self.speler.modus == "fabriek" else []
@@ -1119,7 +1134,7 @@ class PlatformerSpel(arcade.View):
                      "bommenlegger": "bommenlegger", "boogschutter": "boogschutter",
                      "spinnenheld": "spinnenheld", "tijdreiziger": "tijdreiziger",
                      "robotbouwer": "robotbouwer", "dierentemmer": "dierentemmer",
-                     "fabriek": "fabriek",
+                     "fabriek": "fabriek", "stad": "stad",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -1154,7 +1169,7 @@ class PlatformerSpel(arcade.View):
                        "elementkoning", "bouwmeester", "portaalschieter", "drakentemmer",
                        "mierenkolonie", "evolutie", "schilder", "chemicus", "bommenlegger",
                        "boogschutter", "spinnenheld", "tijdreiziger", "robotbouwer",
-                       "dierentemmer", "fabriek"):
+                       "dierentemmer", "fabriek", "stad"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -2215,6 +2230,11 @@ class PlatformerSpel(arcade.View):
 
     def _speler_geraakt(self):
         """Verwerk dat de speler geraakt wordt: leven aftrekken of game over."""
+        # Stadsbouwer met een schild van de smid (niet in een kuil)
+        if (self.speler.modus == "stad" and not self.speler.is_gevallen()
+                and sb.bescherm(self.speler)):
+            geluid_manager.speel_geraakt()
+            return
         # Dierentemmer met een lijfwacht: die houdt de klap tegen (niet in een kuil)
         if (self.speler.modus == "dierentemmer" and not self.speler.is_gevallen()
                 and dm.bescherm(self.speler)):
@@ -2301,6 +2321,21 @@ class PlatformerSpel(arcade.View):
                 else:
                     self._verlaat_arena()            # terug naar de kaart
             return
+        # Stadsbouwer: 1-6 = gebouw neerzetten
+        if self.speler.modus == "stad" and not (self.dood or self.gewonnen or self.game_over):
+            cijfers = [arcade.key.KEY_1, arcade.key.KEY_2, arcade.key.KEY_3,
+                       arcade.key.KEY_4, arcade.key.KEY_5, arcade.key.KEY_6]
+            numpad = [arcade.key.NUM_1, arcade.key.NUM_2, arcade.key.NUM_3,
+                      arcade.key.NUM_4, arcade.key.NUM_5, arcade.key.NUM_6]
+            soort = None
+            if toets in cijfers:
+                soort = sb.GEBOUWEN[cijfers.index(toets)]
+            elif toets in numpad:
+                soort = sb.GEBOUWEN[numpad.index(toets)]
+            if soort:
+                if sb.plaats(self.speler, soort, self.platforms):
+                    geluid_manager.speel_sprong()
+                return
         # Fabriek-baas: 1-9 en 0 = machine neerzetten
         if self.speler.modus == "fabriek" and not (self.dood or self.gewonnen or self.game_over):
             cijfers = [arcade.key.KEY_1, arcade.key.KEY_2, arcade.key.KEY_3, arcade.key.KEY_4, arcade.key.KEY_5,
@@ -2435,6 +2470,10 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.DOWN and self.speler.modus == "bouwmeester":
             # Bouwmeester: zet een blokje neer
             self._bouw_blokje(self.speler)
+        elif toets == arcade.key.DOWN and self.speler.modus == "stad":
+            # Stadsbouwer: sloop het gebouw voor je
+            if not (self.dood or self.gewonnen or self.game_over):
+                sb.sloop(self.speler)
         elif toets == arcade.key.DOWN and self.speler.modus == "fabriek":
             # Fabriek-baas: sloop de machine voor je
             if not (self.dood or self.gewonnen or self.game_over):
