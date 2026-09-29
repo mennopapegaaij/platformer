@@ -11,6 +11,11 @@
 #  Toets 6 : PRULLENBAK  (1 munt)    - bij een prullenbak in de buurt valt er geen afval
 #  Omlaag  : SLOPEN      - haal de attractie voor je weg (munten terug)
 #
+# ZELF MEERIJDEN: spring op een bakje van het reuzenrad of op het karretje van de achtbaan.
+#   Dan stap je in: je zit er echt in, achter de beugel, en je ziet het uitzicht van binnenuit!
+#   Omlaag   = wisselen tussen je eigen uitzicht en het gewone beeld
+#   Springen = uitstappen
+#
 # BEZOEKERS lopen van de kassa langs 3 attracties (steeds een andere volgorde), staan in de rij,
 #   betalen en gaan dan weer naar huis. Ze kunnen niet springen: niet over kuilen!
 # AFVAL: wie snoep koopt, laat soms afval vallen. Afval maakt het park minder leuk.
@@ -19,6 +24,7 @@
 
 import math
 import arcade
+from instellingen import SCHERM_BREEDTE, SCHERM_HOOGTE
 from platforms import Platform
 
 MUNTEN = 20
@@ -36,7 +42,7 @@ BEZOEKER_TIJD = 300       # elke 5 seconden een nieuwe bezoeker
 MAX_BEZOEKERS_PER = 2     # hoogstens 2 bezoekers per attractie (plus 2) tegelijk in het park
 LOOP = 1.4
 RAD_STRAAL = 70
-RAD_HOOGTE = 90           # het midden van het rad zit zo hoog boven de grond
+RAD_HOOGTE = 100          # het midden van het rad zit zo hoog boven de grond (het laagste bakje komt net boven de voet langs)
 RAD_DRAAI = 0.008         # zo snel draait het rad
 ACHTBAAN = [0, 40, 80, 120, 120, 80, 40, 0, 0]   # hoogtes van de achtbaan, per 40 pixels
 ACHTBAAN_SNEL = 2.5
@@ -45,6 +51,8 @@ BAK_BEREIK = 200
 SUIKER_TIJD = 300         # suikerkick: 5 seconden sneller
 SUIKER_RUST = 600         # daarna 10 seconden wachten op de volgende
 SUIKER_SNEL = 1.5
+INSTAP_RUST = 40          # na het uitstappen even niet meteen weer instappen
+UITSTAP_SPRONG = 12       # uitstappen = een gewone sprong
 
 
 class PretDeel(Platform):
@@ -130,6 +138,9 @@ def reset(sp):
     sp._pp_suiker = 0         # suikerkick: zo lang ben je nog sneller
     sp._pp_suiker_rust = 0
     sp._pp_verdiend = 0
+    sp._pp_rit = None         # (attractie, bakje-nummer of None voor het karretje) als je meerijdt
+    sp._pp_uitzicht = True    # zie je het uitzicht van binnenuit?
+    sp._pp_instap_rust = 0
     sp._pp_t = 0
     sp._pp_melding = ""
     sp._pp_melding_tijd = 0
@@ -236,14 +247,72 @@ def _wacht_x(a):
     return a.x + a.breedte / 2 - 6
 
 
+# ---------------------------------------------------------------------------
+# Zelf meerijden
+# ---------------------------------------------------------------------------
+def rijdt(sp):
+    return sp._pp_rit is not None
+
+
+def _stoel(sp):
+    """Het bakje of karretje waar je in zit."""
+    a, nr = sp._pp_rit
+    return a.bakjes[nr] if nr is not None else a.kar
+
+
+def _probeer_instappen(sp):
+    if sp._pp_rit is not None or sp._pp_instap_rust > 0 or not sp.staat_op_grond:
+        return
+    g = sp._gelande_platform
+    for a in sp._pp_attracties:
+        if g in a.bakjes:
+            sp._pp_rit = (a, a.bakjes.index(g))
+        elif g is not None and g is a.kar:
+            sp._pp_rit = (a, None)
+        else:
+            continue
+        sp._pp_uitzicht = True
+        _meld(sp, "Ingestapt! Springen = uitstappen, omlaag = uitzicht aan/uit")
+        return
+
+
+def rij_stap(sp):
+    """Je zit in een bakje of karretje: je gaat gewoon mee (in plaats van zelf te bewegen)."""
+    a, nr = sp._pp_rit
+    if a not in sp._pp_attracties:
+        sp._pp_rit = None
+        return
+    s = _stoel(sp)
+    sp.x = s.x + s.breedte / 2 - sp.breedte / 2
+    sp.y = s.y + 2                               # je zit IN het bakje (je benen zijn achter de rand)
+    sp.snelheid_x = s.dx
+    sp.snelheid_y = 0
+    sp.staat_op_grond = False
+
+
+def uitstappen(sp):
+    """Springen: uitstappen (met een klein sprongetje)."""
+    sp._pp_rit = None
+    sp._pp_instap_rust = INSTAP_RUST
+    sp.snelheid_y = UITSTAP_SPRONG * sp.zwaartekracht_richting
+    sp.y += 4
+    _meld(sp, "Uitgestapt!")
+
+
+def wissel_uitzicht(sp):
+    sp._pp_uitzicht = not sp._pp_uitzicht
+    return True
+
+
 def wereld(sp, vijanden, platforms):
     """Elke stap: attracties bewegen, bezoekers komen en gaan, afval, botsauto's. Geeft monsters die weg moeten."""
     sp._pp_t += 1
-    for teller in ("_pp_suiker", "_pp_suiker_rust", "_pp_melding_tijd"):
+    for teller in ("_pp_suiker", "_pp_suiker_rust", "_pp_melding_tijd", "_pp_instap_rust"):
         if getattr(sp, teller) > 0:
             setattr(sp, teller, getattr(sp, teller) - 1)
     for a in sp._pp_attracties:
         a.beweeg()
+    _probeer_instappen(sp)
     attracties = [a for a in sp._pp_attracties if a.soort in ATTRACTIES]
     # Nieuwe bezoekers bij de kassa
     sp._pp_klok += 1
@@ -440,13 +509,141 @@ def teken(sp):
     arcade.draw_lrbt_rectangle_filled(x + 1, x + w - 1, y + h - 8, y + h - 5, (40, 40, 120))
     arcade.draw_lrbt_rectangle_filled(x + 7, x + w - 7, y + h - 5, y + h + 8, (40, 40, 120))
     arcade.draw_line(x + w - 8, y + h + 4, x + w - 2, y + h + 14, (250, 210, 60), 3)
+    if sp._pp_rit is not None:
+        # De voorkant van het bakje over je benen, met de veiligheidsbeugel
+        s = _stoel(sp)
+        a, nr = sp._pp_rit
+        kleur = [(230, 80, 80), (80, 150, 230), (250, 210, 60), (90, 200, 110)][nr] if nr is not None else (250, 210, 60)
+        voor_y = s.y + s.hoogte + 12
+        arcade.draw_lrbt_rectangle_filled(s.x - 3, s.x + s.breedte + 3, s.y, voor_y, kleur)
+        arcade.draw_lrbt_rectangle_outline(s.x - 3, s.x + s.breedte + 3, s.y, voor_y, (60, 60, 60), 1)
+        arcade.draw_line(s.x, voor_y + 5, s.x + s.breedte, voor_y + 5, (200, 200, 210), 3)
+        arcade.draw_line(s.x + 3, voor_y, s.x + 3, voor_y + 5, (200, 200, 210), 2)
+        arcade.draw_line(s.x + s.breedte - 3, voor_y, s.x + s.breedte - 3, voor_y + 5, (200, 200, 210), 2)
     if sp._pp_suiker > 0:
         for i in range(3):
             arcade.draw_line(cx - k * (w / 2 + 4 + i * 6), y + 6 + i * 8, cx - k * (w / 2 + 14 + i * 6), y + 6 + i * 8,
                              (240, 110, 180), 2)
 
 
+# ---------------------------------------------------------------------------
+# Uitzicht van binnenuit
+# ---------------------------------------------------------------------------
+def _handjes(cx, y, omhoog):
+    """Je eigen handjes op de beugel (of in de lucht: WIIII!)."""
+    for kant in (-1, 1):
+        hx = cx + kant * 120
+        if omhoog:
+            arcade.draw_line(hx, y, hx + kant * 30, y + 150, (240, 205, 170), 18)
+            arcade.draw_circle_filled(hx + kant * 30, y + 160, 16, (240, 205, 170))
+        else:
+            arcade.draw_circle_filled(hx, y + 8, 16, (240, 205, 170))
+
+
+def _baan_hoogte(a, dd):
+    n = (len(ACHTBAAN) - 1) * 40
+    return a.baan_punt(max(0, min(n, dd)))[1] - a.y
+
+
+def _teken_achtbaan_uitzicht(sp, a, W, H, t):
+    n = (len(ACHTBAAN) - 1) * 40
+    d, r = a.kar_d, a.kar_r
+    helling = (_baan_hoogte(a, d + r * 10) - _baan_hoogte(a, d - r * 10)) / 20     # >0 = omhoog
+    horizon = H * 0.55 - helling * 160                                           # omhoog kijken: horizon zakt
+    arcade.draw_lrbt_rectangle_filled(0, W, 0, H, (120, 190, 250))              # lucht
+    arcade.draw_circle_filled(W * 0.8, H * 0.85, 30, (255, 240, 150))           # zon
+    if horizon > 0:
+        arcade.draw_lrbt_rectangle_filled(0, W, 0, horizon, (90, 170, 80))      # gras
+        arcade.draw_circle_outline(W * 0.2, horizon + 40, 30, (240, 240, 250), 3)            # reuzenrad in de verte
+        arcade.draw_lrbt_rectangle_filled(W * 0.65, W * 0.7, horizon, horizon + 25, (230, 80, 80))
+    # De rails vóór je, in perspectief (hoe verder weg, hoe kleiner)
+    cx = W / 2
+    oog = 30
+    vorige = None
+    hoogste_sy = -1e9                              # wat achter een top ligt, kun je niet zien
+    for i in range(1, 40):
+        s = i * 8
+        dh = _baan_hoogte(a, d + r * s) - _baan_hoogte(a, d)
+        p = 260 / (s + 26)
+        sy = horizon + (dh - oog) * p * 1.4 + oog * 0.9
+        halve = 60 * p
+        if sy < hoogste_sy - 1:
+            break                                  # achter de top: verborgen
+        hoogste_sy = max(hoogste_sy, sy)
+        if vorige:
+            arcade.draw_line(cx - vorige[1], vorige[0], cx - halve, sy, (230, 60, 60), max(1, 6 * p))
+            arcade.draw_line(cx + vorige[1], vorige[0], cx + halve, sy, (230, 60, 60), max(1, 6 * p))
+        if i % 2 == 0:
+            arcade.draw_line(cx - halve, sy, cx + halve, sy, (150, 110, 70), max(1, 4 * p))
+        vorige = (sy, halve)
+        if d + r * s <= 0 or d + r * s >= n:
+            break                                  # daar houdt de baan op
+    for i in range(8):                             # snelheidsstreepjes
+        f = (t * 6 + i * 70) % 400
+        arcade.draw_line(40 + i * 100, H - 60 - f * 0.3, 20 + i * 100, H - 80 - f * 0.3, (255, 255, 255, 120), 2)
+    # De voorkant van het karretje, de beugel en je handjes
+    arcade.draw_lrbt_rectangle_filled(0, W, 0, 70, (250, 210, 60))
+    arcade.draw_lrbt_rectangle_filled(0, W, 64, 74, (220, 170, 40))
+    arcade.draw_line(W * 0.25, 90, W * 0.75, 90, (200, 200, 210), 10)
+    naar_beneden = helling < -0.3
+    _handjes(cx, 80, naar_beneden)
+    if naar_beneden:
+        arcade.draw_text("WIIIIII!", cx, H * 0.7, (255, 255, 255), 36, bold=True, anchor_x="center")
+
+
+def _teken_rad_uitzicht(sp, a, nr, W, H, t):
+    b = a.bakjes[nr]
+    hoog = b.y - a.y                               # zo hoog zit je boven de grond
+    arcade.draw_lrbt_rectangle_filled(0, W, 0, H, (140, 200, 250))
+    if hoog > 90:
+        for i in range(3):                         # wolken
+            wx = (i * 280 + t * 0.3) % (W + 200) - 100
+            arcade.draw_ellipse_filled(wx, H * 0.75 - i * 30 + (180 - hoog) * 0.5, 120, 40, (255, 255, 255, 220))
+    # De grond zakt weg als je hoger komt, en het pretpark wordt kleiner
+    schaal = max(0.3, 1.2 - hoog / 180)
+    grond = 80 + max(0, 200 - hoog) * 1.1          # hoe hoger je zit, hoe verder de grond wegzakt
+    if grond > 0:
+        arcade.draw_lrbt_rectangle_filled(0, W, 0, grond, (90, 170, 80))
+    cx = W / 2
+    kleuren = {"kassa": (230, 80, 80), "botsauto": (90, 90, 110), "achtbaan": (230, 60, 60),
+               "snoep": (240, 110, 180), "prullenbak": (60, 140, 70)}
+    for ander in sp._pp_attracties:
+        if ander.soort == "reuzenrad":
+            continue
+        ax = cx + (ander.x - a.x) * schaal * 1.5
+        hoogte = 120 if ander.soort == "achtbaan" else 40
+        arcade.draw_lrbt_rectangle_filled(ax, ax + 40 * schaal * 1.5, grond, grond + hoogte * schaal, kleuren[ander.soort])
+    for bz in sp._pp_bezoekers:
+        arcade.draw_circle_filled(cx + (bz["x"] - a.x) * schaal * 1.5, grond + 6 * schaal, max(1.5, 4 * schaal),
+                                  bz["kleur"])
+    hx, hy = -60, H * 0.5 + (hoog - RAD_HOOGTE) * 1.2          # spaken van het rad aan de zijkant
+    for i in range(6):
+        hh = a.hoek + i * math.pi / 3
+        arcade.draw_line(hx, hy, hx + math.cos(hh) * 500, hy + math.sin(hh) * 500, (230, 230, 240), 4)
+    kleur = [(230, 80, 80), (80, 150, 230), (250, 210, 60), (90, 200, 110)][nr]
+    arcade.draw_lrbt_rectangle_filled(0, W, 0, 70, kleur)
+    arcade.draw_line(W * 0.25, 90, W * 0.75, 90, (200, 200, 210), 10)
+    _handjes(cx, 80, False)
+    arcade.draw_text("%d meter hoog" % max(0, int(hoog / 10)), cx, H - 40, (40, 60, 90), 18, bold=True, anchor_x="center")
+
+
+def teken_uitzicht(sp):
+    """Als je meerijdt (en het uitzicht aan staat): het hele scherm = wat je vanuit je bakje ziet."""
+    if sp._pp_rit is None or not sp._pp_uitzicht:
+        return False
+    a, nr = sp._pp_rit
+    if nr is None:
+        _teken_achtbaan_uitzicht(sp, a, SCHERM_BREEDTE, SCHERM_HOOGTE, sp._pp_t)
+    else:
+        _teken_rad_uitzicht(sp, a, nr, SCHERM_BREEDTE, SCHERM_HOOGTE, sp._pp_t)
+    arcade.draw_text("springen = uitstappen     omlaag = gewoon beeld", SCHERM_BREEDTE / 2, 20, (60, 40, 20), 11,
+                     bold=True, anchor_x="center")
+    return True
+
+
 def teken_hud(sp, x, y):
+    if teken_uitzicht(sp):
+        return
     arcade.draw_lrbt_rectangle_filled(x - 300, x + 300, y - 30, y + 22, (0, 0, 0, 155))
     arcade.draw_text("Munten: %d" % sp._pp_munten, x - 292, y - 24, (250, 210, 60), 11, bold=True)
     bl = blijheid(sp)

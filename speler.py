@@ -518,6 +518,11 @@ class Speler:
             rb.zip_stap(self)
             return
 
+        # Pretpark: je zit in een bakje of karretje en gaat gewoon mee
+        if self.modus == "pretpark" and pp.rijdt(self):
+            pp.rij_stap(self)
+            return
+
         # Tijdreiziger die terugspoelt: geen natuurkunde, je gaat terug langs je eigen spoor
         if self.modus == "tijdreiziger" and tr.spoel(self):
             return
@@ -1498,6 +1503,9 @@ class Speler:
             return
         if self.modus == "kok":
             kk.spring(self)                    # taart = superhoog, pannenkoek = extra luchtsprong
+            return
+        if self.modus == "pretpark" and pp.rijdt(self):
+            pp.uitstappen(self)                # springen in een attractie = uitstappen
             return
         if self.modus == "dierentemmer" and self.staat_op_grond:
             # Springers maken je sprong hoger

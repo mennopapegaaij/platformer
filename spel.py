@@ -2636,9 +2636,12 @@ class PlatformerSpel(arcade.View):
             if not (self.dood or self.gewonnen or self.game_over) and kk.omlaag(self.speler):
                 geluid_manager.speel_powerup()
         elif toets == arcade.key.DOWN and self.speler.modus == "pretpark":
-            # Pretparkbaas: sloop de attractie voor je
+            # Pretparkbaas: in een attractie = uitzicht aan/uit; anders de attractie voor je slopen
             if not (self.dood or self.gewonnen or self.game_over):
-                pp.sloop(self.speler)
+                if pp.rijdt(self.speler):
+                    pp.wissel_uitzicht(self.speler)
+                else:
+                    pp.sloop(self.speler)
         elif toets == arcade.key.DOWN and self.speler.modus == "dorp":
             # Dorpshoofd: sloop het gebouw of bouwproject voor je
             if not (self.dood or self.gewonnen or self.game_over):
