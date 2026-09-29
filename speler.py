@@ -23,6 +23,7 @@ import trein as tn            # en de Treinmachinist ook
 import uitvinder as uv        # en de Uitvinder ook
 import ruimte as rs           # en het Ruimtestation ook
 import dorp as dp             # en het Dorpshoofd ook
+import pretpark as pp         # en de Pretparkbaas ook
 from instellingen import (SPELER_SNELHEID, SPRING_KRACHT, ZWAARTEKRACHT,
                            SPELER_KLEUR, OOG_KLEUR)
 
@@ -391,6 +392,7 @@ class Speler:
         uv.reset(self)                   # uitvinder: lege werkbank
         rs.reset(self)                   # ruimtestation: volle zuurstof, op aarde
         dp.reset(self)                   # dorpshoofd: nog geen dorp
+        pp.reset(self)                   # pretparkbaas: nog geen pretpark
         self._bouw_over = BOUW_MAX       # bouwmeester: hoeveel blokjes je nog hebt
         self._bouw_terug = False         # bouwmeester: moeten je blokjes terugkomen?
         self._gelande_platform = None    # op welk platform je het laatst landde
@@ -475,6 +477,7 @@ class Speler:
         uv.reset(self)                      # uitvinder: uitvinding weg
         rs.reset(self)                      # ruimtestation: station weg, terug op aarde
         dp.reset(self)                      # dorpshoofd: dorp weg, spullen terug
+        pp.reset(self)                      # pretparkbaas: pretpark weg, munten terug
         self._bouw_over = BOUW_MAX          # bouwmeester: alle blokjes weer terug
         self._bouw_terug = False
         self._gelande_platform = None
@@ -712,6 +715,16 @@ class Speler:
                 rb.loop(self, L, R, snelheid)             # wielen = snel rijden met vaart
             elif self.modus == "uitvinder":
                 uv.loop(self, L, R, snelheid)             # skateboard, katapult, hovercraft
+            elif self.modus == "pretpark":
+                loop = snelheid * pp.loop_factor(self)    # suikerkick = sneller
+                if L and not R:
+                    self.snelheid_x = -loop
+                    self.kijkt_rechts = False
+                elif R and not L:
+                    self.snelheid_x = loop
+                    self.kijkt_rechts = True
+                else:
+                    self.snelheid_x = 0
             elif self.modus == "dierentemmer":
                 loop = dm.loop_snelheid(self, snelheid)   # speurneuzen = sneller
                 if L and not R:
@@ -1836,6 +1849,9 @@ class Speler:
             return
         if self.modus == "dorp":
             dp.teken(self)
+            return
+        if self.modus == "pretpark":
+            pp.teken(self)
             return
         if self.modus == "voorspeller":
             self._teken_voorspeller()

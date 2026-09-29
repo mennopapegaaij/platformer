@@ -24,6 +24,7 @@ import trein as tn
 import uitvinder as uv
 import ruimte as rs
 import dorp as dp
+import pretpark as pp
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
@@ -497,6 +498,8 @@ class PlatformerSpel(arcade.View):
             rs.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "dorp" and not self.twee:
             dp.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
+        if self.speler.modus == "pretpark" and not self.twee:
+            pp.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "evolutie" and not self.twee:
             evo.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
             if self.speler._evo_kiezen and not self.dood:
@@ -840,6 +843,15 @@ class PlatformerSpel(arcade.View):
                     self.platforms.append(p)
         if self.speler.modus == "boogschutter":
             self._pijlen_raak(self.speler)
+        # Pretparkbaas: attracties, bakjes en het karretje zijn platforms; bezoekers komen en gaan
+        if self.speler.modus == "pretpark" or any(getattr(p, "is_pretpark", False) for p in self.platforms):
+            if self.speler.modus == "pretpark":
+                for v in pp.wereld(self.speler, self.vijanden, self.platforms):
+                    self.vijanden.remove(v)
+                    self._voeg_punt_toe()
+                    geluid_manager.speel_vijand_dood()
+            delen = pp.alle_delen(self.speler) if self.speler.modus == "pretpark" else []
+            self.platforms = [p for p in self.platforms if not getattr(p, "is_pretpark", False)] + delen
         # Dorpshoofd: gebouwen, bruggen, trappen en muren zijn platforms; de bewoners werken en bouwen
         if self.speler.modus == "dorp" or any(getattr(p, "is_dorp", False) for p in self.platforms):
             delen = dp.alle_delen(self.speler) if self.speler.modus == "dorp" else []
@@ -1190,7 +1202,7 @@ class PlatformerSpel(arcade.View):
                      "spinnenheld": "spinnenheld", "tijdreiziger": "tijdreiziger",
                      "robotbouwer": "robotbouwer", "dierentemmer": "dierentemmer",
                      "fabriek": "fabriek", "stad": "stad", "trein": "trein", "uitvinder": "uitvinder",
-                     "ruimte": "ruimte", "dorp": "dorp",
+                     "ruimte": "ruimte", "dorp": "dorp", "pretpark": "pretpark",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -1226,7 +1238,7 @@ class PlatformerSpel(arcade.View):
                        "mierenkolonie", "evolutie", "schilder", "chemicus", "bommenlegger",
                        "boogschutter", "spinnenheld", "tijdreiziger", "robotbouwer",
                        "dierentemmer", "fabriek", "stad", "trein", "uitvinder",
-                       "ruimte", "dorp"):
+                       "ruimte", "dorp", "pretpark"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -2383,6 +2395,15 @@ class PlatformerSpel(arcade.View):
                 else:
                     self._verlaat_arena()            # terug naar de kaart
             return
+        # Pretparkbaas: 1-6 = attractie neerzetten
+        if self.speler.modus == "pretpark" and not (self.dood or self.gewonnen or self.game_over):
+            nummer = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3, arcade.key.KEY_4: 4,
+                      arcade.key.KEY_5: 5, arcade.key.KEY_6: 6, arcade.key.NUM_1: 1, arcade.key.NUM_2: 2,
+                      arcade.key.NUM_3: 3, arcade.key.NUM_4: 4, arcade.key.NUM_5: 5, arcade.key.NUM_6: 6}.get(toets)
+            if nummer:
+                if pp.plaats(self.speler, pp.SOORTEN[nummer - 1], self.platforms):
+                    geluid_manager.speel_sprong()
+                return
         # Dorpshoofd: 1-7 = gebouw neerzetten of bouwproject beginnen
         if self.speler.modus == "dorp" and not (self.dood or self.gewonnen or self.game_over):
             nummer = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3, arcade.key.KEY_4: 4,
@@ -2575,6 +2596,10 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.DOWN and self.speler.modus == "bouwmeester":
             # Bouwmeester: zet een blokje neer
             self._bouw_blokje(self.speler)
+        elif toets == arcade.key.DOWN and self.speler.modus == "pretpark":
+            # Pretparkbaas: sloop de attractie voor je
+            if not (self.dood or self.gewonnen or self.game_over):
+                pp.sloop(self.speler)
         elif toets == arcade.key.DOWN and self.speler.modus == "dorp":
             # Dorpshoofd: sloop het gebouw of bouwproject voor je
             if not (self.dood or self.gewonnen or self.game_over):

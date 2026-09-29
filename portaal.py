@@ -88,6 +88,7 @@ PORTAAL_KLEUREN = {
     "uitvinder": ((140, 90, 50), (250, 220, 90)),       # vest-bruin + lampje-geel = uitvinder
     "ruimte": ((30, 30, 70), (240, 240, 245)),          # ruimte-donker + ruimtepak-wit = ruimtestation
     "dorp": ((50, 110, 60), (220, 190, 90)),            # mantel-groen + strodak-geel = dorpshoofd
+    "pretpark": ((230, 60, 60), (250, 240, 240)),       # rood-wit gestreept = pretparkbaas
     "eigen": ((255, 150, 40), (255, 210, 130)),         # oranje = zelfgemaakt poppetje
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
@@ -520,6 +521,15 @@ def teken_portaal_icoon(soort, cx, cy):
         arcade.draw_lrbt_rectangle_filled(cx - 8, cx + 8, cy - 9, cy + 1, (160, 110, 70))
         arcade.draw_triangle_filled(cx - 11, cy + 1, cx + 11, cy + 1, cx, cy + 11, (220, 190, 90))
         arcade.draw_lrbt_rectangle_filled(cx - 2, cx + 3, cy - 9, cy - 3, (90, 60, 35))
+    elif soort == "pretpark":
+        # Een reuzenradje
+        arcade.draw_circle_outline(cx, cy + 2, 8, (250, 240, 240), 2)
+        for i in range(4):
+            h = i * math.pi / 4
+            arcade.draw_line(cx - math.cos(h) * 8, cy + 2 - math.sin(h) * 8, cx + math.cos(h) * 8,
+                             cy + 2 + math.sin(h) * 8, (250, 240, 240), 1)
+        arcade.draw_line(cx - 6, cy - 10, cx, cy + 2, (250, 240, 240), 2)
+        arcade.draw_line(cx + 6, cy - 10, cx, cy + 2, (250, 240, 240), 2)
     elif soort == "eigen":
         # Zelfgemaakt poppetje: een sterretje/blokje met een plusje
         arcade.draw_lrbt_rectangle_filled(cx - 7, cx + 7, cy - 7, cy + 7, arcade.color.WHITE)
