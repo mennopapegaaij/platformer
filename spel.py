@@ -22,6 +22,7 @@ import fabriek as fb
 import stad as sb
 import trein as tn
 import uitvinder as uv
+import ruimte as rs
 import levels as levels_module
 import achtergrond as achtergrond_module
 from geluid import geluid as geluid_manager
@@ -491,6 +492,8 @@ class PlatformerSpel(arcade.View):
             tn.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "uitvinder" and not self.twee:
             uv.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
+        if self.speler.modus == "ruimte" and not self.twee:
+            rs.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
         if self.speler.modus == "evolutie" and not self.twee:
             evo.teken_hud(self.speler, SCHERM_BREEDTE // 2, SCHERM_HOOGTE - 86)
             if self.speler._evo_kiezen and not self.dood:
@@ -761,7 +764,7 @@ class PlatformerSpel(arcade.View):
         if (self.speler.modus in ("vliegtuig", "golf", "robot", "ballon", "raket", "draak", "dronken", "spook")
                 or self.speler._kamp("vasthouden")
                 or self.speler.modus in ("element", "elementkoning", "drakentemmer", "evolutie", "robotbouwer",
-                                           "uitvinder")):
+                                           "uitvinder", "ruimte")):
             self.speler.vlieg_omhoog = self._vlieg_omhoog
 
         # Laat de speler bewegen en botsingen controleren
@@ -834,6 +837,13 @@ class PlatformerSpel(arcade.View):
                     self.platforms.append(p)
         if self.speler.modus == "boogschutter":
             self._pijlen_raak(self.speler)
+        # Ruimtestation: modules zijn platforms; zuurstof op = een leven kwijt
+        if self.speler.modus == "ruimte" or any(getattr(p, "is_ruimte", False) for p in self.platforms):
+            modules = rs.platforms_van(self.speler) if self.speler.modus == "ruimte" else []
+            self.platforms = [p for p in self.platforms if not getattr(p, "is_ruimte", False)] + modules
+            if self.speler.modus == "ruimte" and not (self.dood or self.gewonnen or self.game_over):
+                if rs.wereld(self.speler):
+                    self._speler_geraakt()           # geen zuurstof meer!
         # Uitvinder: uitvindingen ruimen monsters (en spikes) op; lichtblokken zijn platforms
         if self.speler.modus == "uitvinder":
             weg, spikes_weg, pijlen = uv.wereld(self.speler, self.vijanden)
@@ -1171,6 +1181,7 @@ class PlatformerSpel(arcade.View):
                      "spinnenheld": "spinnenheld", "tijdreiziger": "tijdreiziger",
                      "robotbouwer": "robotbouwer", "dierentemmer": "dierentemmer",
                      "fabriek": "fabriek", "stad": "stad", "trein": "trein", "uitvinder": "uitvinder",
+                     "ruimte": "ruimte",
                      "eigen": "eigen"}
 
     def _pas_rotatie_toe(self, sp):
@@ -1205,7 +1216,8 @@ class PlatformerSpel(arcade.View):
                        "elementkoning", "bouwmeester", "portaalschieter", "drakentemmer",
                        "mierenkolonie", "evolutie", "schilder", "chemicus", "bommenlegger",
                        "boogschutter", "spinnenheld", "tijdreiziger", "robotbouwer",
-                       "dierentemmer", "fabriek", "stad", "trein", "uitvinder"):
+                       "dierentemmer", "fabriek", "stad", "trein", "uitvinder",
+                       "ruimte"):
             sp.rotatie = 0                                         # recht
         elif self.race or self.vlucht:
             if sp.staat_op_grond:
@@ -2362,6 +2374,15 @@ class PlatformerSpel(arcade.View):
                 else:
                     self._verlaat_arena()            # terug naar de kaart
             return
+        # Ruimtestation: 1-5 = module neerzetten
+        if self.speler.modus == "ruimte" and not (self.dood or self.gewonnen or self.game_over):
+            nummer = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3, arcade.key.KEY_4: 4,
+                      arcade.key.KEY_5: 5, arcade.key.NUM_1: 1, arcade.key.NUM_2: 2, arcade.key.NUM_3: 3,
+                      arcade.key.NUM_4: 4, arcade.key.NUM_5: 5}.get(toets)
+            if nummer:
+                if rs.plaats(self.speler, rs.MODULES[nummer - 1], self.platforms):
+                    geluid_manager.speel_sprong()
+                return
         # Uitvinder: 1-8 = onderdeel op de werkbank
         if self.speler.modus == "uitvinder":
             nummer = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3, arcade.key.KEY_4: 4,
@@ -2535,6 +2556,10 @@ class PlatformerSpel(arcade.View):
         elif toets == arcade.key.DOWN and self.speler.modus == "bouwmeester":
             # Bouwmeester: zet een blokje neer
             self._bouw_blokje(self.speler)
+        elif toets == arcade.key.DOWN and self.speler.modus == "ruimte":
+            # Ruimtestation: lanceren (op het lanceerplatform) of een module slopen
+            if not (self.dood or self.gewonnen or self.game_over) and rs.omlaag(self.speler):
+                geluid_manager.speel_sprong()
         elif toets == arcade.key.DOWN and self.speler.modus == "uitvinder":
             # Uitvinder: bouwen (2 onderdelen op de werkbank) of je uitvinding gebruiken
             if not (self.dood or self.gewonnen or self.game_over) and uv.omlaag(self.speler, self.platforms):
