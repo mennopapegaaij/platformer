@@ -5,7 +5,10 @@
 #  Toets 2 : REUZENRAD   (10 munten) - 4 bakjes draaien rond; bezoekers betalen 2
 #                                      (stap zelf in een bakje en draai mee omhoog!)
 #  Toets 3 : BOTSAUTO'S  (8 munten)  - bezoekers betalen 1; monsters die erin komen worden weggebotst
-#  Toets 4 : ACHTBAAN    (12 munten) - een berg van 120 hoog met een karretje; bezoekers betalen 3
+#  Toets 4 : ACHTBAAN    (6 munten)  - een station met een karretje; bezoekers betalen 3
+#            De rails bouw je ZELF (bij de achtbaan waar je het dichtst bij staat, 1 munt per stuk):
+#            7 = omhoog, 8 = rechtdoor, 9 = omlaag, 0 = laatste stuk weghalen (munt terug)
+#            Het karretje gaat sneller naar beneden en langzamer omhoog!
 #                                      (spring in het karretje en rij mee naar boven!)
 #  Toets 5 : SNOEPKRAAM  (3 munten)  - bezoekers betalen 1; loop jij erlangs = suikerkick (sneller!)
 #  Toets 6 : PRULLENBAK  (1 munt)    - bij een prullenbak in de buurt valt er geen afval
@@ -31,7 +34,7 @@ MUNTEN = 20
 SOORTEN = ["kassa", "reuzenrad", "botsauto", "achtbaan", "snoep", "prullenbak"]
 NAAM = {"kassa": "kassa", "reuzenrad": "reuzenrad", "botsauto": "botsauto", "achtbaan": "achtbaan",
         "snoep": "snoep", "prullenbak": "prullenbak"}
-KOST = {"kassa": 4, "reuzenrad": 10, "botsauto": 8, "achtbaan": 12, "snoep": 3, "prullenbak": 1}
+KOST = {"kassa": 4, "reuzenrad": 10, "botsauto": 8, "achtbaan": 6, "snoep": 3, "prullenbak": 1}
 PRIJS = {"reuzenrad": 2, "botsauto": 1, "achtbaan": 3, "snoep": 1}      # wat een bezoeker betaalt
 PLEKKEN = {"reuzenrad": 4, "botsauto": 2, "achtbaan": 2, "snoep": 1}
 RITTIJD = {"reuzenrad": 300, "botsauto": 180, "achtbaan": 240, "snoep": 60}
@@ -44,8 +47,12 @@ LOOP = 1.4
 RAD_STRAAL = 70
 RAD_HOOGTE = 100          # het midden van het rad zit zo hoog boven de grond (het laagste bakje komt net boven de voet langs)
 RAD_DRAAI = 0.008         # zo snel draait het rad
-ACHTBAAN = [0, 40, 80, 120, 120, 80, 40, 0, 0]   # hoogtes van de achtbaan, per 40 pixels
-ACHTBAAN_SNEL = 2.5
+ACHTBAAN_SNEL = 2.5       # zo snel rijdt het karretje op een recht stuk
+BAAN_STUK = 40            # een stuk rails is 40 breed
+BAAN_STAP = 40            # omhoog/omlaag: zoveel hoger/lager per stuk
+BAAN_MAX_STUKKEN = 20
+BAAN_MAX_HOOGTE = 240
+BAAN_STUK_KOST = 1
 AFVAL_ZONDER_BAK = 2      # elke 2e snoepkoper laat afval vallen (als er geen prullenbak is)
 BAK_BEREIK = 200
 SUIKER_TIJD = 300         # suikerkick: 5 seconden sneller
@@ -88,6 +95,7 @@ class Attractie(PretDeel):
             self.bakjes = [PretDeel("bakje", 0, 0, 30, 8) for _ in range(4)]
         if soort == "achtbaan":
             self.kar = PretDeel("kar", 0, 0, 36, 10)
+            self.baan = [0, 0]        # hoogtes van de rails (per 40 pixels); je bouwt er zelf stukken bij
         self.beweeg()
 
     def midden_rad(self):
@@ -95,13 +103,21 @@ class Attractie(PretDeel):
 
     def baan_punt(self, d):
         """Achtbaan: (x, y) van de rails op afstand d (0 = bij het station)."""
-        n = len(ACHTBAAN) - 1
-        d = max(0, min(n * 40, d))
-        i = min(int(d // 40), n - 1)
-        f = (d - i * 40) / 40
+        n = len(self.baan) - 1
+        d = max(0, min(n * BAAN_STUK, d))
+        i = min(int(d // BAAN_STUK), n - 1)
+        f = (d - i * BAAN_STUK) / BAAN_STUK
         start = self.x + self.breedte if self.k > 0 else self.x
         x = start + self.k * d
-        return x, self.y + ACHTBAAN[i] + (ACHTBAAN[i + 1] - ACHTBAAN[i]) * f
+        return x, self.y + self.baan[i] + (self.baan[i + 1] - self.baan[i]) * f
+
+    def baan_lengte(self):
+        return (len(self.baan) - 1) * BAAN_STUK
+
+    def helling(self, d):
+        """Hoe steil is de baan hier, in de richting waarin het karretje rijdt? (+1 = omhoog, -1 = omlaag)"""
+        i = min(int(max(0, d) // BAAN_STUK), len(self.baan) - 2)
+        return (self.baan[i + 1] - self.baan[i]) / BAAN_STUK * self.kar_r
 
     def beweeg(self):
         """Het rad draait en het karretje rijdt (altijd, ook als er niemand in zit)."""
@@ -115,8 +131,10 @@ class Attractie(PretDeel):
                 b.y = my + math.sin(h) * RAD_STRAAL - 14
                 b.dx = b.x - oud if self.t > 0 else 0
         elif self.soort == "achtbaan":
-            n = (len(ACHTBAAN) - 1) * 40
-            self.kar_d += ACHTBAAN_SNEL * self.kar_r
+            n = self.baan_lengte()
+            # Omhoog gaat langzaam, omlaag gaat snel (net als een echte achtbaan)
+            snel = ACHTBAAN_SNEL * (1 - 0.5 * self.helling(self.kar_d))
+            self.kar_d += snel * self.kar_r
             if self.kar_d >= n or self.kar_d <= 0:
                 self.kar_d = max(0, min(n, self.kar_d))
                 self.kar_r *= -1
@@ -196,6 +214,46 @@ def plaats(sp, soort, platforms):
         return False
     sp._pp_munten -= KOST[soort]
     sp._pp_attracties.append(Attractie(soort, x, sp.y, k))
+    return True
+
+
+def _dichtste_achtbaan(sp):
+    cx = sp.x + sp.breedte / 2
+    banen = [a for a in sp._pp_attracties if a.soort == "achtbaan" and abs(a.y - sp.y) < 300]
+    if not banen:
+        return None
+    return min(banen, key=lambda a: (abs(a.x + a.breedte / 2 - cx), a.x))
+
+
+def bouw_baan(sp, soort):
+    """Toets 7/8/9: een stuk rails erbij (omhoog, rechtdoor of omlaag). Toets 0: laatste stuk weg."""
+    a = _dichtste_achtbaan(sp)
+    if a is None:
+        _meld(sp, "Zet eerst een achtbaan neer (toets 4)")
+        return False
+    if soort == "weg":
+        if len(a.baan) <= 2:
+            _meld(sp, "Een achtbaan heeft minstens 1 stuk rails")
+            return False
+        a.baan.pop()
+        sp._pp_munten += BAAN_STUK_KOST
+        a.kar_d = min(a.kar_d, a.baan_lengte())
+        return True
+    if len(a.baan) - 1 >= BAAN_MAX_STUKKEN:
+        _meld(sp, "Je achtbaan is al lang genoeg (20 stukken)")
+        return False
+    if sp._pp_munten < BAAN_STUK_KOST:
+        _meld(sp, "Te weinig munten voor rails")
+        return False
+    nieuw = a.baan[-1] + {"omhoog": BAAN_STAP, "recht": 0, "omlaag": -BAAN_STAP}[soort]
+    if nieuw < 0:
+        _meld(sp, "Lager dan de grond kan niet")
+        return False
+    if nieuw > BAAN_MAX_HOOGTE:
+        _meld(sp, "Hoger dan 240 kan niet")
+        return False
+    a.baan.append(nieuw)
+    sp._pp_munten -= BAAN_STUK_KOST
     return True
 
 
@@ -454,9 +512,9 @@ def _teken_attractie(a, t):
     elif s == "achtbaan":
         # Rails met palen
         vorige = None
-        for i in range(len(ACHTBAAN)):
-            px, py = a.baan_punt(i * 40)
-            if ACHTBAAN[i] > 0:
+        for i in range(len(a.baan)):
+            px, py = a.baan_punt(i * BAAN_STUK)
+            if a.baan[i] > 0:
                 arcade.draw_line(px, a.y, px, py, (150, 110, 70), 2)
             if vorige:
                 arcade.draw_line(vorige[0], vorige[1], px, py, (230, 60, 60), 3)
@@ -541,12 +599,11 @@ def _handjes(cx, y, omhoog):
 
 
 def _baan_hoogte(a, dd):
-    n = (len(ACHTBAAN) - 1) * 40
-    return a.baan_punt(max(0, min(n, dd)))[1] - a.y
+    return a.baan_punt(max(0, min(a.baan_lengte(), dd)))[1] - a.y
 
 
 def _teken_achtbaan_uitzicht(sp, a, W, H, t):
-    n = (len(ACHTBAAN) - 1) * 40
+    n = a.baan_lengte()
     d, r = a.kar_d, a.kar_r
     helling = (_baan_hoogte(a, d + r * 10) - _baan_hoogte(a, d - r * 10)) / 20     # >0 = omhoog
     horizon = H * 0.55 - helling * 160                                           # omhoog kijken: horizon zakt
@@ -650,9 +707,11 @@ def teken_hud(sp, x, y):
     kleur = (90, 230, 110) if bl >= 70 else (250, 200, 60) if bl >= 40 else (240, 70, 70)
     arcade.draw_text("Blijheid: %d%%" % bl, x - 180, y - 24, kleur, 11, bold=True)
     arcade.draw_text("Bezoekers: %d" % len(sp._pp_bezoekers), x - 50, y - 24, (220, 220, 230), 10)
+    if any(a.soort == "achtbaan" for a in sp._pp_attracties) and bl >= 40:
+        arcade.draw_text("rails: 7 omhoog 8 recht 9 omlaag 0 weg", x + 60, y - 24, (255, 200, 200), 9, bold=True)
     if bl < 40:
         arcade.draw_text("Te veel afval: er komen geen bezoekers!", x + 60, y - 24, (240, 90, 90), 9, bold=True)
-    else:
+    elif not any(a.soort == "achtbaan" for a in sp._pp_attracties):
         arcade.draw_text("omlaag = slopen", x + 292, y - 24, (200, 200, 200), 9, anchor_x="right")
     for i, s in enumerate(SOORTEN):
         l = x - 292 + i * 98

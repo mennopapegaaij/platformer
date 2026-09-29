@@ -2430,13 +2430,20 @@ class PlatformerSpel(arcade.View):
                 if gelukt:
                     geluid_manager.speel_sprong()
                 return
-        # Pretparkbaas: 1-6 = attractie neerzetten
+        # Pretparkbaas: 1-6 = attractie neerzetten, 7/8/9/0 = achtbaanrails bouwen
         if self.speler.modus == "pretpark" and not (self.dood or self.gewonnen or self.game_over):
             nummer = {arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3, arcade.key.KEY_4: 4,
-                      arcade.key.KEY_5: 5, arcade.key.KEY_6: 6, arcade.key.NUM_1: 1, arcade.key.NUM_2: 2,
-                      arcade.key.NUM_3: 3, arcade.key.NUM_4: 4, arcade.key.NUM_5: 5, arcade.key.NUM_6: 6}.get(toets)
-            if nummer:
-                if pp.plaats(self.speler, pp.SOORTEN[nummer - 1], self.platforms):
+                      arcade.key.KEY_5: 5, arcade.key.KEY_6: 6, arcade.key.KEY_7: 7, arcade.key.KEY_8: 8,
+                      arcade.key.KEY_9: 9, arcade.key.KEY_0: 0,
+                      arcade.key.NUM_1: 1, arcade.key.NUM_2: 2, arcade.key.NUM_3: 3, arcade.key.NUM_4: 4,
+                      arcade.key.NUM_5: 5, arcade.key.NUM_6: 6, arcade.key.NUM_7: 7, arcade.key.NUM_8: 8,
+                      arcade.key.NUM_9: 9, arcade.key.NUM_0: 0}.get(toets)
+            if nummer is not None:
+                if 1 <= nummer <= 6:
+                    gelukt = pp.plaats(self.speler, pp.SOORTEN[nummer - 1], self.platforms)
+                else:
+                    gelukt = pp.bouw_baan(self.speler, {7: "omhoog", 8: "recht", 9: "omlaag", 0: "weg"}[nummer])
+                if gelukt:
                     geluid_manager.speel_sprong()
                 return
         # Dorpshoofd: 1-7 = gebouw neerzetten of bouwproject beginnen

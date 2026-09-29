@@ -86,7 +86,7 @@ POPPETJES = [
     ("uitvinder", "Uitvinder", "Leg 1 tot 3 onderdelen (1-8) op je werkbank en bouw (omlaag). 100 uitvindingen om te ontdekken!"),
     ("ruimte", "Ruimtestation", "Bouw modules (1-5), pas op je zuurstof, gebruik je jetpack en vlieg naar andere planeten!"),
     ("dorp", "Dorpshoofd", "Bouw een dorp (1-7): bewoners maken hout, steen en eten, en bouwen bruggen, trappen en muren."),
-    ("pretpark", "Pretparkbaas", "Bouw een pretpark (1-6): bezoekers betalen, ruim het afval op en rij zelf in het reuzenrad en de achtbaan!"),
+    ("pretpark", "Pretparkbaas", "Bouw een pretpark (1-6) en je eigen achtbaan (7-9)! Bezoekers betalen, ruim afval op en rij zelf mee!"),
     ("kok", "Kok", "Maak ingredienten (1-4), bouw een restaurant (5), kook (6, 7) en bedien klanten of eet zelf voor krachten!"),
     ("eigen", "Mijn poppetje", "Je zelfgemaakte poppetje uit de poppetjes-maker."),
 ]
