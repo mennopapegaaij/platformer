@@ -22,6 +22,7 @@ import stad as sb             # en de Stadsbouwer ook
 import trein as tn            # en de Treinmachinist ook
 import uitvinder as uv        # en de Uitvinder ook
 import ruimte as rs           # en het Ruimtestation ook
+import dorp as dp             # en het Dorpshoofd ook
 from instellingen import (SPELER_SNELHEID, SPRING_KRACHT, ZWAARTEKRACHT,
                            SPELER_KLEUR, OOG_KLEUR)
 
@@ -389,6 +390,7 @@ class Speler:
         tn.reset(self)                   # treinmachinist: nog geen spoor
         uv.reset(self)                   # uitvinder: lege werkbank
         rs.reset(self)                   # ruimtestation: volle zuurstof, op aarde
+        dp.reset(self)                   # dorpshoofd: nog geen dorp
         self._bouw_over = BOUW_MAX       # bouwmeester: hoeveel blokjes je nog hebt
         self._bouw_terug = False         # bouwmeester: moeten je blokjes terugkomen?
         self._gelande_platform = None    # op welk platform je het laatst landde
@@ -472,6 +474,7 @@ class Speler:
         tn.reset(self)                      # treinmachinist: spoor en trein weg
         uv.reset(self)                      # uitvinder: uitvinding weg
         rs.reset(self)                      # ruimtestation: station weg, terug op aarde
+        dp.reset(self)                      # dorpshoofd: dorp weg, spullen terug
         self._bouw_over = BOUW_MAX          # bouwmeester: alle blokjes weer terug
         self._bouw_terug = False
         self._gelande_platform = None
@@ -1830,6 +1833,9 @@ class Speler:
             return
         if self.modus == "ruimte":
             rs.teken(self)
+            return
+        if self.modus == "dorp":
+            dp.teken(self)
             return
         if self.modus == "voorspeller":
             self._teken_voorspeller()

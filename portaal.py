@@ -87,6 +87,7 @@ PORTAAL_KLEUREN = {
     "trein": ((50, 70, 130), (200, 40, 40)),            # machinist-blauw + locomotief-rood = trein
     "uitvinder": ((140, 90, 50), (250, 220, 90)),       # vest-bruin + lampje-geel = uitvinder
     "ruimte": ((30, 30, 70), (240, 240, 245)),          # ruimte-donker + ruimtepak-wit = ruimtestation
+    "dorp": ((50, 110, 60), (220, 190, 90)),            # mantel-groen + strodak-geel = dorpshoofd
     "eigen": ((255, 150, 40), (255, 210, 130)),         # oranje = zelfgemaakt poppetje
     "dubbel": ((200, 60, 200), (255, 150, 255)),   # magenta = twee van jou
     "enkel":  ((90, 90, 150), (170, 170, 220)),    # blauwgrijs = weer één
@@ -514,6 +515,11 @@ def teken_portaal_icoon(soort, cx, cy):
         arcade.draw_triangle_filled(cx - 4, cy + 5, cx + 4, cy + 5, cx, cy + 12, (220, 60, 60))
         arcade.draw_circle_filled(cx, cy, 2, (120, 190, 240))
         arcade.draw_triangle_filled(cx - 4, cy - 7, cx + 4, cy - 7, cx, cy - 13, (255, 170, 40))
+    elif soort == "dorp":
+        # Een hutje met een strodak
+        arcade.draw_lrbt_rectangle_filled(cx - 8, cx + 8, cy - 9, cy + 1, (160, 110, 70))
+        arcade.draw_triangle_filled(cx - 11, cy + 1, cx + 11, cy + 1, cx, cy + 11, (220, 190, 90))
+        arcade.draw_lrbt_rectangle_filled(cx - 2, cx + 3, cy - 9, cy - 3, (90, 60, 35))
     elif soort == "eigen":
         # Zelfgemaakt poppetje: een sterretje/blokje met een plusje
         arcade.draw_lrbt_rectangle_filled(cx - 7, cx + 7, cy - 7, cy + 7, arcade.color.WHITE)
